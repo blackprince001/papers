@@ -44,10 +44,17 @@ def upgrade() -> None:
     "papers", sa.Column("guide_generated_at", sa.DateTime(timezone=True), nullable=True)
   )
 
-  # Create PostgreSQL ENUM type first using raw SQL (works better with async engines)
+  # Create PostgreSQL ENUM type first using raw SQL
+  # PostgreSQL doesn't support IF NOT EXISTS for CREATE TYPE, so we use DO blocks
   op.execute(
     text(
-      "CREATE TYPE IF NOT EXISTS highlighttype AS ENUM ('method', 'result', 'conclusion', 'key_contribution')"
+      """
+      DO $$ BEGIN
+        CREATE TYPE highlighttype AS ENUM ('method', 'result', 'conclusion', 'key_contribution');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+      """
     )
   )
 

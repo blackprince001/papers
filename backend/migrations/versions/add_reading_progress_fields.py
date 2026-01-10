@@ -21,15 +21,28 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
   """Upgrade schema."""
-  # Create PostgreSQL ENUM types first using raw SQL (works better with async engines)
+  # Create PostgreSQL ENUM types first using raw SQL
+  # PostgreSQL doesn't support IF NOT EXISTS for CREATE TYPE, so we use DO blocks
   op.execute(
     text(
-      "CREATE TYPE IF NOT EXISTS readingstatus AS ENUM ('not_started', 'in_progress', 'read', 'archived')"
+      """
+      DO $$ BEGIN
+        CREATE TYPE readingstatus AS ENUM ('not_started', 'in_progress', 'read', 'archived');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+      """
     )
   )
   op.execute(
     text(
-      "CREATE TYPE IF NOT EXISTS prioritylevel AS ENUM ('low', 'medium', 'high', 'critical')"
+      """
+      DO $$ BEGIN
+        CREATE TYPE prioritylevel AS ENUM ('low', 'medium', 'high', 'critical');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+      """
     )
   )
 
