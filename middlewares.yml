@@ -14,12 +14,7 @@ http:
         customRequestHeaders:
           X-Forwarded-Proto: "https"
 
-
-
-
-
-
-
-
-
-
+    fix-js-mime-types:
+      headers:
+        customResponseHeaders:
+          Content-Type: "application/javascript; charset=utf-8"
