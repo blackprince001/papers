@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexus Researcher</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="bento-container">
+    <div class="header">Nexus Researcher</div>
+    <div class="card" id="paper-card">
+      <h3 id="paper-title">Loading...</h3>
+      <p id="paper-url" class="truncate">...</p>
+      <p id="paper-doi" class="doi-indicator" style="display: none;"></p>
+    </div>
+    <select id="group-select" class="group-select" style="display: none;">
+      <option value="">No group</option>
+    </select>
+    <button id="save-btn" class="btn-primary">Save to Nexus</button>
+    <div id="loading" class="status"></div>
+    <div id="status" class="status"></div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+
+</html>

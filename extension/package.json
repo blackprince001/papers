@@ -1,0 +1,21 @@
+{
+  "name": "nexus-researcher-extension",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run build --watch",
+    "build": "tsc && vite build && bun run scripts/fix-html.js",
+    "preview": "vite preview",
+    "test": "bun run build && echo '✓ Extension built! Load the dist/ folder in chrome://extensions/'",
+    "test:open": "bun run build && xdg-open 'chrome://extensions/' 2>/dev/null || open 'chrome://extensions/' 2>/dev/null || echo 'Please open chrome://extensions/ manually'"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.0.0-beta.24",
+    "@types/chrome": "^0.0.268",
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.4"
+  }
+}
+

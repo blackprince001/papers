@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexus Extension Options</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      width: 500px;
+      padding: 24px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    .save-btn {
+      background: #000;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .save-btn:hover {
+      opacity: 0.9;
+    }
+    .status {
+      margin-top: 12px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Nexus Extension Settings</h2>
+  <div class="form-group">
+    <label for="backend-url">Backend URL:</label>
+    <input type="text" id="backend-url" placeholder="http://localhost:8000" />
+  </div>
+  <button id="save-btn" class="save-btn">Save</button>
+  <div id="status" class="status"></div>
+
+  <script type="module" src="./options.ts"></script>
+</body>
+</html>
+
