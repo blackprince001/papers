@@ -78,7 +78,7 @@ services:
     networks:
       - app-network
     volumes:
-      - storage_data:/app/storage
+      - ./storage:/app/storage
     labels:
       - traefik.enable=true
       # Main application router
@@ -126,13 +126,4 @@ networks:
 
 volumes:
   postgres_data:
-  storage_data:
   letsencrypt:
-
-
-
-
-
-
-
-
