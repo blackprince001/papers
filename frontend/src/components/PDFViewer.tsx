@@ -46,6 +46,8 @@ interface PDFViewerProps {
   regenerateMetadataMutation?: UseMutationResult<any, Error, void, unknown>;
   extractCitationsMutation?: UseMutationResult<any, Error, void, unknown>;
   annotationsLoading?: boolean;
+  onDelete?: () => void;
+  isDeleting?: boolean;
 }
 
 export function PDFViewer({
@@ -72,6 +74,10 @@ export function PDFViewer({
   regenerateMetadataMutation,
   extractCitationsMutation,
   annotationsLoading = false,
+  onDelete,
+  isDeleting,
+  updatePaperTitleMutation,
+  onTitleUpdate,
 }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState(currentPage || 1);
@@ -1188,6 +1194,10 @@ export function PDFViewer({
             regenerateMetadataMutation={regenerateMetadataMutation}
             extractCitationsMutation={extractCitationsMutation}
             getAnnotationPage={getAnnotationPage}
+            onDelete={onDelete}
+            isDeleting={isDeleting}
+            updatePaperTitleMutation={updatePaperTitleMutation}
+            onTitleUpdate={onTitleUpdate}
           />
         )
       }

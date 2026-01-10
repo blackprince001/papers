@@ -35,6 +35,8 @@ interface PaperSidebarProps {
   regenerateMetadataMutation: UseMutationResult<any, Error, void, unknown>;
   extractCitationsMutation: UseMutationResult<any, Error, void, unknown>;
   getAnnotationPage: (annotation: Annotation) => number | null;
+  onDelete?: () => void;
+  isDeleting?: boolean;
 }
 
 export function PaperSidebar({
@@ -59,6 +61,10 @@ export function PaperSidebar({
   regenerateMetadataMutation,
   extractCitationsMutation,
   getAnnotationPage,
+  onDelete,
+  isDeleting,
+  updatePaperTitleMutation,
+  onTitleUpdate,
 }: PaperSidebarProps) {
   if (!isOpen) return null;
 
@@ -144,6 +150,10 @@ export function PaperSidebar({
               updatePaperTagsMutation={updatePaperTagsMutation}
               regenerateMetadataMutation={regenerateMetadataMutation}
               extractCitationsMutation={extractCitationsMutation}
+              onDelete={onDelete}
+              isDeleting={isDeleting}
+              updatePaperTitleMutation={updatePaperTitleMutation}
+              onTitleUpdate={onTitleUpdate}
             />
           )}
         </TabsContent>

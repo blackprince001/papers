@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTabs } from '@/contexts/TabContext';
 import { papersApi } from '@/lib/api/papers';
@@ -8,16 +8,18 @@ import { PDFViewer } from '@/components/PDFViewer';
 import { Button } from '@/components/Button';
 import { useConfirmDialog } from '@/components/ConfirmDialog';
 import { useReadingSession } from '@/hooks/use-reading-session';
+import { toastSuccess, toastError } from '@/lib/utils/toast';
 
 export default function PaperDetail() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
   const paperId = parseInt(id || '0');
   const queryClient = useQueryClient();
   const [editingAnnotation, setEditingAnnotation] = useState<Annotation | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const { tabs, addTab, updateTab, activeTabId, setActiveTab } = useTabs();
+  const { tabs, addTab, updateTab, activeTabId, setActiveTab, removeTab } = useTabs();
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
   const { data: paper, isLoading: paperLoading, error: paperError } = useQuery({
     queryKey: ['paper', paperId],
@@ -208,6 +210,67 @@ export default function PaperDetail() {
       queryClient.invalidateQueries({ queryKey: ['statistics'] });
     },
   });
+
+  const updatePaperTitleMutation = useMutation({
+    mutationFn: (title: string) => papersApi.update(paperId, { title }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paper', paperId] });
+      queryClient.invalidateQueries({ queryKey: ['papers'] });
+      toastSuccess('Title updated successfully');
+    },
+    onError: (error: Error) => {
+      toastError(`Failed to update title: ${error.message}`);
+    },
+  });
+
+  const handleTitleUpdate = (newTitle: string) => {
+    // Update tab title
+    const currentTab = tabs.find(tab => tab.paperId === paperId);
+    if (currentTab) {
+      const truncatedTitle = newTitle.length > 30 ? newTitle.substring(0, 30) + '...' : newTitle;
+      updateTab(currentTab.id, { title: truncatedTitle });
+    }
+  };
+
+  const deletePaperMutation = useMutation({
+    mutationFn: () => papersApi.delete(paperId),
+    onSuccess: () => {
+      // Find and remove the tab for this paper
+      const currentTab = tabs.find(tab => tab.paperId === paperId);
+      if (currentTab) {
+        removeTab(currentTab.id);
+      }
+      
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ['papers'] });
+      
+      // Navigate to papers list
+      navigate('/');
+      
+      // Show success toast
+      toastSuccess('Paper deleted successfully');
+    },
+    onError: (error: Error) => {
+      toastError(`Failed to delete paper: ${error.message}`);
+    },
+  });
+
+  const handleDeletePaper = () => {
+    if (!paper) return;
+    
+    confirm(
+      'Delete Paper',
+      `Are you sure you want to delete "${paper.title}"? This action cannot be undone.`,
+      () => {
+        deletePaperMutation.mutate();
+      },
+      {
+        variant: 'destructive',
+        confirmLabel: 'Delete',
+        cancelLabel: 'Cancel',
+      }
+    );
+  };
 
   const handleEditAnnotation = (annotation: Annotation) => {
     setEditingAnnotation(annotation);
@@ -410,6 +473,10 @@ export default function PaperDetail() {
           regenerateMetadataMutation={regenerateMetadataMutation}
           extractCitationsMutation={extractCitationsMutation}
           annotationsLoading={annotationsLoading}
+          onDelete={handleDeletePaper}
+          isDeleting={deletePaperMutation.isPending}
+          updatePaperTitleMutation={updatePaperTitleMutation}
+          onTitleUpdate={handleTitleUpdate}
         />
       ) : (
         <div className="flex items-center justify-center h-full text-anara-light-text-muted">

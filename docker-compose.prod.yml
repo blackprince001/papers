@@ -3,6 +3,7 @@ services:
     image: traefik:v2.11
     command:
       - --api.insecure=false
+      - --api.dashboard=true
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
       - --providers.file.directory=/etc/traefik/

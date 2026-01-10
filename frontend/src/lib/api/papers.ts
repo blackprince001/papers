@@ -160,6 +160,13 @@ export const papersApi = {
     await apiClient.delete(`/papers/${id}`);
   },
 
+  deleteBulk: async (ids: number[]): Promise<void> => {
+    if (ids.length === 0) return;
+    const params = new URLSearchParams();
+    ids.forEach(id => params.append('paper_ids', id.toString()));
+    await apiClient.delete(`/papers?${params.toString()}`);
+  },
+
   getReference: async (id: number, format: 'apa' | 'mla' | 'bibtex' = 'apa'): Promise<PaperReference> => {
     const response = await apiClient.get<PaperReference>(`/papers/${id}/reference?format=${format}`);
     return response.data;

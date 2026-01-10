@@ -1,5 +1,6 @@
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { RefreshCw, FileSearch } from 'lucide-react';
+import { RefreshCw, FileSearch, Trash2, Pencil, Check, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { type Paper, papersApi } from '@/lib/api/papers';
 import { type UseMutationResult } from '@tanstack/react-query';
@@ -14,6 +15,10 @@ interface PaperDetailsPanelProps {
   updatePaperTagsMutation: UseMutationResult<any, Error, number[], unknown>;
   regenerateMetadataMutation: UseMutationResult<any, Error, void, unknown>;
   extractCitationsMutation: UseMutationResult<any, Error, void, unknown>;
+  onDelete?: () => void;
+  isDeleting?: boolean;
+  updatePaperTitleMutation?: UseMutationResult<any, Error, string, unknown>;
+  onTitleUpdate?: (title: string) => void;
 }
 
 export function PaperDetailsPanel({
@@ -22,7 +27,14 @@ export function PaperDetailsPanel({
   updatePaperTagsMutation,
   regenerateMetadataMutation,
   extractCitationsMutation,
+  onDelete,
+  isDeleting,
+  updatePaperTitleMutation,
+  onTitleUpdate,
 }: PaperDetailsPanelProps) {
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(paper.title);
+
   // Fetch citations for this paper
   const {
     data: citationsData,
@@ -33,6 +45,36 @@ export function PaperDetailsPanel({
     queryFn: () => papersApi.getCitationsList(paperId),
     enabled: !!paperId,
   });
+
+  const handleSaveTitle = () => {
+    if (!editedTitle.trim()) {
+      return; // Don't save empty title
+    }
+    if (editedTitle.trim() !== paper.title && updatePaperTitleMutation) {
+      updatePaperTitleMutation.mutate(editedTitle.trim());
+    } else {
+      setIsEditingTitle(false);
+    }
+  };
+
+  const handleCancelTitle = () => {
+    setEditedTitle(paper.title);
+    setIsEditingTitle(false);
+  };
+
+  // Reset edited title when paper changes
+  useEffect(() => {
+    setEditedTitle(paper.title);
+  }, [paper.title]);
+
+  // Handle successful title update
+  useEffect(() => {
+    if (updatePaperTitleMutation?.isSuccess && isEditingTitle) {
+      setIsEditingTitle(false);
+      onTitleUpdate?.(editedTitle.trim());
+      updatePaperTitleMutation.reset();
+    }
+  }, [updatePaperTitleMutation?.isSuccess, isEditingTitle, editedTitle, onTitleUpdate, updatePaperTitleMutation]);
 
   return (
     <div className="space-y-4">
@@ -59,6 +101,17 @@ export function PaperDetailsPanel({
             <RefreshCw size={14} className={regenerateMetadataMutation.isPending ? 'animate-spin' : ''} />
             {regenerateMetadataMutation.isPending ? 'Regenerating...' : 'Regenerate Metadata'}
           </Button>
+          {onDelete && (
+            <Button
+              onClick={onDelete}
+              disabled={isDeleting}
+              className="flex items-center gap-2 text-xs"
+              variant="destructive"
+            >
+              <Trash2 size={14} className={isDeleting ? 'animate-spin' : ''} />
+              {isDeleting ? 'Deleting...' : 'Delete Paper'}
+            </Button>
+          )}
         </div>
       </div>
       {extractCitationsMutation.isError && (
@@ -87,7 +140,61 @@ export function PaperDetailsPanel({
         <div className="text-anara-light-text">Document</div>
 
         <div className="text-anara-light-text-muted font-medium">Title</div>
-        <div className="text-anara-light-text break-words">{paper.title}</div>
+        <div className="text-anara-light-text break-words">
+          {isEditingTitle && updatePaperTitleMutation ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={editedTitle}
+                onChange={(e) => setEditedTitle(e.target.value)}
+                className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSaveTitle();
+                  } else if (e.key === 'Escape') {
+                    handleCancelTitle();
+                  }
+                }}
+                autoFocus
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={handleSaveTitle}
+                disabled={!editedTitle.trim() || updatePaperTitleMutation.isPending}
+                title="Save"
+              >
+                <Check size={14} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={handleCancelTitle}
+                disabled={updatePaperTitleMutation.isPending}
+                title="Cancel"
+              >
+                <X size={14} />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 group">
+              <span className="flex-1">{paper.title}</span>
+              {updatePaperTitleMutation && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+                  onClick={() => setIsEditingTitle(true)}
+                  title="Edit title"
+                >
+                  <Pencil size={14} />
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
 
         <div className="text-anara-light-text-muted font-medium">Authors</div>
         <div className="text-anara-light-text">

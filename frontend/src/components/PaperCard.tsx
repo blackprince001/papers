@@ -1,20 +1,37 @@
 import type { Paper } from '@/lib/api/papers';
 import { format } from 'date-fns';
+import { Trash2 } from 'lucide-react';
 import { ReadingStatusBadge } from './ReadingStatusBadge';
 import { PriorityBadge } from './PriorityBadge';
+import { Button } from './Button';
 
 interface PaperCardProps {
   paper: Paper;
+  onDelete?: (paperId: number) => void;
 }
 
-export function PaperCard({ paper }: PaperCardProps) {
+export function PaperCard({ paper, onDelete }: PaperCardProps) {
   return (
-    <div className="bg-grayscale-8 border border-green-6 rounded-sm p-4 sm:p-6 hover:bg-green-4 transition-all cursor-pointer h-full flex flex-col">
+    <div className="bg-grayscale-8 border border-green-6 rounded-sm p-4 sm:p-6 hover:bg-green-4 transition-all cursor-pointer h-full flex flex-col relative group">
       <div className="flex justify-between items-start gap-2 mb-2">
         <h3 className="text-lg sm:text-xl font-semibold line-clamp-2 break-words text-anara-light-text flex-1">{paper.title}</h3>
         <div className="flex gap-1 flex-shrink-0">
           {paper.reading_status && <ReadingStatusBadge status={paper.reading_status} />}
           {paper.priority && paper.priority !== 'low' && <PriorityBadge priority={paper.priority} />}
+          {onDelete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 hover:bg-red-100 hover:text-red-600"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(paper.id);
+              }}
+              title="Delete paper"
+            >
+              <Trash2 size={14} />
+            </Button>
+          )}
         </div>
       </div>
       {paper.doi && (

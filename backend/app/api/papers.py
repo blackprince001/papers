@@ -254,19 +254,61 @@ async def delete_paper(paper_id: int, session: AsyncSession = Depends(get_db)):
   if not paper:
     raise HTTPException(status_code=404, detail="Paper not found")
 
-    if paper.file_path and isinstance(paper.file_path, str):
-      try:
-        from pathlib import Path
+  # Delete the PDF file if it exists
+  if paper.file_path and isinstance(paper.file_path, str):
+    try:
+      from pathlib import Path
 
-        file_path = Path(paper.file_path)
-        if file_path.exists():
-          file_path.unlink()
-      except Exception:
-        pass
+      file_path = Path(paper.file_path)
+      if file_path.exists():
+        file_path.unlink()
+    except Exception:
+      pass  # Continue even if file deletion fails
 
   await session.delete(paper)
   await session.commit()
 
+  return None
+
+
+@router.delete("/papers", status_code=204)
+async def delete_papers_bulk(
+  paper_ids: list[int] = Query(..., description="List of paper IDs to delete"),
+  session: AsyncSession = Depends(get_db),
+):
+  """Delete multiple papers by ID."""
+  if not paper_ids:
+    raise HTTPException(status_code=400, detail="No paper IDs provided")
+
+  # Fetch all papers at once
+  query = select(Paper).where(Paper.id.in_(paper_ids))
+  result = await session.execute(query)
+  papers = result.scalars().all()
+
+  if len(papers) != len(paper_ids):
+    found_ids = {p.id for p in papers}
+    missing_ids = set(paper_ids) - found_ids
+    raise HTTPException(
+      status_code=404, detail=f"Papers not found: {sorted(missing_ids)}"
+    )
+
+  # Delete PDF files
+  from pathlib import Path
+
+  for paper in papers:
+    if paper.file_path and isinstance(paper.file_path, str):
+      try:
+        file_path = Path(paper.file_path)
+        if file_path.exists():
+          file_path.unlink()
+      except Exception:
+        pass  # Continue even if file deletion fails
+
+  # Delete papers
+  for paper in papers:
+    await session.delete(paper)
+
+  await session.commit()
   return None
 
 

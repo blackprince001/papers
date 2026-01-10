@@ -12,8 +12,9 @@ import { PaperMultiSelect } from '@/components/PaperMultiSelect';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { PaperListFilters } from '@/lib/api/papers';
 import { usePagination } from '@/hooks/use-pagination';
-import { toastInfo } from '@/lib/utils/toast';
+import { toastInfo, toastSuccess, toastError } from '@/lib/utils/toast';
 import { useConfirmDialog } from '@/components/ConfirmDialog';
+import { Trash2 } from 'lucide-react';
 import {
   Pagination,
   PaginationContent,
@@ -91,6 +92,57 @@ export default function PapersList() {
       `Regenerate metadata for ${paperIds.length} paper(s) on this page?`,
       () => {
         regenerateMetadataMutation.mutate(paperIds);
+      }
+    );
+  };
+
+  const deletePapersMutation = useMutation({
+    mutationFn: (paperIds: number[]) => papersApi.deleteBulk(paperIds),
+    onSuccess: (_, paperIds) => {
+      const count = paperIds.length;
+      // Clear selection
+      setSelectedPaperIds([]);
+      // Invalidate papers query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['papers'] });
+      // Show success toast
+      toastSuccess(`${count} paper${count !== 1 ? 's' : ''} deleted successfully`);
+    },
+    onError: (error: Error) => {
+      toastError(`Failed to delete papers: ${error.message}`);
+    },
+  });
+
+  const handleDeleteSelected = () => {
+    if (selectedPaperIds.length === 0) return;
+
+    confirm(
+      'Delete Papers',
+      `Delete ${selectedPaperIds.length} paper(s)? This action cannot be undone.`,
+      () => {
+        deletePapersMutation.mutate(selectedPaperIds);
+      },
+      {
+        variant: 'destructive',
+        confirmLabel: 'Delete',
+        cancelLabel: 'Cancel',
+      }
+    );
+  };
+
+  const handleDeletePaper = (paperId: number) => {
+    const paper = data?.papers.find(p => p.id === paperId);
+    const paperTitle = paper?.title || 'this paper';
+
+    confirm(
+      'Delete Paper',
+      `Delete "${paperTitle}"? This action cannot be undone.`,
+      () => {
+        deletePapersMutation.mutate([paperId]);
+      },
+      {
+        variant: 'destructive',
+        confirmLabel: 'Delete',
+        cancelLabel: 'Cancel',
       }
     );
   };
@@ -183,6 +235,16 @@ export default function PapersList() {
                     >
                       Export {selectedPaperIds.length}
                     </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="flex items-center gap-2"
+                      onClick={handleDeleteSelected}
+                      disabled={deletePapersMutation.isPending}
+                    >
+                      <Trash2 size={16} className={deletePapersMutation.isPending ? 'animate-spin' : ''} />
+                      {deletePapersMutation.isPending ? 'Deleting...' : `Delete ${selectedPaperIds.length}`}
+                    </Button>
                   </>
                 )}
                 <Button
@@ -254,7 +316,7 @@ export default function PapersList() {
                     }}
                     className={`cursor-pointer ${selectedPaperIds.includes(paper.id) ? 'ring-2 ring-blue-500' : ''}`}
                   >
-                    <PaperCard paper={paper} />
+                    <PaperCard paper={paper} onDelete={handleDeletePaper} />
                   </div>
                 ))}
               </div>
@@ -262,6 +324,7 @@ export default function PapersList() {
               <div className="mb-6 sm:mb-8">
                 <PaperTable
                   papers={data.papers}
+                  onDelete={handleDeletePaper}
                   onSort={(field: string) => {
                     const newSortBy = field as 'date_added' | 'viewed' | 'title' | 'authors';
                     if (filters.sort_by === newSortBy)

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, Trash2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -17,10 +17,11 @@ interface PaperTableProps {
   onSort?: (field: string) => void;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  onDelete?: (paperId: number) => void;
   // sortBy and sortOrder are for future use when backend sorting is implemented
 }
 
-export function PaperTable({ papers, onSort }: PaperTableProps) {
+export function PaperTable({ papers, onSort, onDelete }: PaperTableProps) {
   const getFileType = (paper: Paper): string => {
     if (paper.file_path)
     {
@@ -74,6 +75,7 @@ export function PaperTable({ papers, onSort }: PaperTableProps) {
             <TableHead>File type</TableHead>
             <TableHead>Tags</TableHead>
             <TableHead>Summary</TableHead>
+            {onDelete && <TableHead>Actions</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -130,6 +132,22 @@ export function PaperTable({ papers, onSort }: PaperTableProps) {
               <TableCell className="text-sm text-anara-light-text-muted max-w-xs truncate">
                 {getSummary(paper)}
               </TableCell>
+              {onDelete && (
+                <TableCell className="text-sm">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-600"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(paper.id);
+                    }}
+                    title="Delete paper"
+                  >
+                    <Trash2 size={16} />
+                  </Button>
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>
