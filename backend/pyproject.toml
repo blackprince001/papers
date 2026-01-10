@@ -1,0 +1,34 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.17.2",
+    "asyncpg>=0.31.0",
+    "fastapi[standard]>=0.128.0",
+    "google-genai>=0.2.0",
+    "httpx>=0.27.0",
+    "pgvector>=0.4.2",
+    "psycopg2-binary>=2.9.11",
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.6.1",
+    "python-dotenv>=1.0.1",
+    "python-multipart>=0.0.12",
+    "pypdf>=5.1.0",
+    "sentence-transformers>=3.3.1",
+    "sqlalchemy[asyncio]>=2.0.45",
+]
+
+[dependency-groups]
+dev = ["pyright>=1.1.407", "ruff>=0.14.10"]
+
+[tool.ruff]
+indent-width = 2
+line-length = 88
+src = ["app"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B"]
+ignore = ["B008"]                          # Ignore B008 for FastAPI Depends() which is a false positive
