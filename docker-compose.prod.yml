@@ -78,7 +78,7 @@ services:
     networks:
       - app-network
     volumes:
-      - ./storage:/app/storage
+      - ./data/storage:/app/storage
     labels:
       - traefik.enable=true
       # Main application router
