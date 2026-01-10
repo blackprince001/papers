@@ -23,6 +23,10 @@ FROM nginx:alpine
 # Copy built assets from build stage
 COPY --from=build /app/dist /usr/share/nginx/html
 
+# Add .mjs extension to mime.types
+COPY add-mjs-mime.sh /tmp/add-mjs-mime.sh
+RUN chmod +x /tmp/add-mjs-mime.sh && /tmp/add-mjs-mime.sh
+
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
