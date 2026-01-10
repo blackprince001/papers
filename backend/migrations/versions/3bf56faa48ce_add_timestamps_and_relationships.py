@@ -1,7 +1,7 @@
 """add_timestamps_and_relationships
 
 Revision ID: 3bf56faa48ce
-Revises: f0e96b2b58d5
+Revises: a1b2c3d4e5f0
 Create Date: 2026-01-07 14:08:22.632517
 
 """
@@ -15,7 +15,7 @@ from pgvector.sqlalchemy import Vector
 
 # revision identifiers, used by Alembic.
 revision: str = "3bf56faa48ce"
-down_revision: Union[str, Sequence[str], None] = "f0e96b2b58d5"
+down_revision: Union[str, Sequence[str], None] = "a1b2c3d4e5f0"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
