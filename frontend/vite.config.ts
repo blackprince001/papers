@@ -16,6 +16,14 @@ export default defineConfig({
           next()
         })
       },
+      configurePreviewServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url?.endsWith('.mjs')) {
+            res.setHeader('Content-Type', 'application/javascript; charset=utf-8')
+          }
+          next()
+        })
+      },
     },
   ],
   resolve: {
@@ -33,6 +41,11 @@ export default defineConfig({
     hmr: {
       port: 5173,
     },
+  },
+  preview: {
+    host: '0.0.0.0',
+    port: 4173,
+    strictPort: false,
   },
   optimizeDeps: {
     exclude: ['pdfjs-dist'],

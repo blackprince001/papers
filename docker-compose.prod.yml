@@ -113,8 +113,8 @@ services:
       - traefik.http.routers.nexus-frontend.service=nexus-frontend-service
       - traefik.http.routers.nexus-frontend.middlewares=security-headers@file
       # Main application service
-      - traefik.http.services.nexus-frontend-service.loadbalancer.server.port=80
-      - traefik.http.services.nexus-frontend-service.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.nexus-frontend-service.loadbalancer.server.port=4173
+      - traefik.http.services.nexus-frontend-service.loadbalancer.healthcheck.path=/
       - traefik.http.services.nexus-frontend-service.loadbalancer.healthcheck.interval=10s
       - traefik.http.services.nexus-frontend-service.loadbalancer.healthcheck.timeout=3s
     restart: unless-stopped
