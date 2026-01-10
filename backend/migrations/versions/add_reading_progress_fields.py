@@ -8,9 +8,9 @@ Create Date: 2026-01-15 10:00:00.000000
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
+from sqlalchemy import text
 
 # revision identifiers, used by Alembic.
 revision: str = "reading_progress_001"
@@ -21,29 +21,55 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
   """Upgrade schema."""
+  # Create PostgreSQL ENUM types first using raw SQL (works better with async engines)
+  op.execute(
+    text(
+      "CREATE TYPE IF NOT EXISTS readingstatus AS ENUM ('not_started', 'in_progress', 'read', 'archived')"
+    )
+  )
+  op.execute(
+    text(
+      "CREATE TYPE IF NOT EXISTS prioritylevel AS ENUM ('low', 'medium', 'high', 'critical')"
+    )
+  )
+
   # Add reading progress fields to papers table
+  reading_status_enum = sa.Enum(
+    "not_started", "in_progress", "read", "archived", name="readingstatus"
+  )
+  priority_level_enum = sa.Enum(
+    "low", "medium", "high", "critical", name="prioritylevel"
+  )
+
   op.add_column(
     "papers",
     sa.Column(
       "reading_status",
-      sa.Enum("not_started", "in_progress", "read", "archived", name="readingstatus"),
+      reading_status_enum,
       nullable=False,
       server_default="not_started",
     ),
   )
-  op.add_column("papers", sa.Column("reading_time_minutes", sa.Integer(), nullable=False, server_default="0"))
+  op.add_column(
+    "papers",
+    sa.Column("reading_time_minutes", sa.Integer(), nullable=False, server_default="0"),
+  )
   op.add_column("papers", sa.Column("last_read_page", sa.Integer(), nullable=True))
   op.add_column(
     "papers",
     sa.Column(
       "priority",
-      sa.Enum("low", "medium", "high", "critical", name="prioritylevel"),
+      priority_level_enum,
       nullable=False,
       server_default="low",
     ),
   )
-  op.add_column("papers", sa.Column("status_updated_at", sa.DateTime(timezone=True), nullable=True))
-  op.add_column("papers", sa.Column("last_read_at", sa.DateTime(timezone=True), nullable=True))
+  op.add_column(
+    "papers", sa.Column("status_updated_at", sa.DateTime(timezone=True), nullable=True)
+  )
+  op.add_column(
+    "papers", sa.Column("last_read_at", sa.DateTime(timezone=True), nullable=True)
+  )
 
   # Create reading_sessions table
   op.create_table(
@@ -57,8 +83,12 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(["paper_id"], ["papers.id"], ondelete="CASCADE"),
     sa.PrimaryKeyConstraint("id"),
   )
-  op.create_index(op.f("ix_reading_sessions_id"), "reading_sessions", ["id"], unique=False)
-  op.create_index(op.f("ix_reading_sessions_paper_id"), "reading_sessions", ["paper_id"], unique=False)
+  op.create_index(
+    op.f("ix_reading_sessions_id"), "reading_sessions", ["id"], unique=False
+  )
+  op.create_index(
+    op.f("ix_reading_sessions_paper_id"), "reading_sessions", ["paper_id"], unique=False
+  )
 
   # Create bookmarks table
   op.create_table(
@@ -72,7 +102,9 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint("id"),
   )
   op.create_index(op.f("ix_bookmarks_id"), "bookmarks", ["id"], unique=False)
-  op.create_index(op.f("ix_bookmarks_paper_id"), "bookmarks", ["paper_id"], unique=False)
+  op.create_index(
+    op.f("ix_bookmarks_paper_id"), "bookmarks", ["paper_id"], unique=False
+  )
 
 
 def downgrade() -> None:
@@ -91,4 +123,3 @@ def downgrade() -> None:
   op.drop_column("papers", "reading_status")
   op.execute("DROP TYPE IF EXISTS readingstatus")
   op.execute("DROP TYPE IF EXISTS prioritylevel")
-

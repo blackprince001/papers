@@ -8,10 +8,10 @@ Create Date: 2026-01-15 14:00:00.000000
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
+from sqlalchemy import text
 from sqlalchemy.dialects import postgresql
-
 
 # revision identifiers, used by Alembic.
 revision: str = "ai_features_001"
@@ -24,19 +24,46 @@ def upgrade() -> None:
   """Upgrade schema."""
   # Add AI features to papers table
   op.add_column("papers", sa.Column("ai_summary", sa.Text(), nullable=True))
-  op.add_column("papers", sa.Column("summary_generated_at", sa.DateTime(timezone=True), nullable=True))
-  op.add_column("papers", sa.Column("key_findings", postgresql.JSON(astext_type=sa.Text()), nullable=True))
-  op.add_column("papers", sa.Column("findings_extracted_at", sa.DateTime(timezone=True), nullable=True))
-  op.add_column("papers", sa.Column("reading_guide", postgresql.JSON(astext_type=sa.Text()), nullable=True))
-  op.add_column("papers", sa.Column("guide_generated_at", sa.DateTime(timezone=True), nullable=True))
+  op.add_column(
+    "papers",
+    sa.Column("summary_generated_at", sa.DateTime(timezone=True), nullable=True),
+  )
+  op.add_column(
+    "papers",
+    sa.Column("key_findings", postgresql.JSON(astext_type=sa.Text()), nullable=True),
+  )
+  op.add_column(
+    "papers",
+    sa.Column("findings_extracted_at", sa.DateTime(timezone=True), nullable=True),
+  )
+  op.add_column(
+    "papers",
+    sa.Column("reading_guide", postgresql.JSON(astext_type=sa.Text()), nullable=True),
+  )
+  op.add_column(
+    "papers", sa.Column("guide_generated_at", sa.DateTime(timezone=True), nullable=True)
+  )
+
+  # Create PostgreSQL ENUM type first using raw SQL (works better with async engines)
+  op.execute(
+    text(
+      "CREATE TYPE IF NOT EXISTS highlighttype AS ENUM ('method', 'result', 'conclusion', 'key_contribution')"
+    )
+  )
 
   # Add auto-highlight fields to annotations table
-  op.add_column("annotations", sa.Column("auto_highlighted", sa.Boolean(), nullable=False, server_default="false"))
+  highlight_type_enum = sa.Enum(
+    "method", "result", "conclusion", "key_contribution", name="highlighttype"
+  )
+  op.add_column(
+    "annotations",
+    sa.Column("auto_highlighted", sa.Boolean(), nullable=False, server_default="false"),
+  )
   op.add_column(
     "annotations",
     sa.Column(
       "highlight_type",
-      sa.Enum("method", "result", "conclusion", "key_contribution", name="highlighttype"),
+      highlight_type_enum,
       nullable=True,
     ),
   )
@@ -53,4 +80,3 @@ def downgrade() -> None:
   op.drop_column("papers", "summary_generated_at")
   op.drop_column("papers", "ai_summary")
   op.execute("DROP TYPE IF EXISTS highlighttype")
-
