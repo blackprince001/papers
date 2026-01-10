@@ -1,8 +1,6 @@
-version: "3.8"
-
 services:
   traefik:
-    image: traefik:v2.10
+    image: traefik:v2.11
     command:
       - --api.insecure=false
       - --providers.docker=true
@@ -108,7 +106,7 @@ services:
     labels:
       - traefik.enable=true
       # Main application router
-      - traefik.http.routers.nexus-frontend.rule=Host(`yourdomain.com`)
+      - traefik.http.routers.nexus-frontend.rule=Host(`papers.yourdomain.com`)
       - traefik.http.routers.nexus-frontend.entrypoints=websecure
       - traefik.http.routers.nexus-frontend.tls.certresolver=leresolver
       - traefik.http.routers.nexus-frontend.service=nexus-frontend-service

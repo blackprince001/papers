@@ -21,6 +21,7 @@ import sys
 # Add the project root to the python path to allow imports from app
 sys.path.append(os.getcwd())
 
+from app.core.config import settings
 from app.models.base import Base
 
 # add your model's MetaData object here
@@ -29,10 +30,9 @@ from app.models.base import Base
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+# Use database URL from app settings instead of alembic.ini
+# This allows environment variables to work in Docker
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 
 def run_migrations_offline() -> None:
