@@ -6,6 +6,7 @@ import { Button } from '@/components/Button';
 import { FileUpload } from '@/components/FileUpload';
 import { papersApi } from '@/lib/api/papers';
 import { groupsApi } from '@/lib/api/groups';
+import { toastSuccess, toastError, toastInfo } from '@/lib/utils/toast';
 
 export default function IngestPaper() {
   const navigate = useNavigate();
@@ -29,12 +30,23 @@ export default function IngestPaper() {
         group_ids: data.group_ids && data.group_ids.length > 0 ? data.group_ids : undefined,
       });
     },
-    onSuccess: () => {
+    onSuccess: (paper) => {
       setUrl('');
       setSelectedGroupIds([]);
       setUploadFiles([]);
       queryClient.invalidateQueries({ queryKey: ['papers'] });
+      
+      // Show toast notification
+      if (paper.background_processing_message) {
+        toastSuccess(paper.background_processing_message);
+      } else {
+        toastSuccess('Paper ingested successfully');
+      }
+      
       navigate('/');
+    },
+    onError: (error: Error) => {
+      toastError(error.message || 'Failed to ingest paper');
     },
   });
 
@@ -45,12 +57,37 @@ export default function IngestPaper() {
         data.group_ids && data.group_ids.length > 0 ? data.group_ids : undefined
       );
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
       setUrl('');
       setSelectedGroupIds([]);
       setUploadFiles([]);
       queryClient.invalidateQueries({ queryKey: ['papers'] });
+      
+      // Show toast notifications
+      if (response.errors && response.errors.length > 0) {
+        // Show errors
+        response.errors.forEach((error) => {
+          toastError(`${error.filename}: ${error.error}`);
+        });
+      }
+      
+      // Show success/processing message
+      if (response.paper_ids && response.paper_ids.length > 0) {
+        if (response.message) {
+          toastInfo(response.message);
+        } else if (response.paper_ids.length === 1) {
+          toastSuccess('Paper uploaded successfully');
+        } else {
+          toastSuccess(`${response.paper_ids.length} papers uploaded successfully`);
+        }
+      } else if (!response.errors || response.errors.length === 0) {
+        toastError('No papers were uploaded');
+      }
+      
       navigate('/');
+    },
+    onError: (error: Error) => {
+      toastError(error.message || 'Failed to upload files');
     },
   });
 

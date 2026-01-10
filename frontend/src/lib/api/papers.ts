@@ -30,6 +30,7 @@ export interface Paper {
   tags?: Tag[];
   created_at: string;
   updated_at: string;
+  background_processing_message?: string;
 }
 
 export interface PaperCreate {
@@ -55,6 +56,7 @@ export interface PaperReference {
 export interface PaperUploadResponse {
   paper_ids: number[];
   errors: Array<{ filename: string; error: string }>;
+  message?: string;
 }
 
 export interface RelatedPaperExternal {

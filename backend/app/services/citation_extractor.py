@@ -384,6 +384,15 @@ IMPORTANT: Return ONLY valid JSON array, no other text, explanations, or markdow
   ) -> int:
     """Extract citations from PDF and store them in database."""
     try:
+      # Verify paper exists before extracting citations
+      paper_query = select(Paper).where(Paper.id == paper_id)
+      paper_result = await session.execute(paper_query)
+      paper = paper_result.scalar_one_or_none()
+      
+      if not paper:
+        print(f"Paper {paper_id} not found, skipping citation extraction")
+        return 0
+      
       # Delete existing citations for this paper (idempotent operation)
       delete_query = select(PaperCitation).where(PaperCitation.paper_id == paper_id)
       result = await session.execute(delete_query)

@@ -78,6 +78,7 @@ class Paper(PaperBase):
   tags: List[Tag] = []
   created_at: datetime
   updated_at: datetime
+  background_processing_message: Optional[str] = None
 
   class Config:
     from_attributes = True
@@ -93,3 +94,4 @@ class PaperListResponse(BaseModel):
 class PaperUploadResponse(BaseModel):
   paper_ids: List[int]
   errors: List[Dict[str, Any]] = []
+  message: Optional[str] = None

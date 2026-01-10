@@ -30,6 +30,15 @@ async def extract_citations_background_task(paper_id: int, file_path: str):
   try:
     # Create a new session for background task
     async with AsyncSessionLocal() as session:
+      # Verify paper still exists before processing
+      paper_query = select(PaperModel).where(PaperModel.id == paper_id)
+      paper_result = await session.execute(paper_query)
+      paper = paper_result.scalar_one_or_none()
+      
+      if not paper:
+        print(f"Paper {paper_id} not found, skipping citation extraction")
+        return
+      
       # Load PDF file from storage
       # file_path is stored as full path string
       from pathlib import Path
@@ -45,10 +54,13 @@ async def extract_citations_background_task(paper_id: int, file_path: str):
       await citation_extractor.extract_and_store_citations(
         session, paper_id, pdf_content
       )
+      print(f"Successfully extracted citations for paper {paper_id}")
   except FileNotFoundError:
     print(f"PDF file not found for paper {paper_id} at path: {file_path}")
   except Exception as e:
     print(f"Error in background citation extraction for paper {paper_id}: {str(e)}")
+    import traceback
+    traceback.print_exc()
 
 
 @router.post("/ingest", response_model=Paper, status_code=201)
@@ -110,14 +122,14 @@ async def ingest_paper_endpoint(
     _ = list(paper.tags) if hasattr(paper, "tags") else []
 
     # Add background task for citation extraction
+    paper_response = Paper.model_validate(paper)
     if paper.file_path:
       background_tasks.add_task(
         extract_citations_background_task,
         cast(int, paper.id),
         cast(str, paper.file_path),
       )
-
-    paper_response = Paper.model_validate(paper)
+      paper_response.background_processing_message = "Citation extraction started in the background."
 
     return paper_response
   except ValueError as e:
@@ -251,6 +263,7 @@ async def upload_files_endpoint(
       *[process_file(file) for file in valid_files], return_exceptions=True
     )
 
+    citation_extraction_count = 0
     for result in results:
       if isinstance(result, Exception):
         errors.append({"filename": "unknown", "error": str(result)})
@@ -260,10 +273,29 @@ async def upload_files_endpoint(
           paper_ids.append(paper_id)
           # Add background task for citation extraction
           if file_path:
+            citation_extraction_count += 1
             background_tasks.add_task(
               extract_citations_background_task, paper_id, file_path
             )
         elif error:
           errors.append(error)
 
-  return PaperUploadResponse(paper_ids=paper_ids, errors=errors)
+    # Generate message about background processing
+    message = None
+    if len(paper_ids) > 0:
+      if len(paper_ids) == 1:
+        if citation_extraction_count > 0:
+          message = "Paper uploaded successfully. Citations are being extracted in the background."
+        else:
+          message = "Paper uploaded successfully."
+      else:
+        if citation_extraction_count > 0:
+          message = f"{len(paper_ids)} papers uploaded successfully. Citations are being extracted in the background for {citation_extraction_count} paper(s)."
+        else:
+          message = f"{len(paper_ids)} papers uploaded successfully."
+
+  return PaperUploadResponse(
+    paper_ids=paper_ids, 
+    errors=errors,
+    message=message
+  )
