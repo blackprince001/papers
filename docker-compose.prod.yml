@@ -1,0 +1,138 @@
+version: "3.8"
+
+services:
+  traefik:
+    image: traefik:v2.10
+    command:
+      - --api.insecure=false
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.file.directory=/etc/traefik/
+      - --providers.file.watch=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.leresolver.acme.httpchallenge=true
+      - --certificatesresolvers.leresolver.acme.httpchallenge.entrypoint=web
+      - --certificatesresolvers.leresolver.acme.email=blvckprinxe@icloud.com
+      - --certificatesresolvers.leresolver.acme.storage=/letsencrypt/acme.json
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./letsencrypt:/letsencrypt
+      - ./middlewares.yml:/etc/traefik/middlewares.yml
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - app-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.yourdomain.com`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
+      - "traefik.http.routers.traefik-dashboard.tls.certresolver=leresolver"
+      - "traefik.http.routers.traefik-dashboard.middlewares=security-headers@file"
+    restart: unless-stopped
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: nexus-postgres-prod
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: nexus
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/pgdata
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+    labels:
+      - traefik.enable=false
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nexus-backend-prod
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=nexus
+      - DB_PORT=5432
+      - PORT=8000
+      - STORAGE_PATH=/app/storage/papers
+      - DEBUG=false
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - EMBEDDING_MODEL=all-MiniLM-L6-v2
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+    volumes:
+      - storage_data:/app/storage
+    labels:
+      - traefik.enable=true
+      # Main application router
+      - traefik.http.routers.nexus-backend.rule=Host(`api.yourdomain.com`)
+      - traefik.http.routers.nexus-backend.entrypoints=websecure
+      - traefik.http.routers.nexus-backend.tls.certresolver=leresolver
+      - traefik.http.routers.nexus-backend.service=nexus-backend-service
+      - traefik.http.routers.nexus-backend.middlewares=security-headers@file
+      # Main application service
+      - traefik.http.services.nexus-backend-service.loadbalancer.server.port=8000
+      - traefik.http.services.nexus-backend-service.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.nexus-backend-service.loadbalancer.healthcheck.interval=10s
+      - traefik.http.services.nexus-backend-service.loadbalancer.healthcheck.timeout=3s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=https://api.yourdomain.com/api/v1
+    container_name: nexus-frontend-prod
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    labels:
+      - traefik.enable=true
+      # Main application router
+      - traefik.http.routers.nexus-frontend.rule=Host(`yourdomain.com`)
+      - traefik.http.routers.nexus-frontend.entrypoints=websecure
+      - traefik.http.routers.nexus-frontend.tls.certresolver=leresolver
+      - traefik.http.routers.nexus-frontend.service=nexus-frontend-service
+      - traefik.http.routers.nexus-frontend.middlewares=security-headers@file
+      # Main application service
+      - traefik.http.services.nexus-frontend-service.loadbalancer.server.port=80
+      - traefik.http.services.nexus-frontend-service.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.nexus-frontend-service.loadbalancer.healthcheck.interval=10s
+      - traefik.http.services.nexus-frontend-service.loadbalancer.healthcheck.timeout=3s
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  storage_data:
+  letsencrypt:
+
+
+
+
+
+
+
+
