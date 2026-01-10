@@ -37,7 +37,7 @@ apiClient.interceptors.response.use(
       const message = error.response.data?.detail || error.message;
       throw new Error(message);
     } else if (error.request) {
-      throw new Error('Network error: Could not reach server. Make sure the backend is running on http://localhost:8000');
+      throw new Error('Network error: Could not reach server');
     } else {
       throw new Error(error.message || 'An unexpected error occurred');
     }

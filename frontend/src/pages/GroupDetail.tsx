@@ -108,7 +108,7 @@ export default function GroupDetail() {
             <p className="mb-2">Error loading group: {groupError.message}</p>
             {groupError.message.includes('Network error') && (
               <p className="text-sm text-anara-light-text-muted mb-4">
-                Make sure the backend is running on {import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:8000'}
+                Could not reach server!
               </p>
             )}
           </div>
@@ -254,14 +254,18 @@ export default function GroupDetail() {
                       key={paper.id}
                       className={`cursor-pointer hover:opacity-80 ${selectedPaperIds.includes(paper.id) ? 'ring-2 ring-blue-500' : ''}`}
                       onClick={() => {
-                        if (selectedPaperIds.length > 0) {
+                        if (selectedPaperIds.length > 0)
+                        {
                           // In selection mode, toggle selection instead of navigating
-                          if (selectedPaperIds.includes(paper.id)) {
+                          if (selectedPaperIds.includes(paper.id))
+                          {
                             setSelectedPaperIds(selectedPaperIds.filter(id => id !== paper.id));
-                          } else {
+                          } else
+                          {
                             setSelectedPaperIds([...selectedPaperIds, paper.id]);
                           }
-                        } else {
+                        } else
+                        {
                           navigate(`/papers/${paper.id}`);
                         }
                       }}
