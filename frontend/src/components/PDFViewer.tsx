@@ -48,6 +48,8 @@ interface PDFViewerProps {
   annotationsLoading?: boolean;
   onDelete?: () => void;
   isDeleting?: boolean;
+  updatePaperTitleMutation?: UseMutationResult<any, Error, string, unknown>;
+  onTitleUpdate?: (title: string) => void;
 }
 
 export function PDFViewer({

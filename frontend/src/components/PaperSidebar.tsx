@@ -37,6 +37,8 @@ interface PaperSidebarProps {
   getAnnotationPage: (annotation: Annotation) => number | null;
   onDelete?: () => void;
   isDeleting?: boolean;
+  updatePaperTitleMutation?: UseMutationResult<any, Error, string, unknown>;
+  onTitleUpdate?: (title: string) => void;
 }
 
 export function PaperSidebar({
