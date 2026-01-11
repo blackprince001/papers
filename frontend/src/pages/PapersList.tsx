@@ -230,14 +230,14 @@ export default function PapersList() {
 
         {data && data.papers.length > 0 ? (
           <>
-            <div className="mb-4 flex items-center justify-between gap-4">
+            <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} className="w-auto">
                 <TabsList>
                   <TabsTrigger value="card">Card View</TabsTrigger>
                   <TabsTrigger value="table">Table View</TabsTrigger>
                 </TabsList>
               </Tabs>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                 {selectedPaperIds.length > 0 && (
                   <>
                     <PaperMultiSelect
@@ -257,7 +257,7 @@ export default function PapersList() {
                         }
                       })}
                     >
-                      Export {selectedPaperIds.length}
+                      Export <span className="hidden sm:inline">{selectedPaperIds.length}</span>
                     </Button>
                     <Button
                       variant="destructive"
@@ -267,7 +267,7 @@ export default function PapersList() {
                       disabled={deletePapersMutation.isPending}
                     >
                       <Trash2 size={16} className={deletePapersMutation.isPending ? 'animate-spin' : ''} />
-                      {deletePapersMutation.isPending ? 'Deleting...' : `Delete ${selectedPaperIds.length}`}
+                      {deletePapersMutation.isPending ? 'Deleting...' : <>Delete <span className="hidden sm:inline">{selectedPaperIds.length}</span></>}
                     </Button>
                   </>
                 )}
@@ -280,7 +280,7 @@ export default function PapersList() {
                   <RefreshCw size={16} className={regenerateMetadataMutation.isPending ? 'animate-spin' : ''} />
                   {regenerateMetadataMutation.isPending
                     ? 'Regenerating...'
-                    : `Regenerate Metadata (${data.papers.filter(p => p.file_path).length})`}
+                    : <>Regenerate <span className="hidden sm:inline">Metadata ({data.papers.filter(p => p.file_path).length})</span></>}
                 </Button>
                 {selectedPaperIds.length === 0 && (
                   <Button
@@ -295,7 +295,7 @@ export default function PapersList() {
                       }
                     })}
                   >
-                    Export All
+                    Export <span className="hidden sm:inline">All</span>
                   </Button>
                 )}
               </div>
