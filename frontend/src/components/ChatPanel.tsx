@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { chatApi, type ChatMessage } from '@/lib/api/chat';
+import { chatApi, type ChatMessage, type ChatSession } from '@/lib/api/chat';
 import { MentionAutocomplete, type MentionItem } from './MentionAutocomplete';
 import { MarkdownMessage } from './MarkdownMessage';
 import { Button } from './Button';
@@ -178,6 +178,9 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
       setIsStreaming(true);
       setStreamingContent('');
 
+      // accumulators
+      let accumulatedResponse = '';
+
       try
       {
         // Start streaming
@@ -185,19 +188,56 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
         {
           if (chunk.type === 'chunk' && chunk.content)
           {
+            accumulatedResponse += chunk.content;
             setStreamingContent((prev) => prev + chunk.content);
           } else if (chunk.type === 'done')
           {
-            // Stream complete, refresh chat history and clear pending message
+            // Stream complete
+            const finalSessionId = chunk.session_id || currentSessionId;
+
+            // Manually update cache to ensure messages persist immediately
+            if (finalSessionId)
+            {
+              queryClient.setQueryData<ChatSession>(['chat', 'session', finalSessionId], (oldSession) => {
+                if (!oldSession) return oldSession;
+
+                // Create new messages with temporary IDs
+                // These will be replaced by real IDs on next refetch
+                const newUserMsg: ChatMessage = {
+                  id: Date.now(),
+                  session_id: finalSessionId,
+                  role: 'user',
+                  content: userMessage,
+                  references: userReferences,
+                  created_at: new Date().toISOString()
+                };
+
+                const newAssistantMsg: ChatMessage = {
+                  id: Date.now() + 1,
+                  session_id: finalSessionId,
+                  role: 'assistant',
+                  content: accumulatedResponse,
+                  created_at: new Date().toISOString()
+                };
+
+                return {
+                  ...oldSession,
+                  messages: [...(oldSession.messages || []), newUserMsg, newAssistantMsg]
+                };
+              });
+            }
+
+            // Reset UI states
             setStreamingContent('');
             setIsStreaming(false);
             setPendingUserMessage(null);
-            const finalSessionId = chunk.session_id || currentSessionId;
+
             if (chunk.session_id && currentSessionId === null)
             {
               setCurrentSessionId(chunk.session_id);
             }
-            // Invalidate all related queries
+
+            // Background refresh to get real IDs and ensure consistency
             if (finalSessionId)
             {
               queryClient.invalidateQueries({ queryKey: ['chat', 'session', finalSessionId] });
