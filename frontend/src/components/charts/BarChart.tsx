@@ -13,14 +13,15 @@ interface BarChartProps {
   yAxisLabel?: string;
 }
 
-export function BarChart({ 
-  data, 
-  title, 
+export function BarChart({
+  data,
+  title,
   color = 'var(--chart-1)',
   xAxisLabel,
-  yAxisLabel 
+  yAxisLabel
 }: BarChartProps) {
-  if (data.length === 0) {
+  if (data.length === 0)
+  {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500">
         No data available
@@ -31,7 +32,7 @@ export function BarChart({
   return (
     <div className="w-full">
       {title && (
-        <h3 className="text-lg font-semibold mb-4">{title}</h3>
+        <h3 className="text-lg font-medium mb-4">{title}</h3>
       )}
       <ResponsiveContainer width="100%" height={300}>
         <RechartsBarChart
@@ -44,12 +45,12 @@ export function BarChart({
           }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-          <XAxis 
-            dataKey="name" 
+          <XAxis
+            dataKey="name"
             stroke="#6b7280"
             label={xAxisLabel ? { value: xAxisLabel, position: 'insideBottom', offset: -5 } : undefined}
           />
-          <YAxis 
+          <YAxis
             stroke="#6b7280"
             label={yAxisLabel ? { value: yAxisLabel, angle: -90, position: 'insideLeft' } : undefined}
           />

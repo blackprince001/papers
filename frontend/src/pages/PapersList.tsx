@@ -15,6 +15,8 @@ import { usePagination } from '@/hooks/use-pagination';
 import { toastInfo, toastSuccess, toastError } from '@/lib/utils/toast';
 import { useConfirmDialog } from '@/components/ConfirmDialog';
 import { Trash2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PaperCardSkeleton } from '@/components/Skeletons';
 import {
   Pagination,
   PaginationContent,
@@ -156,7 +158,29 @@ export default function PapersList() {
 
   if (isLoading)
   {
-    return <div className="p-8 text-center text-anara-light-text-muted">Loading papers...</div>;
+    return (
+      <div className="w-full bg-anara-light-bg min-h-screen">
+        <div className="container py-8 sm:py-12">
+          <div className="mb-6 sm:mb-8">
+            <Skeleton className="h-10 w-64 mb-4" />
+            <div className="flex flex-col sm:flex-row gap-4 items-center mb-6">
+              <Skeleton className="h-11 w-full sm:max-w-md" />
+              <Skeleton className="h-11 w-32" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+            <PaperCardSkeleton />
+            <PaperCardSkeleton />
+            <PaperCardSkeleton />
+            <PaperCardSkeleton />
+            <PaperCardSkeleton />
+            <PaperCardSkeleton />
+            <PaperCardSkeleton />
+            <PaperCardSkeleton />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (error)
@@ -172,7 +196,7 @@ export default function PapersList() {
     <div className="w-full bg-anara-light-bg min-h-screen">
       <div className="container py-8 sm:py-12">
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold mb-4 text-anara-light-text">Research Papers</h1>
+          <h1 className="text-3xl sm:text-4xl font-medium mb-4 text-anara-light-text">Research Papers</h1>
           <div className="flex flex-col sm:flex-row gap-4 items-center mb-6">
             <div className="flex-1 w-full sm:max-w-md">
               <SearchInput
@@ -298,19 +322,23 @@ export default function PapersList() {
             )}
 
             {viewMode === 'card' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                 {data.papers.map((paper) => (
                   <div
                     key={paper.id}
                     onClick={() => {
-                      if (selectedPaperIds.length > 0) {
+                      if (selectedPaperIds.length > 0)
+                      {
                         // In selection mode, toggle selection instead of navigating
-                        if (selectedPaperIds.includes(paper.id)) {
+                        if (selectedPaperIds.includes(paper.id))
+                        {
                           setSelectedPaperIds(selectedPaperIds.filter(id => id !== paper.id));
-                        } else {
+                        } else
+                        {
                           setSelectedPaperIds([...selectedPaperIds, paper.id]);
                         }
-                      } else {
+                      } else
+                      {
                         navigate(`/papers/${paper.id}`);
                       }
                     }}

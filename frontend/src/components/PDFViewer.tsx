@@ -122,25 +122,26 @@ export function PDFViewer({
 
   const scrollToPage = useCallback((pageNum: number) => {
     // Validate page number
-    if (pageNum < 1 || (numPages && pageNum > numPages)) {
+    if (pageNum < 1 || (numPages && pageNum > numPages))
+    {
       return;
     }
-    
+
     const attemptScroll = (retryCount = 0) => {
       // Use requestAnimationFrame to ensure DOM is updated
       requestAnimationFrame(() => {
         const pageEl = pageRefs.current.get(pageNum);
         const scrollContainer = scrollContainerRef.current;
-        
+
         if (pageEl && scrollContainer)
         {
           isScrollingRef.current = true;
-          
+
           // Calculate scroll position relative to the scrollable container
           // Get the position of the page element relative to the scroll container
           const containerRect = scrollContainer.getBoundingClientRect();
           const elementRect = pageEl.getBoundingClientRect();
-          
+
           // Calculate the scroll position to center the page in the viewport
           // offsetTop gives position relative to offsetParent, but we need relative to scroll container
           const scrollTop = scrollContainer.scrollTop + (elementRect.top - containerRect.top) - (containerRect.height / 2) + (elementRect.height / 2);
@@ -169,7 +170,7 @@ export function PDFViewer({
         }
       });
     };
-    
+
     attemptScroll();
   }, [numPages]);
 
@@ -338,16 +339,17 @@ export function PDFViewer({
     try
     {
       // Check if getOutline method exists (it should in pdfjs-dist)
-      if (typeof (pdf as any).getOutline !== 'function') {
+      if (typeof (pdf as any).getOutline !== 'function')
+      {
         setTocItems(null);
         return;
       }
 
       // Wait a bit for document to fully load if needed
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       const outline = await (pdf as any).getOutline();
-      
+
       if (!outline || (Array.isArray(outline) && outline.length === 0))
       {
         setTocItems(null);
@@ -367,7 +369,7 @@ export function PDFViewer({
             {
               let dest = item.dest || item.url;
               let resolvedDest = null;
-              
+
               // Step 1: Resolve destination if it's a string reference or named destination
               if (typeof dest === 'string')
               {
@@ -398,7 +400,7 @@ export function PDFViewer({
 
               // Step 2: Extract page reference from resolved destination
               let pageRef = null;
-              
+
               if (Array.isArray(resolvedDest) && resolvedDest.length > 0)
               {
                 // Resolved destination array format: [pageRef, destinationType, x, y, zoom, ...]
@@ -422,7 +424,7 @@ export function PDFViewer({
                 {
                   // getPageIndex is the most reliable method - returns 0-based index
                   const pageIndex = await (pdf as any).getPageIndex(pageRef);
-                  
+
                   if (pageIndex !== null && pageIndex !== undefined && !isNaN(pageIndex) && pageIndex >= 0 && pageIndex < pdf.numPages)
                   {
                     // Convert 0-based index to 1-based page number
@@ -475,7 +477,7 @@ export function PDFViewer({
               // Keep default pageNum = 1
             }
           }
-          
+
           // Validate page number is within valid range
           if (pageNum < 1 || pageNum > pdf.numPages)
           {
@@ -485,11 +487,11 @@ export function PDFViewer({
           const tocItem: TOCItem = {
             title: item.title || 'Untitled',
             page: pageNum,
-            items: item.items && Array.isArray(item.items) && item.items.length > 0 
-              ? await processOutline(item.items) 
+            items: item.items && Array.isArray(item.items) && item.items.length > 0
+              ? await processOutline(item.items)
               : undefined,
           };
-          
+
           processed.push(tocItem);
         }
         return processed;
@@ -508,7 +510,7 @@ export function PDFViewer({
     setNumPages(document.numPages);
     setLoading(false);
     setError(null);
-    
+
     // Extract table of contents from PDF
     extractTOC(document).catch(() => {
       // Silently fail - TOC is optional
@@ -809,17 +811,18 @@ export function PDFViewer({
   // Handle TOC item click
   const handleTOCItemClick = useCallback((page: number) => {
     // Validate page number
-    if (page < 1 || (numPages && page > numPages)) {
+    if (page < 1 || (numPages && page > numPages))
+    {
       return;
     }
-    
+
     // Close TOC first
     setShowTOC(false);
-    
+
     // Update page number state
     setPageNumber(page);
     onPageChange?.(page);
-    
+
     // Wait for DOM to update, then scroll to the page
     // Use setTimeout with requestAnimationFrame to ensure the page element is rendered
     setTimeout(() => {
@@ -1123,7 +1126,7 @@ export function PDFViewer({
   return (
     <div
       ref={containerRef}
-      className={`relative w-full h-screen flex flex-col overflow-hidden ${isFullscreen ? 'fixed inset-0 z-50 bg-white' : ''}`}
+      className={`relative w-full h-dvh flex flex-col overflow-hidden ${isFullscreen ? 'fixed inset-0 z-50 bg-white' : ''}`}
     >
       <PDFToolbar
         zoom={zoom}
@@ -1266,23 +1269,23 @@ export function PDFViewer({
       }
 
       {/* Backdrop overlays - clicking outside closes the sidebars */}
-      {/* Z-index hierarchy: PDF content (z-0) < backdrops (z-[49]) < sidebars (z-50) < dropdowns/popovers (z-100) */}
+      {/* Z-index hierarchy: PDF content (z-0) < navbar (z-50) < backdrops (z-[60]) < sidebars (z-[70]) < dropdowns/popovers (z-100) */}
       {/* TOC backdrop - works in both fullscreen and non-fullscreen */}
       {showTOC && (
-        <div 
-          className="fixed inset-0 bg-black/20 z-[49]" 
-          onClick={() => setShowTOC(false)} 
+        <div
+          className="fixed inset-0 bg-black/20 z-[60]"
+          onClick={() => setShowTOC(false)}
         />
       )}
       {/* PaperSidebar backdrop - works in both fullscreen and non-fullscreen */}
       {showPaperSidebar && (
-        <div 
-          className="fixed inset-0 bg-black/20 z-[49]" 
-          onClick={() => setShowPaperSidebar(false)} 
+        <div
+          className="fixed inset-0 bg-black/20 z-[60]"
+          onClick={() => setShowPaperSidebar(false)}
         />
       )}
 
-      <div 
+      <div
         ref={scrollContainerRef}
         className={`flex-1 overflow-y-auto bg-gray-50 relative z-0 ${isFullscreen && showNoteEditor ? 'mr-96' : ''} ${isFullscreen && showNotesSidebar ? 'mr-[600px]' : ''} ${isFullscreen && chatMode ? 'mr-[600px]' : ''} ${isFullscreen && showTOC ? 'mr-80' : ''} ${!isFullscreen && showPaperSidebar ? 'mr-[36rem]' : ''} ${!isFullscreen && showTOC ? 'mr-80' : ''}`}
       >

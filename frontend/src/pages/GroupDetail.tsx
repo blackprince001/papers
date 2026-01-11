@@ -145,7 +145,7 @@ export default function GroupDetail() {
         <div className="mb-6 sm:mb-8">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl sm:text-4xl font-bold text-anara-light-text">
+              <h1 className="text-3xl sm:text-4xl font-medium text-anara-light-text">
                 {displayGroup.name}
               </h1>
             </div>

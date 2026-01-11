@@ -94,7 +94,7 @@ export default function Search() {
     <div className="w-full bg-anara-light-bg min-h-screen">
       <div className="container py-8 sm:py-12">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-3xl sm:text-4xl font-bold mb-6 sm:mb-8 text-center text-anara-light-text">Advanced Search</h1>
+          <h1 className="text-3xl sm:text-4xl font-medium mb-6 sm:mb-8 text-center text-anara-light-text">Advanced Search</h1>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Main Search Area */}

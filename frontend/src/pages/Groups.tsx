@@ -3,6 +3,8 @@ import * as React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
+import { GroupCardSkeleton } from '@/components/Skeletons';
 import {
   Dialog,
   DialogContent,
@@ -894,9 +896,18 @@ export default function Groups() {
   if (isLoading)
   {
     return (
-      <div className="w-full">
+      <div className="w-full bg-anara-light-bg min-h-screen">
         <div className="container py-8 sm:py-12">
-          <div className="text-center text-gray-600">Loading groups...</div>
+          <div className="flex items-center justify-between mb-6 sm:mb-8">
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-11 w-32" />
+          </div>
+          <div className="space-y-4">
+            <GroupCardSkeleton />
+            <GroupCardSkeleton />
+            <GroupCardSkeleton />
+            <GroupCardSkeleton />
+          </div>
         </div>
       </div>
     );
@@ -917,7 +928,7 @@ export default function Groups() {
     <div className="w-full bg-anara-light-bg min-h-screen">
       <div className="container py-8 sm:py-12">
         <div className="flex items-center justify-between mb-6 sm:mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-anara-light-text">Groups</h1>
+          <h1 className="text-3xl sm:text-4xl font-medium text-anara-light-text">Groups</h1>
           <Button onClick={handleOpenCreateDialog}>
             Create Group
           </Button>

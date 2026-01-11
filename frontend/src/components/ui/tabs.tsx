@@ -30,7 +30,7 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
     <TabsPrimitive.Tab
       data-slot="tabs-trigger"
       className={cn(
-        "after:-mb-1 relative after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border border-gray-200 hover:bg-gray-200 hover:text-gray-900 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:hover:bg-gray-200 data-[state=active]:after:bg-gray-900 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "after:-mb-1 relative after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border border-blue-21 hover:bg-blue-14 hover:text-blue-38 data-[state=active]:bg-blue-14 data-[state=active]:text-blue-38 data-[state=active]:shadow-none data-[state=active]:hover:bg-blue-17 data-[state=active]:after:bg-blue-31 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       {...props}

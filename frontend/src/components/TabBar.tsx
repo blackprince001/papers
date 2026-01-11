@@ -87,7 +87,7 @@ export function TabBar() {
   }
 
   return (
-    <div className="relative mb-3 bg-transparent px-1 overflow-x-auto">
+    <div className="relative bg-transparent px-1 overflow-x-auto">
       <div className="relative flex items-end gap-0.5  min-h-[40px] before:absolute before:inset-x-0 before:bottom-0 before:h-px before:bg-green-6">
         {tabs.map((tab) => (
           <div

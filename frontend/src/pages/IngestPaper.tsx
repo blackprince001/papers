@@ -35,14 +35,16 @@ export default function IngestPaper() {
       setSelectedGroupIds([]);
       setUploadFiles([]);
       queryClient.invalidateQueries({ queryKey: ['papers'] });
-      
+
       // Show toast notification
-      if (paper.background_processing_message) {
+      if (paper.background_processing_message)
+      {
         toastSuccess(paper.background_processing_message);
-      } else {
+      } else
+      {
         toastSuccess('Paper ingested successfully');
       }
-      
+
       navigate('/');
     },
     onError: (error: Error) => {
@@ -62,28 +64,34 @@ export default function IngestPaper() {
       setSelectedGroupIds([]);
       setUploadFiles([]);
       queryClient.invalidateQueries({ queryKey: ['papers'] });
-      
+
       // Show toast notifications
-      if (response.errors && response.errors.length > 0) {
+      if (response.errors && response.errors.length > 0)
+      {
         // Show errors
         response.errors.forEach((error) => {
           toastError(`${error.filename}: ${error.error}`);
         });
       }
-      
+
       // Show success/processing message
-      if (response.paper_ids && response.paper_ids.length > 0) {
-        if (response.message) {
+      if (response.paper_ids && response.paper_ids.length > 0)
+      {
+        if (response.message)
+        {
           toastInfo(response.message);
-        } else if (response.paper_ids.length === 1) {
+        } else if (response.paper_ids.length === 1)
+        {
           toastSuccess('Paper uploaded successfully');
-        } else {
+        } else
+        {
           toastSuccess(`${response.paper_ids.length} papers uploaded successfully`);
         }
-      } else if (!response.errors || response.errors.length === 0) {
+      } else if (!response.errors || response.errors.length === 0)
+      {
         toastError('No papers were uploaded');
       }
-      
+
       navigate('/');
     },
     onError: (error: Error) => {
@@ -93,12 +101,14 @@ export default function IngestPaper() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (activeTab === 'url' && url.trim()) {
+    if (activeTab === 'url' && url.trim())
+    {
       ingestionMutation.mutate({
         url: url.trim(),
         group_ids: selectedGroupIds.length > 0 ? selectedGroupIds : undefined,
       });
-    } else if (activeTab === 'upload' && uploadFiles.length > 0) {
+    } else if (activeTab === 'upload' && uploadFiles.length > 0)
+    {
       uploadMutation.mutate({
         files: uploadFiles,
         group_ids: selectedGroupIds.length > 0 ? selectedGroupIds : undefined,
@@ -115,7 +125,8 @@ export default function IngestPaper() {
   };
 
   const handleSelectAll = () => {
-    if (groups) {
+    if (groups)
+    {
       setSelectedGroupIds(groups.map((g) => g.id));
     }
   };
@@ -131,13 +142,13 @@ export default function IngestPaper() {
   const errorMessage = ingestionMutation.error instanceof Error
     ? ingestionMutation.error.message
     : uploadMutation.error instanceof Error
-    ? uploadMutation.error.message
-    : 'Failed to process papers. Please try again.';
+      ? uploadMutation.error.message
+      : 'Failed to process papers. Please try again.';
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-3xl">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Ingest Paper</h1>
+        <h1 className="text-3xl font-medium text-gray-900 mb-2">Ingest Paper</h1>
         <p className="text-gray-600">
           Upload PDF files or provide a URL to ingest papers. The title and DOI will be automatically extracted.
         </p>
@@ -270,8 +281,8 @@ export default function IngestPaper() {
                 ? 'Ingesting...'
                 : 'Uploading...'
               : activeTab === 'url'
-              ? 'Ingest Paper'
-              : 'Upload Files'}
+                ? 'Ingest Paper'
+                : 'Upload Files'}
           </Button>
         </div>
       </div>

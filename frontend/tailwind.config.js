@@ -7,14 +7,14 @@ export default {
   theme: {
     extend: {
       fontSize: {
-        xs: ['0.75rem', { lineHeight: '1.5' }],       // 12px
-        sm: ['0.875rem', { lineHeight: '1.5' }],     // 14px
-        base: ['1.125rem', { lineHeight: '1.6' }],   // 18px - base font size
-        lg: ['1.25rem', { lineHeight: '1.6' }],      // 20px
-        xl: ['1.5rem', { lineHeight: '1.5' }],       // 24px
-        '2xl': ['1.875rem', { lineHeight: '1.4' }],  // 30px
-        '3xl': ['2.25rem', { lineHeight: '1.3' }],  // 36px
-        '4xl': ['2.75rem', { lineHeight: '1.2' }],  // 44px
+        xs: ['0.75rem', { lineHeight: '1.45' }],       // 12px - min allowed
+        sm: ['0.875rem', { lineHeight: '1.45' }],      // 14px
+        base: ['1.0625rem', { lineHeight: '1.45' }],   // 17px - iOS body min
+        lg: ['1.1875rem', { lineHeight: '1.45' }],     // 19px - optimal body
+        xl: ['1.5rem', { lineHeight: '1.4' }],         // 24px
+        '2xl': ['1.875rem', { lineHeight: '1.35' }],   // 30px - body title
+        '3xl': ['2.125rem', { lineHeight: '1.3' }],    // 34px - screen title
+        '4xl': ['2.75rem', { lineHeight: '1.2' }],     // 44px
       },
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', 'Arial', 'sans-serif'],

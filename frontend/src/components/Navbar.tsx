@@ -5,12 +5,19 @@ import { SearchInput } from '@/components/SearchInput';
 import { Breadcrumb, type BreadcrumbItem } from '@/components/Breadcrumb';
 import { papersApi } from '@/lib/api/papers';
 import { groupsApi, type Group } from '@/lib/api/groups';
+import { Menu, Search, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
-export default function Navbar() {
+interface NavbarProps {
+  onMenuToggle?: () => void;
+}
+
+export default function Navbar({ onMenuToggle }: NavbarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const params = useParams();
   const [searchQuery, setSearchQuery] = useState('');
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   // Get paper data if on paper detail page
   const paperId = params.id ? parseInt(params.id) : null;
@@ -39,6 +46,7 @@ export default function Navbar() {
     if (query.trim())
     {
       navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+      setMobileSearchOpen(false);
     }
   };
 
@@ -163,16 +171,39 @@ export default function Navbar() {
   const breadcrumbItems = buildBreadcrumbItems();
 
   return (
-    <header className="bg-grayscale-8 sticky top-0 z-50 rounded-trl-lg">
-      <div className="flex h-16 items-center justify-between gap-4 px-6">
-        {/* Left: Breadcrumb */}
-        <div className="flex-1 min-w-0">
-          {breadcrumbItems && (
-            <Breadcrumb items={breadcrumbItems} />
-          )}
+    <header className="bg-grayscale-8 sticky top-0 z-50 rounded-trl-lg border-b border-gray-100 md:border-b-0">
+      <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6">
+        {/* Left: Hamburger + Breadcrumb */}
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden shrink-0"
+            onClick={onMenuToggle}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+
+          <div className="flex-1 min-w-0">
+            {breadcrumbItems && (
+              <Breadcrumb items={breadcrumbItems} />
+            )}
+          </div>
         </div>
+
         {/* Right: Search and User controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* Mobile Search Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+          >
+            {mobileSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+          </Button>
+
+          {/* Desktop Search */}
           <div className="w-96 hidden md:block">
             <SearchInput
               value={searchQuery}
@@ -187,6 +218,23 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Search Bar overlay */}
+      {mobileSearchOpen && (
+        <div className="p-4 border-t border-gray-100 bg-white md:hidden absolute w-full shadow-md animate-in slide-in-from-top-2">
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            onSearch={handleSearch}
+            placeholder="Search papers..."
+            debounceMs={500}
+            showIcon
+            size="default"
+            dark={false}
+            autoFocus
+          />
+        </div>
+      )}
     </header>
   );
 }

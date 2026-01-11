@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'motion/react';
 import { Home, Library, FileText, Folder, ChevronDown, ChevronRight, ChevronLeft, BarChart3, GitBranch } from 'lucide-react';
 import { groupsApi, type Group } from '@/lib/api/groups';
 import { cn } from '@/lib/utils';
@@ -21,7 +22,11 @@ function GroupTreeItem({ group, level = 0, location }: { group: GroupTreeNode; l
   const isActive = location.pathname === `/groups/${group.id}`;
 
   return (
-    <div>
+    <motion.div
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
+    >
       <div
         className={cn(
           "flex items-center gap-2 px-3 py-2 rounded-sm text-sm transition-all duration-200",
@@ -32,16 +37,18 @@ function GroupTreeItem({ group, level = 0, location }: { group: GroupTreeNode; l
         style={{ paddingLeft: `${0.75 + level * 0.5}rem` }}
       >
         {hasChildren ? (
-          <button
+          <motion.button
             onClick={() => setIsExpanded(!isExpanded)}
             className="p-0.5 hover:bg-green-5 rounded flex-shrink-0"
+            whileTap={{ scale: 0.9 }}
           >
-            {isExpanded ? (
+            <motion.div
+              animate={{ rotate: isExpanded ? 0 : -90 }}
+              transition={{ duration: 0.15 }}
+            >
               <ChevronDown size={14} className="text-anara-light-text-muted" />
-            ) : (
-              <ChevronRight size={14} className="text-anara-light-text-muted" />
-            )}
-          </button>
+            </motion.div>
+          </motion.button>
         ) : (
           <span className="w-5 flex-shrink-0" />
         )}
@@ -53,14 +60,22 @@ function GroupTreeItem({ group, level = 0, location }: { group: GroupTreeNode; l
           <span className="truncate">{group.name}</span>
         </Link>
       </div>
-      {hasChildren && isExpanded && (
-        <div className="mt-1">
-          {group.children!.map((child) => (
-            <GroupTreeItem key={child.id} group={child} level={level + 1} location={location} />
-          ))}
-        </div>
-      )}
-    </div>
+      <AnimatePresence>
+        {hasChildren && isExpanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="mt-1 overflow-hidden"
+          >
+            {group.children!.map((child) => (
+              <GroupTreeItem key={child.id} group={child} level={level + 1} location={location} />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
@@ -177,10 +192,7 @@ export default function Sidebar({ className, isOpen = true, onToggle }: SidebarP
       <div className="px-4 py-4">
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 bg-anara-light-text rounded-sm flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-200 group-hover:scale-105">
-              <FileText size={18} className="text-grayscale-8" />
-            </div>
-            <span className="text-xl font-bold text-anara-light-text tracking-tight group-hover:opacity-80 transition-opacity duration-200">Papers</span>
+            <span className="text-xl text-anara-light-text tracking-tight group-hover:opacity-80 transition-opacity duration-200">Papers</span>
           </Link>
           {onToggle && (
             <button
@@ -207,8 +219,8 @@ export default function Sidebar({ className, isOpen = true, onToggle }: SidebarP
                 className={cn(
                   "flex items-center gap-3 px-3 py-2 rounded-sm text-sm font-medium transition-all duration-200",
                   active
-                    ? "bg-gray-100 text-anara-light-text shadow-sm"
-                    : "text-anara-light-text-muted hover:bg-gray-200 hover:shadow-sm"
+                    ? "bg-blue-14 text-blue-38 shadow-sm"
+                    : "text-anara-light-text-muted hover:bg-blue-14 hover:text-blue-38 hover:shadow-sm"
                 )}
               >
                 <Icon size={18} />

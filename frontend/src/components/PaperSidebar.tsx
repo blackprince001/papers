@@ -71,9 +71,8 @@ export function PaperSidebar({
   if (!isOpen) return null;
 
   return (
-    <div 
-      className="fixed inset-y-0 right-0 z-50 bg-white border-l border-anara-light-border shadow-lg flex flex-col" 
-      style={{ width: '36rem' }}
+    <div
+      className="fixed inset-y-0 right-0 z-[70] bg-white border-l border-anara-light-border shadow-lg flex flex-col w-full sm:w-[36rem]"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-center justify-end px-4 py-3 border-b border-anara-light-border flex-shrink-0">
@@ -120,7 +119,7 @@ export function PaperSidebar({
         </TabsContent>
 
         {/* AI Features Tab */}
-        <TabsContent value="ai" className="flex-1 min-h-0 overflow-auto px-6 py-4">
+        <TabsContent value="ai" className="flex-1 min-h-0 overflow-auto px-4 sm:px-6 py-4">
           <Tabs defaultValue="summary" className="space-y-4">
             <TabsList>
               <TabsTrigger value="summary">Summary</TabsTrigger>
@@ -144,7 +143,7 @@ export function PaperSidebar({
         </TabsContent>
 
         {/* Details Tab */}
-        <TabsContent value="details" className="flex-1 min-h-0 overflow-auto px-6 py-4">
+        <TabsContent value="details" className="flex-1 min-h-0 overflow-auto px-4 sm:px-6 py-4">
           {paper && (
             <PaperDetailsPanel
               paper={paper}
@@ -161,7 +160,7 @@ export function PaperSidebar({
         </TabsContent>
 
         {/* Citations Tab */}
-        <TabsContent value="citations" className="flex-1 min-h-0 overflow-auto px-6 py-4">
+        <TabsContent value="citations" className="flex-1 min-h-0 overflow-auto px-4 sm:px-6 py-4">
           <CitationsList
             related={related}
             isLoading={relatedLoading}
@@ -170,7 +169,7 @@ export function PaperSidebar({
         </TabsContent>
 
         {/* Similar Tab */}
-        <TabsContent value="similar" className="flex-1 min-h-0 overflow-auto px-6 py-4">
+        <TabsContent value="similar" className="flex-1 min-h-0 overflow-auto px-4 sm:px-6 py-4">
           <SimilarList
             related={related}
             isLoading={relatedLoading}
@@ -179,7 +178,7 @@ export function PaperSidebar({
         </TabsContent>
 
         {/* Annotations Tab */}
-        <TabsContent value="annotations" className="flex-1 overflow-auto px-6 py-4">
+        <TabsContent value="annotations" className="flex-1 overflow-auto px-4 sm:px-6 py-4">
           <PaperAnnotationsPanel
             paperId={paperId}
             annotations={annotations || []}

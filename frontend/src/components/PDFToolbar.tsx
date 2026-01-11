@@ -97,21 +97,27 @@ export function PDFToolbar({
     }
   };
 
+  // Button style for non-fullscreen mode: deeper blue background with white text
+  const buttonClass = isFullscreen ? '' : 'bg-blue-31 text-white hover:bg-blue-35';
+
   return (
-    <div className="sticky top-0 z-10 flex items-center gap-2 p-2 bg-white border-b border-gray-200 flex-wrap flex-shrink-0">
+    <div className={`sticky top-0 z-10 flex items-center gap-2 p-2 flex-wrap flex-shrink-0 ${isFullscreen
+      ? 'bg-white border-b border-gray-200'
+      : 'bg-blue-14 border-b border-blue-31'
+      }`}>
       {/* Zoom Controls */}
-      <div className="flex items-center gap-1 border-r border-gray-200 pr-2">
+      <div className={`flex items-center gap-1 border-r pr-2 ${isFullscreen ? 'border-gray-200' : 'border-blue-31'}`}>
         <Button
           variant="ghost"
           size="sm"
           onClick={handleZoomOut}
           disabled={zoom <= 0.5}
           title="Zoom Out"
-          className="h-8 w-8 p-0"
+          className={`h-8 w-8 p-0 ${buttonClass}`}
         >
           <ZoomOut className="h-4 w-4" />
         </Button>
-        <span className="text-sm text-gray-700 min-w-[60px] text-center">
+        <span className={`text-sm min-w-[60px] text-center ${isFullscreen ? 'text-gray-700' : 'text-blue-38'}`}>
           {Math.round(zoom * 100)}%
         </span>
         <Button
@@ -120,7 +126,7 @@ export function PDFToolbar({
           onClick={handleZoomIn}
           disabled={zoom >= 3}
           title="Zoom In"
-          className="h-8 w-8 p-0"
+          className={`h-8 w-8 p-0 ${buttonClass}`}
         >
           <ZoomIn className="h-4 w-4" />
         </Button>
@@ -129,21 +135,21 @@ export function PDFToolbar({
           size="sm"
           onClick={handleZoomReset}
           title="Reset Zoom"
-          className="h-8 w-8 p-0"
+          className={`h-8 w-8 p-0 ${buttonClass}`}
         >
           <RotateCcw className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Page Navigation */}
-      <div className="flex items-center gap-1 border-r border-gray-200 pr-2">
+      <div className={`flex items-center gap-1 border-r pr-2 ${isFullscreen ? 'border-gray-200' : 'border-blue-31'}`}>
         <Button
           variant="ghost"
           size="sm"
           onClick={onFirstPage}
           disabled={currentPage <= 1}
           title="First Page"
-          className="h-8 w-8 p-0"
+          className={`h-8 w-8 p-0 ${buttonClass}`}
         >
           <ChevronsLeft className="h-4 w-4" />
         </Button>
@@ -153,7 +159,7 @@ export function PDFToolbar({
           onClick={onPreviousPage}
           disabled={currentPage <= 1}
           title="Previous Page"
-          className="h-8 w-8 p-0"
+          className={`h-8 w-8 p-0 ${buttonClass}`}
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
@@ -164,9 +170,9 @@ export function PDFToolbar({
             max={numPages || 1}
             value={currentPage}
             onChange={handlePageInputChange}
-            className="w-16 px-2 py-1 text-sm border border-gray-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-corca-blue-medium"
+            className={`w-16 px-2 py-1 text-sm border rounded text-center focus:outline-none focus:ring-2 focus:ring-corca-blue-medium ${isFullscreen ? 'border-gray-300 bg-white' : 'border-blue-31 bg-blue-14'}`}
           />
-          <span className="text-sm text-gray-600">/ {numPages || '?'}</span>
+          <span className={`text-sm ${isFullscreen ? 'text-gray-600' : 'text-blue-38'}`}>/ {numPages || '?'}</span>
         </div>
         <Button
           variant="ghost"
@@ -174,7 +180,7 @@ export function PDFToolbar({
           onClick={onNextPage}
           disabled={currentPage >= (numPages || 1)}
           title="Next Page"
-          className="h-8 w-8 p-0"
+          className={`h-8 w-8 p-0 ${buttonClass}`}
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -184,7 +190,7 @@ export function PDFToolbar({
           onClick={onLastPage}
           disabled={currentPage >= (numPages || 1)}
           title="Last Page"
-          className="h-8 w-8 p-0"
+          className={`h-8 w-8 p-0 ${buttonClass}`}
         >
           <ChevronsRight className="h-4 w-4" />
         </Button>
@@ -196,7 +202,7 @@ export function PDFToolbar({
         size="sm"
         onClick={onHighlightModeToggle}
         title={highlightMode ? 'Disable Highlight Tool' : 'Enable Highlight Tool'}
-        className={`h-8 px-2 ${highlightMode ? 'bg-yellow-100 text-yellow-700' : ''}`}
+        className={`h-8 px-2 ${highlightMode ? 'bg-yellow-100 text-yellow-700' : buttonClass}`}
       >
         <Highlighter className="h-4 w-4 mr-1" />
         <span className="text-xs">Highlight</span>
@@ -208,7 +214,7 @@ export function PDFToolbar({
         size="sm"
         onClick={onNoteModeToggle}
         title={noteMode ? 'Close Note Editor' : 'Open Note Editor'}
-        className={`h-8 px-2 ${noteMode ? 'bg-corca-blue-light text-gray-700' : ''}`}
+        className={`h-8 px-2 ${noteMode ? 'bg-corca-blue-light text-gray-700' : buttonClass}`}
       >
         <StickyNote className="h-4 w-4 mr-1" />
         <span className="text-xs">Note</span>
@@ -220,7 +226,7 @@ export function PDFToolbar({
         size="sm"
         onClick={onTOCToggle}
         title="Table of Contents"
-        className={`h-8 px-2 ${showTOC ? 'bg-corca-blue-light text-gray-700' : ''}`}
+        className={`h-8 px-2 ${showTOC ? 'bg-corca-blue-light text-gray-700' : buttonClass}`}
       >
         <List className="h-4 w-4 mr-1" />
         <span className="text-xs">TOC</span>
@@ -241,13 +247,13 @@ export function PDFToolbar({
       )}
 
       {/* Chat Toggle */}
-      <div className="border-r border-gray-200 pr-2">
+      <div className={`border-r pr-2 ${isFullscreen ? 'border-gray-200' : 'border-blue-31'}`}>
         <Button
           variant="ghost"
           size="sm"
           onClick={onChatModeToggle}
           title={chatMode ? 'Close Chat' : 'Open Chat'}
-          className={`h-8 px-2 ${chatMode ? 'bg-corca-blue-light text-gray-700' : ''}`}
+          className={`h-8 px-2 ${chatMode ? 'bg-corca-blue-light text-gray-700' : buttonClass}`}
         >
           <MessageSquare className="h-4 w-4 mr-1" />
           <span className="text-xs">Chat</span>
@@ -260,7 +266,7 @@ export function PDFToolbar({
         size="sm"
         onClick={onPaperSidebarToggle}
         title={showPaperSidebar ? 'Close Sidebar' : 'Open Sidebar'}
-        className={`h-8 px-2 ${showPaperSidebar ? 'bg-corca-blue-light text-gray-700' : ''}`}
+        className={`h-8 px-2 ${showPaperSidebar ? 'bg-corca-blue-light text-gray-700' : buttonClass}`}
       >
         <PanelRightClose className="h-4 w-4 mr-1" />
         <span className="text-xs">Sidebar</span>
@@ -279,7 +285,7 @@ export function PDFToolbar({
           }}
           disabled={readingStatusMutation?.isPending}
         >
-          <SelectTrigger className="h-8 w-[50px] text-xs flex items-center gap-1.5">
+          <SelectTrigger className={`h-8 w-[50px] text-xs flex items-center gap-1.5 ${isFullscreen ? '' : 'bg-blue-14 border-blue-31'}`}>
             <BookOpen className="h-3 w-3 flex-shrink-0" />
           </SelectTrigger>
           <SelectContent>
@@ -304,7 +310,7 @@ export function PDFToolbar({
           }}
           disabled={priorityMutation?.isPending}
         >
-          <SelectTrigger className="h-8 w-[50px] text-xs flex items-center gap-1.5">
+          <SelectTrigger className={`h-8 w-[50px] text-xs flex items-center gap-1.5 ${isFullscreen ? '' : 'bg-blue-14 border-blue-31'}`}>
             <Flag className="h-3 w-3 flex-shrink-0" />
           </SelectTrigger>
           <SelectContent>
@@ -332,7 +338,7 @@ export function PDFToolbar({
         size="sm"
         onClick={onFullscreenToggle}
         title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-        className="h-8 w-8 p-0 ml-auto"
+        className={`h-8 w-8 p-0 ml-auto ${buttonClass}`}
       >
         {isFullscreen ? (
           <Minimize className="h-4 w-4" />

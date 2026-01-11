@@ -22,7 +22,8 @@ const DEFAULT_COLORS = [
 export function PieChart({ data, title, colors = DEFAULT_COLORS }: PieChartProps) {
   const total = data.reduce((sum, item) => sum + item.value, 0);
 
-  if (total === 0) {
+  if (total === 0)
+  {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500">
         No data available
@@ -33,7 +34,7 @@ export function PieChart({ data, title, colors = DEFAULT_COLORS }: PieChartProps
   return (
     <div className="w-full">
       {title && (
-        <h3 className="text-lg font-semibold mb-4">{title}</h3>
+        <h3 className="text-lg font-medium mb-4">{title}</h3>
       )}
       <ResponsiveContainer width="100%" height={300}>
         <RechartsPieChart>

@@ -1,5 +1,6 @@
 import type { Paper } from '@/lib/api/papers';
 import { format } from 'date-fns';
+import { motion } from 'motion/react';
 import { Trash2 } from 'lucide-react';
 import { ReadingStatusBadge } from './ReadingStatusBadge';
 import { PriorityBadge } from './PriorityBadge';
@@ -12,9 +13,13 @@ interface PaperCardProps {
 
 export function PaperCard({ paper, onDelete }: PaperCardProps) {
   return (
-    <div className="bg-grayscale-8 border border-green-6 rounded-sm p-4 sm:p-6 hover:bg-green-4 transition-all cursor-pointer h-full flex flex-col relative group">
+    <motion.div
+      whileHover={{ scale: 1.02, y: -4 }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
+      className="bg-grayscale-8 border border-blue-21 rounded-md p-6 sm:p-8 hover:bg-blue-14 cursor-pointer h-full flex flex-col relative group"
+    >
       <div className="flex justify-between items-start gap-2 mb-2">
-        <h3 className="text-lg sm:text-xl font-semibold line-clamp-2 break-words text-anara-light-text flex-1">{paper.title}</h3>
+        <h3 className="text-lg sm:text-xl font-medium line-clamp-2 break-words text-anara-light-text flex-1">{paper.title}</h3>
         <div className="flex gap-1 flex-shrink-0">
           {paper.reading_status && <ReadingStatusBadge status={paper.reading_status} />}
           {paper.priority && paper.priority !== 'low' && <PriorityBadge priority={paper.priority} />}
@@ -58,7 +63,6 @@ export function PaperCard({ paper, onDelete }: PaperCardProps) {
           </a>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
-

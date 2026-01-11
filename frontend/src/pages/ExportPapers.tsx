@@ -36,7 +36,8 @@ export default function ExportPapers() {
 
   // Redirect if no paperIds provided
   useEffect(() => {
-    if (!paperIds || paperIds.length === 0) {
+    if (!paperIds || paperIds.length === 0)
+    {
       toastWarning('No papers selected for export');
       navigate(returnPath);
     }
@@ -107,14 +108,15 @@ export default function ExportPapers() {
     navigate(returnPath);
   };
 
-  if (!paperIds || paperIds.length === 0) {
+  if (!paperIds || paperIds.length === 0)
+  {
     return null; // Will redirect in useEffect
   }
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-2xl">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Export Papers</h1>
+        <h1 className="text-3xl font-medium text-gray-900 mb-2">Export Papers</h1>
         <p className="text-gray-600">
           Configure your export options and download your papers.
         </p>

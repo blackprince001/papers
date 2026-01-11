@@ -47,12 +47,15 @@ export function PaperDetailsPanel({
   });
 
   const handleSaveTitle = () => {
-    if (!editedTitle.trim()) {
+    if (!editedTitle.trim())
+    {
       return; // Don't save empty title
     }
-    if (editedTitle.trim() !== paper.title && updatePaperTitleMutation) {
+    if (editedTitle.trim() !== paper.title && updatePaperTitleMutation)
+    {
       updatePaperTitleMutation.mutate(editedTitle.trim());
-    } else {
+    } else
+    {
       setIsEditingTitle(false);
     }
   };
@@ -69,7 +72,8 @@ export function PaperDetailsPanel({
 
   // Handle successful title update
   useEffect(() => {
-    if (updatePaperTitleMutation?.isSuccess && isEditingTitle) {
+    if (updatePaperTitleMutation?.isSuccess && isEditingTitle)
+    {
       setIsEditingTitle(false);
       onTitleUpdate?.(editedTitle.trim());
       updatePaperTitleMutation.reset();
@@ -78,38 +82,41 @@ export function PaperDetailsPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <h3 className="text-sm font-semibold text-anara-light-text">Paper Information</h3>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-end sm:self-auto">
           {paper.file_path && (
             <Button
               onClick={() => extractCitationsMutation.mutate()}
               disabled={extractCitationsMutation.isPending}
-              className="flex items-center gap-2 text-xs"
+              className="flex items-center gap-2 text-xs px-2 sm:px-3"
               variant="outline"
+              title="Extract Citations"
             >
               <FileSearch size={14} className={extractCitationsMutation.isPending ? 'animate-spin' : ''} />
-              {extractCitationsMutation.isPending ? 'Extracting...' : 'Extract Citations'}
+              <span className="hidden sm:inline">{extractCitationsMutation.isPending ? 'Extracting...' : 'Extract Citations'}</span>
             </Button>
           )}
           <Button
             onClick={() => regenerateMetadataMutation.mutate()}
             disabled={regenerateMetadataMutation.isPending}
-            className="flex items-center gap-2 text-xs"
+            className="flex items-center gap-2 text-xs px-2 sm:px-3"
             variant="outline"
+            title="Regenerate Metadata"
           >
             <RefreshCw size={14} className={regenerateMetadataMutation.isPending ? 'animate-spin' : ''} />
-            {regenerateMetadataMutation.isPending ? 'Regenerating...' : 'Regenerate Metadata'}
+            <span className="hidden sm:inline">{regenerateMetadataMutation.isPending ? 'Regenerating...' : 'Regenerate Metadata'}</span>
           </Button>
           {onDelete && (
             <Button
               onClick={onDelete}
               disabled={isDeleting}
-              className="flex items-center gap-2 text-xs"
+              className="flex items-center gap-2 text-xs px-2 sm:px-3"
               variant="destructive"
+              title="Delete"
             >
               <Trash2 size={14} className={isDeleting ? 'animate-spin' : ''} />
-              {isDeleting ? 'Deleting...' : 'Delete Paper'}
+              <span className="hidden sm:inline">{isDeleting ? 'Deleting...' : 'Delete'}</span>
             </Button>
           )}
         </div>
@@ -135,7 +142,7 @@ export function PaperDetailsPanel({
         </div>
       )}
 
-      <div className="grid grid-cols-[120px_1fr] gap-3 text-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-x-3 gap-y-4 sm:gap-y-3 text-sm">
         <div className="text-anara-light-text-muted font-medium">File type</div>
         <div className="text-anara-light-text">Document</div>
 
@@ -149,9 +156,11 @@ export function PaperDetailsPanel({
                 onChange={(e) => setEditedTitle(e.target.value)}
                 className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.key === 'Enter')
+                  {
                     handleSaveTitle();
-                  } else if (e.key === 'Escape') {
+                  } else if (e.key === 'Escape')
+                  {
                     handleCancelTitle();
                   }
                 }}

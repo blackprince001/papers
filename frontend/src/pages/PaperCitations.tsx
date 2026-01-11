@@ -24,7 +24,7 @@ export default function PaperCitations() {
   const filteredPapers = useMemo(() => {
     if (!papersData?.papers) return [];
     if (!searchQuery.trim()) return papersData.papers.slice(0, 20); // Show first 20 when no search
-    
+
     const query = searchQuery.toLowerCase();
     return papersData.papers.filter(
       (paper) =>
@@ -64,8 +64,8 @@ export default function PaperCitations() {
     <div className="h-full flex flex-col overflow-hidden bg-gray-50">
       {/* Header */}
       <div className="flex-shrink-0 bg-white border-b border-gray-200 px-6 py-4">
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">Paper Citations</h1>
-        
+        <h1 className="text-2xl font-medium text-gray-900 mb-4">Paper Citations</h1>
+
         {/* Paper Selector */}
         <div className="relative">
           <SearchInput
@@ -75,7 +75,7 @@ export default function PaperCitations() {
             isLoading={papersLoading}
             className="max-w-2xl"
           />
-          
+
           {/* Dropdown with search results */}
           {searchQuery && filteredPapers.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-sm shadow-lg z-50 max-h-96 overflow-y-auto">
@@ -97,7 +97,7 @@ export default function PaperCitations() {
               ))}
             </div>
           )}
-          
+
           {/* Show message when no results */}
           {searchQuery && !papersLoading && filteredPapers.length === 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-sm shadow-lg z-50 px-4 py-3 text-sm text-gray-500">

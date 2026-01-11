@@ -5,7 +5,8 @@ import { papersApi, type Paper } from '@/lib/api/papers';
 import { annotationsApi, type Annotation } from '@/lib/api/annotations';
 import { Button } from '@/components/Button';
 import { format } from 'date-fns';
-import { FileText, BookOpen, StickyNote, Highlighter, Loader2, Search } from 'lucide-react';
+import { FileText, BookOpen, StickyNote, Highlighter, Search } from 'lucide-react';
+import { AnnotationSkeleton } from '@/components/Skeletons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -149,7 +150,7 @@ export default function AllAnnotations() {
     <div className="w-full bg-anara-light-bg min-h-screen">
       <div className="container py-6 sm:py-8">
         <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold mb-2 text-anara-light-text">All Annotations & Notes</h1>
+          <h1 className="text-2xl sm:text-3xl font-medium mb-2 text-anara-light-text">All Annotations & Notes</h1>
           <p className="text-anara-light-text-muted text-sm sm:text-base">
             View all annotations and notes across all documents ({annotationsCount} annotations, {notesCount} notes)
           </p>
@@ -221,9 +222,12 @@ export default function AllAnnotations() {
 
         {/* Loading State */}
         {isLoading && (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-            <span className="ml-3 text-gray-600">Loading annotations and notes...</span>
+          <div className="space-y-4">
+            <AnnotationSkeleton />
+            <AnnotationSkeleton />
+            <AnnotationSkeleton />
+            <AnnotationSkeleton />
+            <AnnotationSkeleton />
           </div>
         )}
 
@@ -247,7 +251,7 @@ export default function AllAnnotations() {
                       <div className="mb-3 pb-3 border-b border-gray-200">
                         <Link
                           to={`/papers/${paper.id}`}
-                          className="text-base sm:text-lg font-semibold text-gray-900 hover:text-gray-700 transition-colors flex items-center gap-2"
+                          className="text-base sm:text-lg font-medium text-gray-900 hover:text-gray-700 transition-colors flex items-center gap-2"
                         >
                           <FileText className="h-4 w-4 flex-shrink-0" />
                           <span className="line-clamp-2">{paper.title}</span>

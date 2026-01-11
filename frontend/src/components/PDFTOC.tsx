@@ -79,8 +79,8 @@ export function PDFTOC({ items, isOpen, onClose, onItemClick, currentPage }: PDF
   if (!isOpen) return null;
 
   return (
-    <div 
-      className="fixed inset-y-0 right-0 z-50 w-80 bg-white border-l border-gray-200 shadow-lg flex flex-col"
+    <div
+      className="fixed inset-y-0 right-0 z-[70] w-80 bg-white border-l border-gray-200 shadow-lg flex flex-col"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-center justify-between p-4 border-b border-gray-200">
