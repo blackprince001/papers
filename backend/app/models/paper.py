@@ -14,6 +14,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
+from app.core.config import settings
 from app.models.base import Base
 
 paper_group_association = Table(
@@ -33,7 +34,7 @@ class Paper(Base):
   url = Column(String, nullable=True)
   file_path = Column(String, nullable=True)
   vector_id = Column(String, nullable=True)
-  embedding = Column(Vector(1536), nullable=True)
+  embedding = Column(Vector(settings.EMBEDDING_DIMENSION), nullable=True)
   metadata_json = Column(JSON, default=dict)
   content_text = Column(Text, nullable=True)
   volume = Column(String, nullable=True)

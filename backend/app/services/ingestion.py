@@ -84,7 +84,7 @@ class IngestionService:
 
     # Extract text (limited to first 5 pages initially for speed)
     # Full text can be extracted later if needed
-    text_content = pdf_parser.extract_text(pdf_content, max_pages=5)
+    text_content = await pdf_parser.extract_text(pdf_content, max_pages=5)
     metadata = await pdf_parser.extract_metadata(pdf_content)
     text_content = IngestionService.sanitize_text(text_content)
 
@@ -209,7 +209,7 @@ class IngestionService:
 
     # Extract text (limited to first 5 pages initially for speed)
     # Full text can be extracted later if needed
-    text_content = pdf_parser.extract_text(file_content, max_pages=5)
+    text_content = await pdf_parser.extract_text(file_content, max_pages=5)
     metadata = await pdf_parser.extract_metadata(file_content)
     text_content = IngestionService.sanitize_text(text_content)
 

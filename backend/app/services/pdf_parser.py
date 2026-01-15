@@ -14,7 +14,7 @@ from app.schemas.paper import PaperMetadata
 
 class PDFParser:
   @staticmethod
-  def extract_text(pdf_content: bytes, max_pages: Optional[int] = None) -> str:
+  def _extract_text_sync(pdf_content: bytes, max_pages: Optional[int] = None) -> str:
     try:
       pdf_file = io.BytesIO(pdf_content)
       reader = PdfReader(pdf_file)
@@ -31,41 +31,60 @@ class PDFParser:
       raise ValueError(f"Failed to parse PDF: {str(e)}") from e
 
   @staticmethod
+  async def extract_text(pdf_content: bytes, max_pages: Optional[int] = None) -> str:
+    """Async wrapper for text extraction that runs in an executor."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+      None, PDFParser._extract_text_sync, pdf_content, max_pages
+    )
+
+  @staticmethod
   async def extract_metadata_structured(pdf_content: bytes) -> Optional[PaperMetadata]:
     """Extract metadata using structured output from genai SDK."""
     if not settings.GOOGLE_API_KEY:
       return None
 
     try:
-      pdf_file = io.BytesIO(pdf_content)
-      reader = PdfReader(pdf_file)
+      # Run PDF reading in executor
+      loop = asyncio.get_event_loop()
+      
+      def read_first_pages():
+        try:
+          pdf_file = io.BytesIO(pdf_content)
+          reader = PdfReader(pdf_file)
 
-      if len(reader.pages) == 0:
+          if len(reader.pages) == 0:
+            return None
+
+          # Extract text from first 2-3 pages (or first 5000 chars)
+          text_parts = []
+          char_count = 0
+          max_chars = 5000
+
+          for _, page in enumerate(reader.pages[:3]):  # First 3 pages max
+            text = page.extract_text()
+            if text:
+              if char_count + len(text) > max_chars:
+                # Add partial text to reach max_chars
+                remaining = max_chars - char_count
+                if remaining > 0:
+                  text_parts.append(text[:remaining])
+                break
+              text_parts.append(text)
+              char_count += len(text)
+          
+          if not text_parts:
+            return None
+            
+          result = "\n\n".join(text_parts)
+          return result[:max_chars] if len(result) > max_chars else result
+        except Exception:
+          return None
+
+      first_pages_text = await loop.run_in_executor(None, read_first_pages)
+      
+      if not first_pages_text:
         return None
-
-      # Extract text from first 2-3 pages (or first 5000 chars)
-      text_parts = []
-      char_count = 0
-      max_chars = 5000
-
-      for _, page in enumerate(reader.pages[:3]):  # First 3 pages max
-        text = page.extract_text()
-        if text:
-          if char_count + len(text) > max_chars:
-            # Add partial text to reach max_chars
-            remaining = max_chars - char_count
-            if remaining > 0:
-              text_parts.append(text[:remaining])
-            break
-          text_parts.append(text)
-          char_count += len(text)
-
-      if not text_parts:
-        return None
-
-      first_pages_text = "\n\n".join(text_parts)
-      if len(first_pages_text) > max_chars:
-        first_pages_text = first_pages_text[:max_chars]
 
       client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 

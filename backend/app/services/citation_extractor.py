@@ -401,8 +401,11 @@ IMPORTANT: Return ONLY valid JSON array, no other text, explanations, or markdow
         await session.delete(citation)
       await session.flush()
 
-      # Extract references section
-      references_text = CitationExtractor.extract_references_section(pdf_content)
+      # Extract references section (run in executor to avoid blocking)
+      loop = asyncio.get_event_loop()
+      references_text = await loop.run_in_executor(
+        None, CitationExtractor.extract_references_section, pdf_content
+      )
       if not references_text:
         print(f"No references section found for paper {paper_id}")
         return 0
