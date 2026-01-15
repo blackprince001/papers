@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/Button';
 import { FileUpload } from '@/components/FileUpload';
+import { BatchUrlIngestion } from '@/components/BatchUrlIngestion';
 import { papersApi } from '@/lib/api/papers';
 import { groupsApi } from '@/lib/api/groups';
 import { toastSuccess, toastError, toastInfo } from '@/lib/utils/toast';
@@ -156,8 +157,9 @@ export default function IngestPaper() {
 
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="url">From URL</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="url">Single URL</TabsTrigger>
+            <TabsTrigger value="batch">Batch URLs</TabsTrigger>
             <TabsTrigger value="upload">Upload Files</TabsTrigger>
           </TabsList>
 
@@ -179,6 +181,38 @@ export default function IngestPaper() {
                 />
               </div>
             </form>
+          </TabsContent>
+
+          <TabsContent value="batch" className="mt-4">
+            <BatchUrlIngestion
+              onIngest={async (urls) => {
+                const response = await papersApi.ingestBatch(
+                  urls,
+                  selectedGroupIds.length > 0 ? selectedGroupIds : undefined
+                );
+
+                // Handle success
+                if (response.paper_ids.length > 0)
+                {
+                  queryClient.invalidateQueries({ queryKey: ['papers'] });
+                  if (response.errors.length === 0)
+                  {
+                    setSelectedGroupIds([]);
+                    navigate('/');
+                  }
+                  toastInfo(response.message);
+                }
+
+                // Handle errors
+                if (response.errors.length > 0 && response.paper_ids.length === 0)
+                {
+                  toastError('All URLs failed to ingest');
+                }
+
+                return response;
+              }}
+              disabled={isProcessing}
+            />
           </TabsContent>
 
           <TabsContent value="upload" className="mt-4">

@@ -27,7 +27,7 @@ async def semantic_search(
   if not search_request.query or not search_request.query.strip():
     raise HTTPException(status_code=400, detail="Query cannot be empty")
 
-  query_embedding = embedding_service.generate_embedding(search_request.query)
+  query_embedding = embedding_service.generate_query_embedding(search_request.query)
   similarity_threshold = search_request.threshold or 0.0
 
   from sqlalchemy import text

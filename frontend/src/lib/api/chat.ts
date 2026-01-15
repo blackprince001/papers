@@ -150,8 +150,8 @@ export const chatApi = {
     return response.data;
   },
 
-  createSession: async (paperId: number, name: string = 'New Session'): Promise<ChatSession> => {
-    const response = await apiClient.post<ChatSession>(`/papers/${paperId}/sessions`, { name });
+  createSession: async (paperId: number, name?: string): Promise<ChatSession> => {
+    const response = await apiClient.post<ChatSession>(`/papers/${paperId}/sessions`, name ? { name } : {});
     return response.data;
   },
 

@@ -1,9 +1,11 @@
+import asyncio
 import json
 from typing import List, Optional, cast
 
 from fastapi import (
   APIRouter,
   BackgroundTasks,
+  Body,
   Depends,
   File,
   Form,
@@ -17,50 +19,106 @@ from sqlalchemy.orm import selectinload
 from app.core.database import AsyncSessionLocal
 from app.dependencies import get_db
 from app.models.paper import Paper as PaperModel
-from app.schemas.paper import Paper, PaperCreate, PaperUploadResponse
+from app.schemas.paper import Paper, PaperBatchCreate, PaperCreate, PaperUploadResponse
 from app.services.citation_extractor import citation_extractor
 from app.services.duplicate_detection import duplicate_detection_service
 from app.services.ingestion import ingestion_service
+from app.services.url_parser import url_parser
 
 router = APIRouter()
 
 
-async def extract_citations_background_task(paper_id: int, file_path: str):
-  """Background task to extract citations from a paper's PDF."""
+async def process_paper_background_task(paper_id: int, file_path: str):
+  """Background task to process a paper: extract citations and generate AI content.
+  
+  This task runs after paper ingestion and performs:
+  1. Citation extraction from PDF
+  2. AI summary generation
+  3. Key findings extraction
+  4. Reading guide generation
+  """
+  import logging
+  from datetime import datetime, timezone
+  from pathlib import Path
+  from typing import cast
+
+  from app.services.ai_summarizer import ai_summarizer_service
+
+  logger = logging.getLogger(__name__)
+
   try:
-    # Create a new session for background task
     async with AsyncSessionLocal() as session:
-      # Verify paper still exists before processing
+      # Verify paper still exists
       paper_query = select(PaperModel).where(PaperModel.id == paper_id)
       paper_result = await session.execute(paper_query)
       paper = paper_result.scalar_one_or_none()
-      
+
       if not paper:
-        print(f"Paper {paper_id} not found, skipping citation extraction")
-        return
-      
-      # Load PDF file from storage
-      # file_path is stored as full path string
-      from pathlib import Path
-
-      path_obj = Path(file_path)
-      if path_obj.exists():
-        pdf_content = path_obj.read_bytes()
-      else:
-        print(f"PDF file not found at path: {file_path} for paper {paper_id}")
+        logger.warning(f"Paper {paper_id} not found, skipping background processing")
         return
 
-      # Extract and store citations
-      await citation_extractor.extract_and_store_citations(
-        session, paper_id, pdf_content
-      )
-      print(f"Successfully extracted citations for paper {paper_id}")
-  except FileNotFoundError:
-    print(f"PDF file not found for paper {paper_id} at path: {file_path}")
+      title = cast(str, paper.title) or ""
+      content = cast(str, paper.content_text) or ""
+
+      # 1. Extract citations from PDF
+      try:
+        path_obj = Path(file_path)
+        if path_obj.exists():
+          pdf_content = path_obj.read_bytes()
+          await citation_extractor.extract_and_store_citations(
+            session, paper_id, pdf_content
+          )
+          logger.info(f"Paper {paper_id}: Citations extracted")
+        else:
+          logger.warning(f"Paper {paper_id}: PDF not found at {file_path}")
+      except Exception as e:
+        logger.error(f"Paper {paper_id}: Citation extraction failed: {e}")
+
+      # 2. Generate AI summary
+      if content and not paper.ai_summary:
+        try:
+          summary = await ai_summarizer_service.generate_summary(title, content)
+          if summary:
+            paper.ai_summary = summary
+            paper.summary_generated_at = datetime.now(timezone.utc)
+            logger.info(f"Paper {paper_id}: Summary generated")
+        except Exception as e:
+          logger.error(f"Paper {paper_id}: Summary generation failed: {e}")
+
+      # 3. Extract key findings
+      if content and not paper.key_findings:
+        try:
+          findings = await ai_summarizer_service.extract_findings(title, content)
+          if findings:
+            paper.key_findings = findings
+            paper.findings_extracted_at = datetime.now(timezone.utc)
+            logger.info(f"Paper {paper_id}: Key findings extracted")
+        except Exception as e:
+          logger.error(f"Paper {paper_id}: Findings extraction failed: {e}")
+
+      # 4. Generate reading guide
+      if content and not paper.reading_guide:
+        try:
+          guide = await ai_summarizer_service.generate_reading_guide(title, content)
+          if guide:
+            paper.reading_guide = guide
+            paper.guide_generated_at = datetime.now(timezone.utc)
+            logger.info(f"Paper {paper_id}: Reading guide generated")
+        except Exception as e:
+          logger.error(f"Paper {paper_id}: Reading guide generation failed: {e}")
+
+      # Commit all changes
+      await session.commit()
+      logger.info(f"Paper {paper_id}: Background processing complete")
+
   except Exception as e:
-    print(f"Error in background citation extraction for paper {paper_id}: {str(e)}")
+    logger.error(f"Paper {paper_id}: Background processing failed: {e}")
     import traceback
     traceback.print_exc()
+
+
+# Alias for backward compatibility
+extract_citations_background_task = process_paper_background_task
 
 
 @router.post("/ingest", response_model=Paper, status_code=201)
@@ -121,15 +179,15 @@ async def ingest_paper_endpoint(
     _ = list(paper.groups) if hasattr(paper, "groups") else []
     _ = list(paper.tags) if hasattr(paper, "tags") else []
 
-    # Add background task for citation extraction
+    # Add background task for full AI processing
     paper_response = Paper.model_validate(paper)
     if paper.file_path:
       background_tasks.add_task(
-        extract_citations_background_task,
+        process_paper_background_task,
         cast(int, paper.id),
         cast(str, paper.file_path),
       )
-      paper_response.background_processing_message = "Citation extraction started in the background."
+      paper_response.background_processing_message = "Processing in background: extracting citations, generating summary, key findings, and reading guide."
 
     return paper_response
   except ValueError as e:
@@ -275,7 +333,7 @@ async def upload_files_endpoint(
           if file_path:
             citation_extraction_count += 1
             background_tasks.add_task(
-              extract_citations_background_task, paper_id, file_path
+              process_paper_background_task, paper_id, file_path
             )
         elif error:
           errors.append(error)
@@ -285,12 +343,12 @@ async def upload_files_endpoint(
     if len(paper_ids) > 0:
       if len(paper_ids) == 1:
         if citation_extraction_count > 0:
-          message = "Paper uploaded successfully. Citations are being extracted in the background."
+          message = "Paper uploaded successfully. AI processing started (citations, summary, findings, reading guide)."
         else:
           message = "Paper uploaded successfully."
       else:
         if citation_extraction_count > 0:
-          message = f"{len(paper_ids)} papers uploaded successfully. Citations are being extracted in the background for {citation_extraction_count} paper(s)."
+          message = f"{len(paper_ids)} papers uploaded. AI processing started for {citation_extraction_count} paper(s) (citations, summary, findings, reading guide)."
         else:
           message = f"{len(paper_ids)} papers uploaded successfully."
 
@@ -299,3 +357,168 @@ async def upload_files_endpoint(
     errors=errors,
     message=message
   )
+
+
+async def _ingest_single_url(
+  url: str,
+  group_ids: Optional[List[int]],
+  background_tasks: BackgroundTasks,
+) -> tuple[Optional[int], Optional[str], Optional[dict]]:
+  """Helper to ingest a single URL. Returns (paper_id, file_path, error_dict)."""
+  try:
+    async with AsyncSessionLocal() as session:
+      try:
+        paper = await ingestion_service.ingest_paper(
+          session=session,
+          url=url,
+          title=None,
+          doi=None,
+          group_ids=group_ids,
+        )
+        await session.commit()
+
+        # Re-fetch paper with relationships
+        query = (
+          select(PaperModel)
+          .options(selectinload(PaperModel.groups), selectinload(PaperModel.tags))
+          .where(PaperModel.id == paper.id)
+        )
+        result = await session.execute(query)
+        paper = result.scalar_one()
+
+        # Ensure relationships are loaded
+        _ = list(paper.groups) if hasattr(paper, "groups") else []
+        _ = list(paper.tags) if hasattr(paper, "tags") else []
+
+        return cast(int, paper.id), cast(str, paper.file_path), None
+      except Exception as e:
+        await session.rollback()
+        return (None, None, {"url": url, "error": str(e)})
+  except Exception as e:
+    return (None, None, {"url": url, "error": str(e)})
+
+
+@router.post("/ingest/batch", response_model=PaperUploadResponse, status_code=201)
+async def ingest_batch_endpoint(
+  batch: PaperBatchCreate,
+  background_tasks: BackgroundTasks,
+  session: AsyncSession = Depends(get_db),
+):
+  """Ingest multiple papers from a list of URLs.
+
+  Accepts a JSON body with:
+  - urls: List of paper URLs (arXiv, ACM, OpenReview, PMLR, NeurIPS, etc.)
+  - group_ids: Optional list of group IDs to assign to all papers
+  """
+  if not batch.urls:
+    raise HTTPException(status_code=400, detail="At least one URL is required")
+
+  if len(batch.urls) > 20:
+    raise HTTPException(status_code=400, detail="Maximum 20 URLs per batch")
+
+  paper_ids: List[int] = []
+  errors: List[dict] = []
+
+  # Process URLs in parallel
+  results = await asyncio.gather(
+    *[
+      _ingest_single_url(str(url), batch.group_ids, background_tasks)
+      for url in batch.urls
+    ],
+    return_exceptions=True,
+  )
+
+  citation_extraction_count = 0
+  for result in results:
+    if isinstance(result, Exception):
+      errors.append({"url": "unknown", "error": str(result)})
+    elif isinstance(result, tuple):
+      paper_id, file_path, error = result
+      if paper_id:
+        paper_ids.append(paper_id)
+        if file_path:
+          citation_extraction_count += 1
+          background_tasks.add_task(
+            process_paper_background_task, paper_id, file_path
+          )
+      elif error:
+        errors.append(error)
+
+  # Generate message
+  message = None
+  if paper_ids:
+    count = len(paper_ids)
+    if count == 1:
+      message = "1 paper ingested successfully."
+    else:
+      message = f"{count} papers ingested successfully."
+    if citation_extraction_count > 0:
+      message += f" AI processing started for {citation_extraction_count} paper(s) (citations, summary, findings, reading guide)."
+
+  return PaperUploadResponse(paper_ids=paper_ids, errors=errors, message=message)
+
+
+@router.post("/ingest/urls", response_model=PaperUploadResponse, status_code=201)
+async def ingest_urls_from_text_endpoint(
+  text: str = Body(..., media_type="text/plain"),
+  group_ids: Optional[List[int]] = None,
+  background_tasks: BackgroundTasks = BackgroundTasks(),
+  session: AsyncSession = Depends(get_db),
+):
+  """Ingest papers from pasted text containing URLs.
+
+  Paste multiple URLs (separated by newlines, spaces, or commas) and they will
+  all be ingested. Supports various academic sites including arXiv, ACM, IEEE,
+  OpenReview, PMLR, NeurIPS, Nature, bioRxiv, and direct PDF links.
+  """
+  # Extract URLs from pasted text
+  urls = url_parser.extract_urls_from_text(text)
+
+  if not urls:
+    raise HTTPException(
+      status_code=400, detail="No valid URLs found in the provided text"
+    )
+
+  if len(urls) > 20:
+    raise HTTPException(
+      status_code=400,
+      detail=f"Found {len(urls)} URLs. Maximum 20 URLs per request. Please split into multiple requests.",
+    )
+
+  paper_ids: List[int] = []
+  errors: List[dict] = []
+
+  # Process URLs in parallel
+  results = await asyncio.gather(
+    *[_ingest_single_url(url, group_ids, background_tasks) for url in urls],
+    return_exceptions=True,
+  )
+
+  citation_extraction_count = 0
+  for result in results:
+    if isinstance(result, Exception):
+      errors.append({"url": "unknown", "error": str(result)})
+    elif isinstance(result, tuple):
+      paper_id, file_path, error = result
+      if paper_id:
+        paper_ids.append(paper_id)
+        if file_path:
+          citation_extraction_count += 1
+          background_tasks.add_task(
+            process_paper_background_task, paper_id, file_path
+          )
+      elif error:
+        errors.append(error)
+
+  # Generate message
+  message = None
+  if paper_ids:
+    count = len(paper_ids)
+    if count == 1:
+      message = "1 paper ingested successfully."
+    else:
+      message = f"{count} papers ingested successfully."
+    if citation_extraction_count > 0:
+      message += f" AI processing started for {citation_extraction_count} paper(s) (citations, summary, findings, reading guide)."
+
+  return PaperUploadResponse(paper_ids=paper_ids, errors=errors, message=message)

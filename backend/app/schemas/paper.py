@@ -37,6 +37,13 @@ class PaperCreate(PaperBase):
   group_ids: Optional[List[int]] = None
 
 
+class PaperBatchCreate(BaseModel):
+  """Batch ingestion of papers from multiple URLs."""
+
+  urls: List[HttpUrl]  # List of URLs to ingest
+  group_ids: Optional[List[int]] = None  # Apply same groups to all papers
+
+
 class PaperUpdate(BaseModel):
   title: Optional[str] = None
   doi: Optional[str] = None

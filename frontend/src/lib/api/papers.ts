@@ -59,6 +59,12 @@ export interface PaperUploadResponse {
   message?: string;
 }
 
+export interface BatchIngestionResponse {
+  paper_ids: number[];
+  errors: Array<{ url: string; error: string }>;
+  message: string;
+}
+
 export interface RelatedPaperExternal {
   title?: string;
   doi?: string;
@@ -308,6 +314,40 @@ export const papersApi = {
   getCitationsList: async (id: number): Promise<{ citations: Citation[] }> => {
     const response = await apiClient.get<{ citations: Citation[] }>(`/papers/${id}/citations-list`);
     return response.data;
+  },
+
+  ingestBatch: async (urls: string[], groupIds?: number[]): Promise<BatchIngestionResponse> => {
+    const response = await apiClient.post<BatchIngestionResponse>('/ingest/batch', {
+      urls,
+      group_ids: groupIds && groupIds.length > 0 ? groupIds : undefined,
+    });
+    return response.data;
+  },
+
+  ingestFromText: async (text: string, groupIds?: number[]): Promise<BatchIngestionResponse> => {
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+    const params = new URLSearchParams();
+    if (groupIds && groupIds.length > 0)
+    {
+      params.append('group_ids', groupIds.join(','));
+    }
+    const url = `${API_BASE_URL}/ingest/urls${params.toString() ? `?${params.toString()}` : ''}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      body: text,
+    });
+
+    if (!response.ok)
+    {
+      const errorData = await response.json().catch(() => ({ detail: 'Failed to ingest URLs' }));
+      throw new Error(errorData.detail || 'Failed to ingest URLs');
+    }
+
+    return response.json();
   },
 };
 

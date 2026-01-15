@@ -1,7 +1,14 @@
+import base64
+import secrets
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+def generate_session_name() -> str:
+  """Generate a random base64 session name."""
+  return base64.urlsafe_b64encode(secrets.token_bytes(6)).decode()
 
 
 class ChatMessageBase(BaseModel):
@@ -25,11 +32,11 @@ class ChatMessage(ChatMessageBase):
 
 class ChatSessionBase(BaseModel):
   paper_id: int
-  name: str = "New Session"
+  name: str = Field(default_factory=generate_session_name)
 
 
 class ChatSessionCreate(BaseModel):
-  name: str = "New Session"
+  name: str = Field(default_factory=generate_session_name)
 
 
 class ChatSessionUpdate(BaseModel):

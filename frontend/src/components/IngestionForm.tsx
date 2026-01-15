@@ -11,6 +11,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/Button';
 import { FileUpload } from '@/components/FileUpload';
+import { BatchUrlIngestion } from '@/components/BatchUrlIngestion';
 import { papersApi } from '@/lib/api/papers';
 import { groupsApi } from '@/lib/api/groups';
 import { toastSuccess, toastError, toastInfo } from '@/lib/utils/toast';
@@ -48,11 +49,13 @@ export function IngestionForm({ open, onOpenChange }: IngestionFormProps) {
       setUploadFiles([]);
       onOpenChange(false);
       queryClient.invalidateQueries({ queryKey: ['papers'] });
-      
+
       // Show toast notification
-      if (paper.background_processing_message) {
+      if (paper.background_processing_message)
+      {
         toastSuccess(paper.background_processing_message);
-      } else {
+      } else
+      {
         toastSuccess('Paper ingested successfully');
       }
     },
@@ -74,25 +77,31 @@ export function IngestionForm({ open, onOpenChange }: IngestionFormProps) {
       setUploadFiles([]);
       onOpenChange(false);
       queryClient.invalidateQueries({ queryKey: ['papers'] });
-      
+
       // Show toast notifications
-      if (response.errors && response.errors.length > 0) {
+      if (response.errors && response.errors.length > 0)
+      {
         // Show errors
         response.errors.forEach((error) => {
           toastError(`${error.filename}: ${error.error}`);
         });
       }
-      
+
       // Show success/processing message
-      if (response.paper_ids && response.paper_ids.length > 0) {
-        if (response.message) {
+      if (response.paper_ids && response.paper_ids.length > 0)
+      {
+        if (response.message)
+        {
           toastInfo(response.message);
-        } else if (response.paper_ids.length === 1) {
+        } else if (response.paper_ids.length === 1)
+        {
           toastSuccess('Paper uploaded successfully');
-        } else {
+        } else
+        {
           toastSuccess(`${response.paper_ids.length} papers uploaded successfully`);
         }
-      } else if (!response.errors || response.errors.length === 0) {
+      } else if (!response.errors || response.errors.length === 0)
+      {
         toastError('No papers were uploaded');
       }
     },
@@ -103,12 +112,14 @@ export function IngestionForm({ open, onOpenChange }: IngestionFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (activeTab === 'url' && url.trim()) {
+    if (activeTab === 'url' && url.trim())
+    {
       ingestionMutation.mutate({
         url: url.trim(),
         group_ids: selectedGroupIds.length > 0 ? selectedGroupIds : undefined,
       });
-    } else if (activeTab === 'upload' && uploadFiles.length > 0) {
+    } else if (activeTab === 'upload' && uploadFiles.length > 0)
+    {
       uploadMutation.mutate({
         files: uploadFiles,
         group_ids: selectedGroupIds.length > 0 ? selectedGroupIds : undefined,
@@ -117,7 +128,8 @@ export function IngestionForm({ open, onOpenChange }: IngestionFormProps) {
   };
 
   const handleDialogClose = (open: boolean) => {
-    if (!open) {
+    if (!open)
+    {
       setUrl('');
       setSelectedGroupIds([]);
       setUploadFiles([]);
@@ -135,7 +147,8 @@ export function IngestionForm({ open, onOpenChange }: IngestionFormProps) {
   };
 
   const handleSelectAll = () => {
-    if (groups) {
+    if (groups)
+    {
       setSelectedGroupIds(groups.map((g) => g.id));
     }
   };
@@ -151,8 +164,8 @@ export function IngestionForm({ open, onOpenChange }: IngestionFormProps) {
   const errorMessage = ingestionMutation.error instanceof Error
     ? ingestionMutation.error.message
     : uploadMutation.error instanceof Error
-    ? uploadMutation.error.message
-    : 'Failed to process papers. Please try again.';
+      ? uploadMutation.error.message
+      : 'Failed to process papers. Please try again.';
 
   return (
     <Dialog open={open} onOpenChange={handleDialogClose}>
@@ -165,8 +178,9 @@ export function IngestionForm({ open, onOpenChange }: IngestionFormProps) {
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="url">From URL</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="url">Single URL</TabsTrigger>
+            <TabsTrigger value="batch">Batch URLs</TabsTrigger>
             <TabsTrigger value="upload">Upload Files</TabsTrigger>
           </TabsList>
 
@@ -188,6 +202,38 @@ export function IngestionForm({ open, onOpenChange }: IngestionFormProps) {
                 />
               </div>
             </form>
+          </TabsContent>
+
+          <TabsContent value="batch" className="mt-4">
+            <BatchUrlIngestion
+              onIngest={async (urls) => {
+                const response = await papersApi.ingestBatch(
+                  urls,
+                  selectedGroupIds.length > 0 ? selectedGroupIds : undefined
+                );
+
+                // Handle success
+                if (response.paper_ids.length > 0)
+                {
+                  queryClient.invalidateQueries({ queryKey: ['papers'] });
+                  if (response.errors.length === 0)
+                  {
+                    setSelectedGroupIds([]);
+                    onOpenChange(false);
+                  }
+                  toastInfo(response.message);
+                }
+
+                // Handle errors
+                if (response.errors.length > 0 && response.paper_ids.length === 0)
+                {
+                  toastError('All URLs failed to ingest');
+                }
+
+                return response;
+              }}
+              disabled={isProcessing}
+            />
           </TabsContent>
 
           <TabsContent value="upload" className="mt-4">
@@ -290,8 +336,8 @@ export function IngestionForm({ open, onOpenChange }: IngestionFormProps) {
                 ? 'Ingesting...'
                 : 'Uploading...'
               : activeTab === 'url'
-              ? 'Ingest Paper'
-              : 'Upload Files'}
+                ? 'Ingest Paper'
+                : 'Upload Files'}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -7,7 +7,8 @@ class Settings(BaseSettings):
   API_V1_STR: str = "/api/v1"
   DATABASE_URL: str = Field(default="")
   STORAGE_PATH: str = "./storage/papers"
-  EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
+  EMBEDDING_MODEL: str = "gemini-embedding-001"
+  EMBEDDING_DIMENSION: int = 1536
   GOOGLE_API_KEY: str = ""
   GENAI_MODEL: str = "gemini-3-flash-preview"
   DEBUG: bool = False

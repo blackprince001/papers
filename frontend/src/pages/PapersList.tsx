@@ -323,7 +323,7 @@ export default function PapersList() {
 
             {viewMode === 'card' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-                {data.papers.map((paper) => (
+                {data.papers.map((paper, index) => (
                   <div
                     key={paper.id}
                     onClick={() => {
@@ -344,7 +344,7 @@ export default function PapersList() {
                     }}
                     className={`cursor-pointer ${selectedPaperIds.includes(paper.id) ? 'ring-2 ring-blue-500' : ''}`}
                   >
-                    <PaperCard paper={paper} onDelete={handleDeletePaper} />
+                    <PaperCard paper={paper} onDelete={handleDeletePaper} index={index} />
                   </div>
                 ))}
               </div>

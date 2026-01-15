@@ -8,6 +8,7 @@ from app.models.paper import Paper
 from app.services.embeddings import embedding_service
 from app.services.pdf_parser import pdf_parser
 from app.services.storage import storage_service
+from app.services.url_parser import url_parser
 
 
 class IngestionService:
@@ -23,12 +24,18 @@ class IngestionService:
 
   @staticmethod
   async def download_pdf(url: str) -> bytes:
+    """Download PDF from URL, handling various academic sites."""
+    # Use URL parser to get the actual PDF URL
+    parsed = url_parser.parse_url(url)
+    pdf_url = parsed.pdf_url or url
+    headers = parsed.headers or {}
+
     async with httpx.AsyncClient(timeout=60.0) as client:
-      response = await client.get(url, follow_redirects=True)
+      response = await client.get(pdf_url, follow_redirects=True, headers=headers)
       response.raise_for_status()
 
       content_type = response.headers.get("content-type", "").lower()
-      if "pdf" not in content_type and not url.endswith(".pdf"):
+      if "pdf" not in content_type and not pdf_url.endswith(".pdf"):
         if "html" in content_type:
           raise ValueError(f"URL does not point to a PDF: {url}")
 
@@ -36,17 +43,21 @@ class IngestionService:
 
   @staticmethod
   async def extract_doi_from_url(url: str) -> Optional[str]:
+    """Extract DOI or identifier from URL using the URL parser."""
     import re
 
+    # First try the URL parser for site-specific extraction
+    parsed = url_parser.parse_url(url)
+    if parsed.doi:
+      return parsed.doi
+    if parsed.arxiv_id:
+      return f"arxiv:{parsed.arxiv_id.split('v')[0]}"  # Remove version
+
+    # Fallback to generic DOI pattern
     doi_pattern = r"10\.\d+/[^\s/]+"
     match = re.search(doi_pattern, url)
     if match:
       return match.group(0)
-
-    arxiv_pattern = r"arxiv\.org/(?:abs|pdf)/(\d+\.\d+)"
-    match = re.search(arxiv_pattern, url)
-    if match:
-      return f"arxiv:{match.group(1)}"
 
     return None
 

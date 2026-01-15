@@ -33,7 +33,7 @@ class Paper(Base):
   url = Column(String, nullable=True)
   file_path = Column(String, nullable=True)
   vector_id = Column(String, nullable=True)
-  embedding = Column(Vector(384), nullable=True)
+  embedding = Column(Vector(1536), nullable=True)
   metadata_json = Column(JSON, default=dict)
   content_text = Column(Text, nullable=True)
   volume = Column(String, nullable=True)

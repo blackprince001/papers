@@ -242,6 +242,22 @@
   --color-yellow-2: #FFFF99;
   --color-yellow-1: rgb(255, 255, 153);
 
+  /* Coursly Card Background Colors - Warm, earthy palette */
+  --card-bg-olive: #e8e4d4;
+  --card-bg-beige: #f5f0e8;
+  --card-bg-blue: #dde8f0;
+  --card-bg-yellow: #f0e8d0;
+  --card-bg-pink: #f8e8e8;
+  --card-bg-green: #e0e8d8;
+  --card-bg-tan: #e8dcd0;
+
+  /* Coursly Icon Accent Colors */
+  --icon-brown: #8b7355;
+  --icon-olive: #6b7b5a;
+  --icon-blue: #5a7b8b;
+  --icon-yellow: #c4a855;
+  --icon-pink: #c49b9b;
+
   /* Legacy Color Aliases - Maintained for backward compatibility */
   --color-white: var(--color-grayscale-8);
   --color-black: var(--color-grayscale-56);

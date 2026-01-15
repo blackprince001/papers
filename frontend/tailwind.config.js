@@ -338,6 +338,24 @@ export default {
           blue: 'var(--anara-blue)',
           'blue-light': 'var(--anara-blue-light)',
         },
+        // Coursly card background colors - warm, earthy palette
+        cardBg: {
+          olive: 'var(--card-bg-olive)',
+          beige: 'var(--card-bg-beige)',
+          blue: 'var(--card-bg-blue)',
+          yellow: 'var(--card-bg-yellow)',
+          pink: 'var(--card-bg-pink)',
+          green: 'var(--card-bg-green)',
+          tan: 'var(--card-bg-tan)',
+        },
+        // Coursly icon accent colors
+        iconAccent: {
+          brown: 'var(--icon-brown)',
+          olive: 'var(--icon-olive)',
+          blue: 'var(--icon-blue)',
+          yellow: 'var(--icon-yellow)',
+          pink: 'var(--icon-pink)',
+        },
       },
       keyframes: {
         'accordion-collapse': {
