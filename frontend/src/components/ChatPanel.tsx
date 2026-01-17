@@ -5,7 +5,7 @@ import { MentionAutocomplete, type MentionItem } from './MentionAutocomplete';
 import { MarkdownMessage } from './MarkdownMessage';
 import { Button } from './Button';
 import { format } from 'date-fns';
-import { Send, Trash2, FileText, BookOpen, StickyNote, Loader2, AtSign, Maximize2, Minimize2, Sparkles, Plus, MoreVertical, Edit2, X } from 'lucide-react';
+import { Send, Trash2, FileText, BookOpen, StickyNote, Loader2, AtSign, Maximize2, Minimize2, Sparkles, Plus, MoreVertical, Edit2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { defaultPrompts } from '@/lib/constants/defaultPrompts';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -23,15 +23,24 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
   const [message, setMessage] = useState('');
   const [references, setReferences] = useState<Record<string, any>>({ notes: [], annotations: [], papers: [] });
   const [streamingContent, setStreamingContent] = useState('');
+  const [displayContent, setDisplayContent] = useState(''); // Smoothly revealed content
   const [isStreaming, setIsStreaming] = useState(false);
   const [showMentionHint, setShowMentionHint] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPromptsOpen, setIsPromptsOpen] = useState(false);
+  const [isSuggestedPromptsExpanded, setIsSuggestedPromptsExpanded] = useState(false);
   const [pendingUserMessage, setPendingUserMessage] = useState<{ content: string; references: Record<string, any> } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
   const containerRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+
+  // Track if we're actively streaming to prevent effect from clearing state
+  const isStreamingRef = useRef(false);
+  // Track the session that initiated streaming to handle new session creation
+  const streamingSessionIdRef = useRef<number | null>(null);
+  // Interval ref for smooth streaming display
+  const displayIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Fetch all sessions for this paper
   const { data: sessions = [], isLoading: sessionsLoading } = useQuery({
@@ -65,10 +74,22 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
   }, [latestSession, currentSessionId, initialLoading, sessions]);
 
   // Effect to reset transient state when session changes
+  // BUT only if we're not actively streaming (to handle new session creation during first message)
   useEffect(() => {
+    // Don't clear state if:
+    // 1. We're actively streaming
+    // 2. This session change is due to a new session being created during streaming
+    if (isStreamingRef.current)
+    {
+      // Update the streaming session ref to the new session
+      streamingSessionIdRef.current = currentSessionId;
+      return;
+    }
+
     // Reset streaming and pending states when session changes
     setPendingUserMessage(null);
     setStreamingContent('');
+    setDisplayContent('');
     setIsStreaming(false);
   }, [currentSessionId]);
 
@@ -131,7 +152,44 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
   const messages = currentSession?.messages || latestSession?.messages || [];
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streamingContent, pendingUserMessage]);
+  }, [messages, displayContent, pendingUserMessage]);
+
+  // Smooth streaming effect - gradually reveal content
+  useEffect(() => {
+    if (streamingContent.length > displayContent.length)
+    {
+      // Clear any existing interval
+      if (displayIntervalRef.current)
+      {
+        clearInterval(displayIntervalRef.current);
+      }
+
+      // Reveal characters gradually (50ms per character for fancy typing effect)
+      displayIntervalRef.current = setInterval(() => {
+        setDisplayContent(prev => {
+          if (prev.length >= streamingContent.length)
+          {
+            if (displayIntervalRef.current)
+            {
+              clearInterval(displayIntervalRef.current);
+              displayIntervalRef.current = null;
+            }
+            return prev;
+          }
+          // Reveal 1 character at a time for premium typing appearance
+          return streamingContent.slice(0, prev.length + 1);
+        });
+      }, 100);
+    }
+
+    return () => {
+      if (displayIntervalRef.current)
+      {
+        clearInterval(displayIntervalRef.current);
+        displayIntervalRef.current = null;
+      }
+    };
+  }, [streamingContent]);
 
   // Fullscreen handling
   const handleFullscreenToggle = useCallback(async () => {
@@ -176,6 +234,8 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
       setMessage('');
       setReferences({ notes: [], annotations: [], papers: [] });
       setIsStreaming(true);
+      isStreamingRef.current = true;
+      streamingSessionIdRef.current = currentSessionId;
       setStreamingContent('');
 
       // accumulators
@@ -227,8 +287,13 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
               });
             }
 
+            // Reset streaming refs first
+            isStreamingRef.current = false;
+            streamingSessionIdRef.current = null;
+
             // Reset UI states
             setStreamingContent('');
+            setDisplayContent('');
             setIsStreaming(false);
             setPendingUserMessage(null);
 
@@ -238,16 +303,25 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
             }
 
             // Background refresh to get real IDs and ensure consistency
-            if (finalSessionId)
-            {
-              queryClient.invalidateQueries({ queryKey: ['chat', 'session', finalSessionId] });
-            }
-            queryClient.invalidateQueries({ queryKey: ['chat', 'sessions', paperId] });
-            queryClient.invalidateQueries({ queryKey: ['chat', 'latest', paperId] });
+            // Use setTimeout to defer invalidation, preventing UI flicker
+            // The cache already has the messages, so this is just to sync with server
+            setTimeout(() => {
+              if (finalSessionId)
+              {
+                queryClient.invalidateQueries({ queryKey: ['chat', 'session', finalSessionId] });
+              }
+              queryClient.invalidateQueries({ queryKey: ['chat', 'sessions', paperId] });
+              queryClient.invalidateQueries({ queryKey: ['chat', 'latest', paperId] });
+            }, 100);
           } else if (chunk.type === 'error')
           {
+            // Reset streaming refs
+            isStreamingRef.current = false;
+            streamingSessionIdRef.current = null;
+
             // Handle error
             setStreamingContent('');
+            setDisplayContent('');
             setIsStreaming(false);
             setPendingUserMessage(null);
             toastError(`Error: ${chunk.error || 'Failed to get response'}`);
@@ -256,7 +330,12 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
         }
       } catch (error)
       {
+        // Reset streaming refs
+        isStreamingRef.current = false;
+        streamingSessionIdRef.current = null;
+
         setStreamingContent('');
+        setDisplayContent('');
         setIsStreaming(false);
         setPendingUserMessage(null);
         toastError(`Error: ${error instanceof Error ? error.message : 'Failed to send message'}`);
@@ -401,6 +480,7 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
                     // Reset transient state before switching
                     setPendingUserMessage(null);
                     setStreamingContent('');
+                    setDisplayContent('');
                     setIsStreaming(false);
                     // Invalidate queries first to ensure fresh data
                     queryClient.invalidateQueries({ queryKey: ['chat', 'session', id] });
@@ -691,19 +771,43 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
                 {isStreaming && (
                   <div className="flex justify-start animate-in fade-in slide-in-from-bottom-2 duration-300">
                     <div className="rounded-lg px-4 py-3 bg-gray-100 text-gray-900 text-sm max-w-[90%] sm:max-w-[85%]">
-                      {streamingContent ? (
-                        <MarkdownMessage content={streamingContent} />
+                      {displayContent ? (
+                        <MarkdownMessage content={displayContent} />
                       ) : (
-                        <div className="flex items-center gap-2 text-gray-500">
-                          <div className="flex gap-1">
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <div className="space-y-2.5 w-72">
+                          {/* Word-like skeleton - mimics actual text layout */}
+                          <div className="flex flex-wrap gap-1.5">
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-12" />
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-16" />
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-8" />
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-20" />
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-14" />
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-10" />
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-24" />
                           </div>
-                          <span className="text-xs">Thinking...</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-20" />
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-8" />
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-16" />
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-12" />
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-18" />
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-10" />
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-14" />
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-20" />
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-8" />
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-12" />
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-16" />
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-10" />
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-16" />
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-12" />
+                          </div>
                         </div>
                       )}
-                      {streamingContent && (
+                      {displayContent && (
                         <div className="text-xs mt-2 text-gray-500 flex items-center gap-1">
                           <Loader2 className="w-3 h-3 animate-spin" />
                           <span>Typing...</span>
@@ -713,15 +817,25 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
                   </div>
                 )}
 
-                {/* Show default prompts section when messages exist and not streaming */}
+                {/* Show collapsible prompts section when messages exist and not streaming */}
                 {currentSession && messages.length > 0 && !isStreaming && !pendingUserMessage && (
-                  <div className="mt-6 pt-6 border-t border-gray-200">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Suggested Prompts</h4>
+                  <div className="mt-6 pt-4 border-t border-gray-200">
+                    <button
+                      onClick={() => setIsSuggestedPromptsExpanded(!isSuggestedPromptsExpanded)}
+                      className="w-full flex items-center justify-between py-2 px-1 hover:bg-gray-50 rounded-lg transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
                         <Sparkles className="w-3.5 h-3.5 text-gray-400" />
+                        <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Suggested Prompts</h4>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {isSuggestedPromptsExpanded ? (
+                        <ChevronUp className="w-4 h-4 text-gray-400" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-gray-400" />
+                      )}
+                    </button>
+                    {isSuggestedPromptsExpanded && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
                         {defaultPrompts.map((p) => (
                           <button
                             key={p.id}
@@ -742,7 +856,7 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
                           </button>
                         ))}
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
               </>

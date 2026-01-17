@@ -198,6 +198,7 @@ export default function PaperDetail() {
       papersApi.updateReadingStatus(paperId, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['paper', paperId] });
+      queryClient.invalidateQueries({ queryKey: ['papers'] });
       queryClient.invalidateQueries({ queryKey: ['statistics'] });
     },
   });
@@ -226,7 +227,8 @@ export default function PaperDetail() {
   const handleTitleUpdate = (newTitle: string) => {
     // Update tab title
     const currentTab = tabs.find(tab => tab.paperId === paperId);
-    if (currentTab) {
+    if (currentTab)
+    {
       const truncatedTitle = newTitle.length > 30 ? newTitle.substring(0, 30) + '...' : newTitle;
       updateTab(currentTab.id, { title: truncatedTitle });
     }
@@ -237,16 +239,17 @@ export default function PaperDetail() {
     onSuccess: () => {
       // Find and remove the tab for this paper
       const currentTab = tabs.find(tab => tab.paperId === paperId);
-      if (currentTab) {
+      if (currentTab)
+      {
         removeTab(currentTab.id);
       }
-      
+
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['papers'] });
-      
+
       // Navigate to papers list
       navigate('/');
-      
+
       // Show success toast
       toastSuccess('Paper deleted successfully');
     },
@@ -257,7 +260,7 @@ export default function PaperDetail() {
 
   const handleDeletePaper = () => {
     if (!paper) return;
-    
+
     confirm(
       'Delete Paper',
       `Are you sure you want to delete "${paper.title}"? This action cannot be undone.`,

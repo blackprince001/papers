@@ -12,7 +12,7 @@ export function useReadingSession(paperId: number, isActive: boolean, currentPag
   const isVisibleRef = useRef<boolean>(true);
   const accumulatedPausedTimeRef = useRef<number>(0); // Total paused time in ms
   const pauseStartTimeRef = useRef<Date | null>(null);
-  
+
   // Intervals and timeouts
   const saveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pageUpdateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -42,13 +42,15 @@ export function useReadingSession(paperId: number, isActive: boolean, currentPag
     mutationFn: ({ pagesViewed, lastPage }: { pagesViewed: number, lastPage: number }) => {
       const now = new Date();
       let duration = 0;
-      
-      if (sessionStartTimeRef.current) {
+
+      if (sessionStartTimeRef.current)
+      {
         // Calculate active reading time (excluding paused periods)
         const totalElapsed = now.getTime() - sessionStartTimeRef.current.getTime();
         let totalPaused = accumulatedPausedTimeRef.current;
         // If currently paused, add the current pause duration
-        if (pauseStartTimeRef.current) {
+        if (pauseStartTimeRef.current)
+        {
           totalPaused += now.getTime() - pauseStartTimeRef.current.getTime();
         }
         duration = Math.floor((totalElapsed - totalPaused) / 1000 / 60); // Convert to minutes
@@ -62,6 +64,7 @@ export function useReadingSession(paperId: number, isActive: boolean, currentPag
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['paper', paperId] });
+      queryClient.invalidateQueries({ queryKey: ['papers'] });
       queryClient.invalidateQueries({ queryKey: ['statistics'] });
       sessionStartRef.current = null;
       sessionStartTimeRef.current = null;
@@ -87,13 +90,17 @@ export function useReadingSession(paperId: number, isActive: boolean, currentPag
       isVisibleRef.current = isVisible;
 
       // If we have an active session
-      if (sessionStartTimeRef.current && isTracking) {
-        if (!isVisible && wasVisible) {
+      if (sessionStartTimeRef.current && isTracking)
+      {
+        if (!isVisible && wasVisible)
+        {
           // Tab became hidden - start pause timer
           pauseStartTimeRef.current = new Date();
-        } else if (isVisible && !wasVisible) {
+        } else if (isVisible && !wasVisible)
+        {
           // Tab became visible - accumulate paused time
-          if (pauseStartTimeRef.current) {
+          if (pauseStartTimeRef.current)
+          {
             const pausedDuration = new Date().getTime() - pauseStartTimeRef.current.getTime();
             accumulatedPausedTimeRef.current += pausedDuration;
             pauseStartTimeRef.current = null;
@@ -114,26 +121,29 @@ export function useReadingSession(paperId: number, isActive: boolean, currentPag
   // Only react to actual paperId changes, not to isActive changes
   useEffect(() => {
     const previousPaperId = prevPaperIdRef.current;
-    
+
     // If paperId changed and we had an active session for the previous paper
-    if (previousPaperId !== null && previousPaperId !== paperId && sessionStartTimeRef.current) {
+    if (previousPaperId !== null && previousPaperId !== paperId && sessionStartTimeRef.current)
+    {
       // End session for the previous paper
       const pagesViewed = pagesViewedRef.current.size;
       const lastPage = lastPageRef.current;
       const sessionPaperId = activeSessionPaperIdRef.current || previousPaperId;
-      
+
       // Calculate duration
       const now = new Date();
       let duration = 0;
-      if (sessionStartTimeRef.current) {
+      if (sessionStartTimeRef.current)
+      {
         const totalElapsed = now.getTime() - sessionStartTimeRef.current.getTime();
         let totalPaused = accumulatedPausedTimeRef.current;
-        if (pauseStartTimeRef.current) {
+        if (pauseStartTimeRef.current)
+        {
           totalPaused += now.getTime() - pauseStartTimeRef.current.getTime();
         }
         duration = Math.floor((totalElapsed - totalPaused) / 1000 / 60);
       }
-      
+
       // End session for the previous paper (fire and forget)
       papersApi.endReadingSession(sessionPaperId, {
         duration_minutes: Math.max(0, duration),
@@ -142,7 +152,7 @@ export function useReadingSession(paperId: number, isActive: boolean, currentPag
       }).catch(() => {
         // Silently fail on error
       });
-      
+
       // Reset session state immediately
       sessionStartRef.current = null;
       sessionStartTimeRef.current = null;
@@ -152,21 +162,24 @@ export function useReadingSession(paperId: number, isActive: boolean, currentPag
       pauseStartTimeRef.current = null;
       pagesViewedRef.current.clear();
       setIsTracking(false);
-      
+
       // Invalidate queries for the previous paper (async, won't block)
       queryClient.invalidateQueries({ queryKey: ['paper', sessionPaperId] });
+      queryClient.invalidateQueries({ queryKey: ['papers'] });
       queryClient.invalidateQueries({ queryKey: ['statistics'] });
     }
-    
+
     prevPaperIdRef.current = paperId;
   }, [paperId, queryClient]);
 
   // Start session when PDF becomes active
   // Only start if paperId is valid and we don't already have a session
   useEffect(() => {
-    if (isActive && !sessionStartTimeRef.current && paperId && paperId > 0) {
+    if (isActive && !sessionStartTimeRef.current && paperId && paperId > 0)
+    {
       // Only start if we don't have an active session for this paper
-      if (activeSessionPaperIdRef.current !== paperId) {
+      if (activeSessionPaperIdRef.current !== paperId)
+      {
         startSessionMutation.mutate();
       }
     }
@@ -175,13 +188,15 @@ export function useReadingSession(paperId: number, isActive: boolean, currentPag
 
   // Track page changes - add to unique pages set
   useEffect(() => {
-    if (isActive && sessionStartTimeRef.current && currentPage !== lastPageRef.current) {
+    if (isActive && sessionStartTimeRef.current && currentPage !== lastPageRef.current)
+    {
       // Add current page to unique pages viewed
       pagesViewedRef.current.add(currentPage);
       lastPageRef.current = currentPage;
 
       // Debounced update of last_read_page (every 30 seconds)
-      if (pageUpdateTimeoutRef.current) {
+      if (pageUpdateTimeoutRef.current)
+      {
         clearTimeout(pageUpdateTimeoutRef.current);
       }
 
@@ -193,7 +208,8 @@ export function useReadingSession(paperId: number, isActive: boolean, currentPag
     }
 
     return () => {
-      if (pageUpdateTimeoutRef.current) {
+      if (pageUpdateTimeoutRef.current)
+      {
         clearTimeout(pageUpdateTimeoutRef.current);
       }
     };
@@ -204,7 +220,8 @@ export function useReadingSession(paperId: number, isActive: boolean, currentPag
   // This could be enhanced with a dedicated update endpoint to save progress
   // without ending/restarting the session
   useEffect(() => {
-    if (isActive && sessionStartTimeRef.current) {
+    if (isActive && sessionStartTimeRef.current)
+    {
       saveIntervalRef.current = setInterval(() => {
         // Periodic checkpoint: we track the state but don't save yet
         // The session will be properly saved when it ends
@@ -213,12 +230,15 @@ export function useReadingSession(paperId: number, isActive: boolean, currentPag
       }, 60000); // 60 seconds
 
       return () => {
-        if (saveIntervalRef.current) {
+        if (saveIntervalRef.current)
+        {
           clearInterval(saveIntervalRef.current);
         }
       };
-    } else {
-      if (saveIntervalRef.current) {
+    } else
+    {
+      if (saveIntervalRef.current)
+      {
         clearInterval(saveIntervalRef.current);
       }
     }
@@ -227,7 +247,8 @@ export function useReadingSession(paperId: number, isActive: boolean, currentPag
   // End session when PDF becomes inactive
   // Only end if we actually have an active session for this paper
   useEffect(() => {
-    if (!isActive && sessionStartTimeRef.current && activeSessionPaperIdRef.current === paperId) {
+    if (!isActive && sessionStartTimeRef.current && activeSessionPaperIdRef.current === paperId)
+    {
       const pagesViewed = pagesViewedRef.current.size;
       const lastPage = lastPageRef.current;
       endSessionMutation.mutate({ pagesViewed, lastPage });
@@ -244,23 +265,26 @@ export function useReadingSession(paperId: number, isActive: boolean, currentPag
   // Cleanup on unmount - end session
   useEffect(() => {
     return () => {
-      if (sessionStartTimeRef.current) {
+      if (sessionStartTimeRef.current)
+      {
         const pagesViewed = pagesViewedRef.current.size;
         const lastPage = lastPageRef.current;
         const sessionPaperId = activeSessionPaperIdRef.current || paperId;
-        
+
         // Calculate duration
         const now = new Date();
         let duration = 0;
-        if (sessionStartTimeRef.current) {
+        if (sessionStartTimeRef.current)
+        {
           const totalElapsed = now.getTime() - sessionStartTimeRef.current.getTime();
           let totalPaused = accumulatedPausedTimeRef.current;
-          if (pauseStartTimeRef.current) {
+          if (pauseStartTimeRef.current)
+          {
             totalPaused += now.getTime() - pauseStartTimeRef.current.getTime();
           }
           duration = Math.floor((totalElapsed - totalPaused) / 1000 / 60);
         }
-        
+
         // End session directly (don't use mutation to avoid dependency issues)
         papersApi.endReadingSession(sessionPaperId, {
           duration_minutes: Math.max(0, duration),
@@ -269,15 +293,18 @@ export function useReadingSession(paperId: number, isActive: boolean, currentPag
         }).catch(() => {
           // Silently fail - cleanup shouldn't block unmount
         });
-        
+
         // Invalidate queries
         queryClient.invalidateQueries({ queryKey: ['paper', sessionPaperId] });
+        queryClient.invalidateQueries({ queryKey: ['papers'] });
         queryClient.invalidateQueries({ queryKey: ['statistics'] });
       }
-      if (saveIntervalRef.current) {
+      if (saveIntervalRef.current)
+      {
         clearInterval(saveIntervalRef.current);
       }
-      if (pageUpdateTimeoutRef.current) {
+      if (pageUpdateTimeoutRef.current)
+      {
         clearTimeout(pageUpdateTimeoutRef.current);
       }
     };

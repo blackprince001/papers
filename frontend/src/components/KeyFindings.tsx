@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Lightbulb, RefreshCw, Edit2, Save, X } from 'lucide-react';
+import { Lightbulb, RefreshCw, Edit2, Save, X, AlertCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -335,7 +335,32 @@ export function KeyFindings({ paperId }: KeyFindingsProps) {
           </Button>
         </div>
       )}
+      {generateMutation.isError && (
+        <div className="flex flex-col items-center justify-center py-6 px-4 bg-red-50 rounded-lg border border-red-200">
+          <AlertCircle className="h-10 w-10 text-red-400 mb-3" />
+          <p className="text-sm font-medium text-red-800 mb-1">Failed to extract findings</p>
+          <p className="text-xs text-red-600 mb-4 text-center max-w-xs">
+            {generateMutation.error?.message || 'Unable to reach the server. Please try again.'}
+          </p>
+          <Button
+            onClick={() => generateMutation.mutate()}
+            disabled={generateMutation.isPending}
+            size="sm"
+          >
+            {generateMutation.isPending ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Retrying...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </>
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
-

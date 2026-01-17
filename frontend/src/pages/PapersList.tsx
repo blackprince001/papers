@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { SearchInput } from '@/components/SearchInput';
@@ -155,6 +155,35 @@ export default function PapersList() {
     totalPages,
     paginationItemsToDisplay: 5,
   });
+
+  // Sort papers: in_progress first, then by last_read_at (most recent first)
+  const sortedPapers = useMemo(() => {
+    if (!data?.papers) return [];
+
+    const statusPriority: Record<string, number> = {
+      'in_progress': 0,
+      'not_started': 1,
+      'read': 2,
+      'archived': 3,
+    };
+
+    return [...data.papers].sort((a, b) => {
+      // First, sort by reading status (in_progress first)
+      const statusA = a.reading_status || 'not_started';
+      const statusB = b.reading_status || 'not_started';
+      const priorityDiff = (statusPriority[statusA] ?? 99) - (statusPriority[statusB] ?? 99);
+
+      if (priorityDiff !== 0) return priorityDiff;
+
+      // Then by last_read_at (most recent first)
+      const dateA = a.last_read_at ? new Date(a.last_read_at).getTime() : 0;
+      const dateB = b.last_read_at ? new Date(b.last_read_at).getTime() : 0;
+      if (dateA !== dateB) return dateB - dateA;
+
+      // Finally by date_added (newest first)
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }, [data?.papers]);
 
   if (isLoading)
   {
@@ -323,7 +352,7 @@ export default function PapersList() {
 
             {viewMode === 'card' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-                {data.papers.map((paper, index) => (
+                {sortedPapers.map((paper, index) => (
                   <div
                     key={paper.id}
                     onClick={() => {
@@ -351,7 +380,7 @@ export default function PapersList() {
             ) : (
               <div className="mb-6 sm:mb-8">
                 <PaperTable
-                  papers={data.papers}
+                  papers={sortedPapers}
                   onDelete={handleDeletePaper}
                   onSort={(field: string) => {
                     const newSortBy = field as 'date_added' | 'viewed' | 'title' | 'authors';
