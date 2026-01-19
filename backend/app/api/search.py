@@ -1,3 +1,5 @@
+import math
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +18,13 @@ from app.schemas.search import (
 )
 from app.services.embeddings import embedding_service
 from app.services.search_service import search_service
+
+
+def _sanitize_similarity(value: float) -> float:
+  """Sanitize similarity value to ensure JSON compliance."""
+  if value is None or math.isnan(value) or math.isinf(value):
+    return 0.0
+  return float(value)
 
 router = APIRouter()
 
@@ -112,7 +121,7 @@ async def semantic_search(
   results = [
     SearchResult(
       paper=PaperSchema.model_validate(paper),
-      similarity=float(similarity_scores.get(paper.id, 0.0)),
+      similarity=_sanitize_similarity(similarity_scores.get(paper.id, 0.0)),
     )
     for paper in filtered_papers
     if paper.id in similarity_scores
