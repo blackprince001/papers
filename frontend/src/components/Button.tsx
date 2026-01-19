@@ -22,7 +22,7 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const sizes = {
-    sm: 'h-11 px-4 text-sm',        // 44px height - min touch target
+    sm: 'h-8 px-3 text-xs',        // 32px height - compact
     md: 'h-11 px-4 py-2 text-base', // 44px height
     lg: 'h-12 px-8 text-lg',        // 48px height
     icon: 'size-11',                // 44x44px

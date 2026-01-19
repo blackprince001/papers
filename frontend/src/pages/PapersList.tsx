@@ -43,6 +43,7 @@ export default function PapersList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [selectedPaperIds, setSelectedPaperIds] = useState<number[]>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [filters, setFilters] = useState<PaperListFilters>({
     sort_by: 'date_added',
     sort_order: 'desc',
@@ -267,13 +268,18 @@ export default function PapersList() {
                 </TabsList>
               </Tabs>
               <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <PaperMultiSelect
+                  papers={data.papers}
+                  selectedIds={selectedPaperIds}
+                  onSelectionChange={setSelectedPaperIds}
+                  isSelectionMode={isSelectionMode}
+                  onToggleSelectionMode={(enabled) => {
+                    setIsSelectionMode(enabled);
+                    if (!enabled) setSelectedPaperIds([]);
+                  }}
+                />
                 {selectedPaperIds.length > 0 && (
                   <>
-                    <PaperMultiSelect
-                      papers={data.papers}
-                      selectedIds={selectedPaperIds}
-                      onSelectionChange={setSelectedPaperIds}
-                    />
                     <Button
                       variant="outline"
                       size="sm"
@@ -356,7 +362,7 @@ export default function PapersList() {
                   <div
                     key={paper.id}
                     onClick={() => {
-                      if (selectedPaperIds.length > 0)
+                      if (isSelectionMode)
                       {
                         // In selection mode, toggle selection instead of navigating
                         if (selectedPaperIds.includes(paper.id))
@@ -402,6 +408,17 @@ export default function PapersList() {
                   }}
                   sortBy={filters.sort_by}
                   sortOrder={filters.sort_order}
+                  inSelectionMode={isSelectionMode}
+                  selectedIds={selectedPaperIds}
+                  onSelect={(id) => {
+                    if (selectedPaperIds.includes(id))
+                    {
+                      setSelectedPaperIds(selectedPaperIds.filter(pId => pId !== id));
+                    } else
+                    {
+                      setSelectedPaperIds([...selectedPaperIds, id]);
+                    }
+                  }}
                 />
               </div>
             )}

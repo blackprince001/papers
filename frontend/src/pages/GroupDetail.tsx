@@ -4,14 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Folder } from 'lucide-react';
 import { groupsApi } from '@/lib/api/groups';
 import { format } from 'date-fns';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { PaperTable } from '@/components/PaperTable';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +24,7 @@ export default function GroupDetail() {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [renameGroupName, setRenameGroupName] = useState('');
   const [selectedPaperIds, setSelectedPaperIds] = useState<number[]>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch the specific group
@@ -195,31 +189,34 @@ export default function GroupDetail() {
         {/* Papers Section - Only show if papers exist */}
         {displayGroup.papers && displayGroup.papers.length > 0 && (
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
               <h2 className="text-xl font-semibold text-anara-light-text">Papers</h2>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <PaperMultiSelect
+                  papers={displayGroup.papers}
+                  selectedIds={selectedPaperIds}
+                  onSelectionChange={setSelectedPaperIds}
+                  isSelectionMode={isSelectionMode}
+                  onToggleSelectionMode={(enabled) => {
+                    setIsSelectionMode(enabled);
+                    if (!enabled) setSelectedPaperIds([]);
+                  }}
+                />
                 {selectedPaperIds.length > 0 && (
-                  <>
-                    <PaperMultiSelect
-                      papers={displayGroup.papers}
-                      selectedIds={selectedPaperIds}
-                      onSelectionChange={setSelectedPaperIds}
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center gap-2"
-                      onClick={() => navigate('/export', {
-                        state: {
-                          paperIds: selectedPaperIds,
-                          returnPath: `/groups/${groupId}`,
-                          context: 'Groups'
-                        }
-                      })}
-                    >
-                      Export {selectedPaperIds.length}
-                    </Button>
-                  </>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                    onClick={() => navigate('/export', {
+                      state: {
+                        paperIds: selectedPaperIds,
+                        returnPath: `/groups/${groupId}`,
+                        context: 'Groups'
+                      }
+                    })}
+                  >
+                    Export {selectedPaperIds.length}
+                  </Button>
                 )}
                 {selectedPaperIds.length === 0 && (
                   <Button
@@ -239,50 +236,21 @@ export default function GroupDetail() {
                 )}
               </div>
             </div>
-            <div className="overflow-hidden rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Paper Title</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>DOI</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {displayGroup.papers.map((paper) => (
-                    <TableRow
-                      key={paper.id}
-                      className={`cursor-pointer hover:opacity-80 ${selectedPaperIds.includes(paper.id) ? 'ring-2 ring-blue-500' : ''}`}
-                      onClick={() => {
-                        if (selectedPaperIds.length > 0)
-                        {
-                          // In selection mode, toggle selection instead of navigating
-                          if (selectedPaperIds.includes(paper.id))
-                          {
-                            setSelectedPaperIds(selectedPaperIds.filter(id => id !== paper.id));
-                          } else
-                          {
-                            setSelectedPaperIds([...selectedPaperIds, paper.id]);
-                          }
-                        } else
-                        {
-                          navigate(`/papers/${paper.id}`);
-                        }
-                      }}
-                    >
-                      <TableCell className="font-medium">
-                        {paper.title}
-                      </TableCell>
-                      <TableCell className="text-sm text-anara-light-text-muted">
-                        {format(new Date(paper.created_at), 'MMM d, yyyy')}
-                      </TableCell>
-                      <TableCell className="text-sm text-anara-light-text-muted">
-                        {paper.doi || '—'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <div className="mb-6">
+              <PaperTable
+                papers={displayGroup.papers}
+                inSelectionMode={isSelectionMode}
+                selectedIds={selectedPaperIds}
+                onSelect={(id) => {
+                  if (selectedPaperIds.includes(id))
+                  {
+                    setSelectedPaperIds(selectedPaperIds.filter(pId => pId !== id));
+                  } else
+                  {
+                    setSelectedPaperIds([...selectedPaperIds, id]);
+                  }
+                }}
+              />
             </div>
           </div>
         )}

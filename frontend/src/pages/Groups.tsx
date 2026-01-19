@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
 import * as React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
@@ -40,7 +41,7 @@ import {
   syncDataLoaderFeature,
   type TreeState,
 } from '@headless-tree/core';
-import { FolderIcon, FolderOpenIcon, SearchIcon } from 'lucide-react';
+import { FolderIcon, FolderOpenIcon, SearchIcon, GripVertical, ChevronRight, ChevronDown, CheckSquare, Download } from 'lucide-react';
 import { groupsApi } from '@/lib/api/groups';
 import { papersApi } from '@/lib/api/papers';
 import { Button } from '@/components/Button';
@@ -56,9 +57,11 @@ import { Input } from '@/components/ui/input';
 import { Tree, TreeItem, TreeItemLabel } from '@/components/ui/tree';
 import { format } from 'date-fns';
 import type { Group, Paper } from '@/lib/api/groups';
-import { toastError } from '@/lib/utils/toast';
+import { toastError, toastSuccess } from '@/lib/utils/toast';
 import { useConfirmDialog } from '@/components/ConfirmDialog';
 import { PaperMultiSelect } from '@/components/PaperMultiSelect';
+import { MovePapersDialog } from '@/components/MovePapersDialog';
+
 
 type ViewMode = 'table' | 'tree';
 
@@ -96,23 +99,36 @@ function DraggablePaperRow({ paper, isSelected, onSelect, inSelectionMode }: Dra
     <TableRow
       ref={setNodeRef}
       style={style}
-      className={`${isDragging ? 'bg-accent/50' : ''} ${isSelected ? 'ring-2 ring-blue-500' : ''} ${inSelectionMode ? 'cursor-pointer' : ''}`}
+      className={`${isDragging ? 'bg-accent/50' : ''} ${inSelectionMode ? 'cursor-pointer' : ''}`}
       onClick={handleRowClick}
     >
-      <TableCell className="font-medium">
+      <TableCell className="font-medium p-2 sm:p-4">
         <div className="flex items-center gap-3">
           <div
             {...attributes}
             {...listeners}
-            className="w-3 h-3 rounded-sm bg-gray-300 cursor-grab active:cursor-grabbing flex-shrink-0"
+            className="cursor-grab active:cursor-grabbing flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
             onClick={(e) => e.stopPropagation()}
-          />
+          >
+            <GripVertical className="w-4 h-4" />
+          </div>
+          {inSelectionMode && (
+            <div
+              className={cn(
+                "w-4 h-4 rounded border flex items-center justify-center transition-colors mr-2 flex-shrink-0",
+                isSelected ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground"
+              )}
+            >
+              {isSelected && <CheckSquare className="w-3 h-3" />}
+            </div>
+          )}
           {inSelectionMode ? (
-            <span className="text-sm">{paper.title}</span>
+            <span className="text-sm truncate max-w-[150px] sm:max-w-[400px]" title={paper.title}>{paper.title}</span>
           ) : (
             <Link
               to={`/papers/${paper.id}`}
-              className="hover:underline text-sm"
+              className="hover:underline text-sm truncate max-w-[150px] sm:max-w-[400px]"
+              title={paper.title}
               onClick={(e) => e.stopPropagation()}
             >
               {paper.title}
@@ -120,8 +136,8 @@ function DraggablePaperRow({ paper, isSelected, onSelect, inSelectionMode }: Dra
           )}
         </div>
       </TableCell>
-      <TableCell className="text-sm text-muted-foreground">{format(new Date(paper.created_at), 'MMM d, yyyy')}</TableCell>
-      <TableCell className="text-sm text-muted-foreground">{paper.doi || '—'}</TableCell>
+      <TableCell className="text-sm text-muted-foreground truncate max-w-[80px] sm:max-w-[120px] p-2 sm:p-4">{format(new Date(paper.created_at), 'MMM d, yyyy')}</TableCell>
+      <TableCell className="text-sm text-muted-foreground truncate max-w-[80px] sm:max-w-[150px] p-2 sm:p-4">{paper.doi || '—'}</TableCell>
     </TableRow>
   );
 }
@@ -133,35 +149,82 @@ interface GroupTableSectionProps {
   onCreateSubGroup?: (parentId: number) => void;
   onRenameGroup?: (group: Group) => void;
   onDeleteGroup?: (group: Group) => void;
+  onMovePapers?: (paperIds: number[]) => void;
 }
 
 interface UngroupedPapersSectionProps {
   ungroupedPapers: Paper[];
+  onMovePapers?: (paperIds: number[]) => void;
 }
 
-function UngroupedPapersSection({ ungroupedPapers }: UngroupedPapersSectionProps) {
+function UngroupedPapersSection({ ungroupedPapers, onMovePapers }: UngroupedPapersSectionProps) {
   const navigate = useNavigate();
   const [selectedPaperIds, setSelectedPaperIds] = useState<number[]>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+
+  // Auto-enable selection mode if papers are selected
+  useEffect(() => {
+    if (selectedPaperIds.length > 0 && !isSelectionMode)
+    {
+      setIsSelectionMode(true);
+    }
+  }, [selectedPaperIds.length]);
+
+
 
   return (
-    <div className="mb-8">
-      <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 justify-between">
+    <div className="mb-4">
+      <h2 className="text-lg font-semibold mb-0 flex items-center gap-2 justify-between">
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded-full bg-gray-400" />
           Ungrouped Papers ({ungroupedPapers.length})
         </div>
         <div className="flex items-center gap-2">
-          {selectedPaperIds.length > 0 && (
+          {!isSelectionMode && (
             <>
-              <PaperMultiSelect
-                papers={ungroupedPapers}
-                selectedIds={selectedPaperIds}
-                onSelectionChange={setSelectedPaperIds}
-              />
               <Button
                 variant="outline"
                 size="sm"
-                className="flex items-center gap-2 text-xs"
+                className="gap-2"
+                onClick={() => setIsSelectionMode(true)}
+              >
+                <CheckSquare size={14} />
+                Select
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => navigate('/export', {
+                  state: {
+                    paperIds: ungroupedPapers.map(p => p.id),
+                    returnPath: '/groups',
+                    context: 'Groups'
+                  }
+                })}
+              >
+                <Download size={14} />
+                Export
+              </Button>
+            </>
+          )}
+        </div>
+      </h2>
+      {isSelectionMode && (
+        <div className="flex items-center justify-end gap-2 mb-2">
+          <PaperMultiSelect
+            papers={ungroupedPapers}
+            selectedIds={selectedPaperIds}
+            onSelectionChange={setSelectedPaperIds}
+            isSelectionMode={isSelectionMode}
+            onToggleSelectionMode={setIsSelectionMode}
+          />
+          {selectedPaperIds.length > 0 && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
                 onClick={() => navigate('/export', {
                   state: {
                     paperIds: selectedPaperIds,
@@ -172,26 +235,20 @@ function UngroupedPapersSection({ ungroupedPapers }: UngroupedPapersSectionProps
               >
                 Export {selectedPaperIds.length}
               </Button>
+              {onMovePapers && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                  onClick={() => onMovePapers(selectedPaperIds)}
+                >
+                  Move {selectedPaperIds.length}
+                </Button>
+              )}
             </>
           )}
-          {selectedPaperIds.length === 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2 text-xs"
-              onClick={() => navigate('/export', {
-                state: {
-                  paperIds: ungroupedPapers.map(p => p.id),
-                  returnPath: '/groups',
-                  context: 'Groups'
-                }
-              })}
-            >
-              Export All
-            </Button>
-          )}
         </div>
-      </h2>
+      )}
       <div className="overflow-hidden rounded-md border bg-background">
         <Table>
           <TableHeader>
@@ -207,7 +264,7 @@ function UngroupedPapersSection({ ungroupedPapers }: UngroupedPapersSectionProps
                 key={paper.id}
                 paper={paper}
                 isSelected={selectedPaperIds.includes(paper.id)}
-                inSelectionMode={selectedPaperIds.length > 0}
+                inSelectionMode={isSelectionMode}
                 onSelect={(paperId) => {
                   if (selectedPaperIds.includes(paperId))
                   {
@@ -226,9 +283,20 @@ function UngroupedPapersSection({ ungroupedPapers }: UngroupedPapersSectionProps
   );
 }
 
-function GroupTableSection({ group, allGroups, level = 0, onCreateSubGroup, onDeleteGroup, onRenameGroup }: GroupTableSectionProps) {
+function GroupTableSection({ group, allGroups, level = 0, onCreateSubGroup, onDeleteGroup, onRenameGroup, onMovePapers }: GroupTableSectionProps) {
   const navigate = useNavigate();
   const [selectedPaperIds, setSelectedPaperIds] = useState<number[]>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+
+  // Auto-enable selection mode if papers are selected
+  useEffect(() => {
+    if (selectedPaperIds.length > 0 && !isSelectionMode)
+    {
+      setIsSelectionMode(true);
+    }
+  }, [selectedPaperIds.length]);
+
+
 
   // Build breadcrumb path
   const buildBreadcrumb = (groupId: number, groups: Group[]): Group[] => {
@@ -253,37 +321,77 @@ function GroupTableSection({ group, allGroups, level = 0, onCreateSubGroup, onDe
   };
 
   const breadcrumb = buildBreadcrumb(group.id, allGroups);
-  const indentClass = level > 0 ? `ml-${level * 6}` : '';
+  // Default expanded if has papers
+  const [isExpanded, setIsExpanded] = useState((group.papers && group.papers.length > 0) || false);
 
   // Get direct children of this group (not nested children)
   const directChildren = allGroups.filter((g) => g.parent_id === group.id);
 
   return (
-    <div className={`mb-8 ${indentClass}`}>
-      <h2 className={`text-lg font-semibold mb-4 flex items-center gap-2 justify-between ${level > 0 ? 'text-base' : ''}`}>
+    <div className="mb-4" style={{ marginLeft: `${level * 1.5}rem` }}>
+      <h2 className={`text-lg font-semibold mb-0 flex items-center gap-2 justify-between ${level > 0 ? 'text-base' : ''}`}>
         <div className="flex items-center gap-2">
-          {breadcrumb.length > 0 && (
-            <span className="text-sm text-muted-foreground">
-              {breadcrumb.map((g, idx) => (
-                <span key={g.id}>
-                  {g.name}
-                  {idx < breadcrumb.length - 1 && ' > '}
-                </span>
-              ))}
-              {' > '}
-            </span>
-          )}
-          {group.name} ({group.papers?.length || 0})
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-1 h-auto text-muted-foreground hover:text-foreground"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </Button>
+
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
+            {breadcrumb.length > 0 && (
+              <span className="text-sm text-muted-foreground hidden sm:inline">
+                {breadcrumb.map((g, idx) => (
+                  <span key={g.id}>
+                    {g.name}
+                    {idx < breadcrumb.length - 1 && ' > '}
+                  </span>
+                ))}
+                {' > '}
+              </span>
+            )}
+            {group.name} ({group.papers?.length || 0})
+          </div>
         </div>
         <div className="flex items-center gap-2">
+          {!isSelectionMode && group.papers && group.papers.length > 0 && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 hidden sm:flex"
+                onClick={() => setIsSelectionMode(true)}
+              >
+                <CheckSquare size={14} />
+                Select
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 hidden sm:flex"
+                onClick={() => navigate('/export', {
+                  state: {
+                    paperIds: group.papers ? group.papers.map(p => p.id) : [],
+                    returnPath: '/groups',
+                    context: 'Groups'
+                  }
+                })}
+              >
+                <Download size={14} />
+                Export
+              </Button>
+            </>
+          )}
           {onCreateSubGroup && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => onCreateSubGroup(group.id)}
-              className="text-xs"
+              className="text-xs hidden sm:flex"
             >
-              Create Sub-Group
+              Sub-Group
             </Button>
           )}
           {onRenameGroup && (
@@ -308,96 +416,101 @@ function GroupTableSection({ group, allGroups, level = 0, onCreateSubGroup, onDe
           )}
         </div>
       </h2>
-      {group.papers && group.papers.length > 0 ? (
+
+      {isExpanded && (
         <>
-          <div className="flex items-center justify-end gap-2 mb-2">
-            {selectedPaperIds.length > 0 && (
-              <>
-                <PaperMultiSelect
-                  papers={group.papers}
-                  selectedIds={selectedPaperIds}
-                  onSelectionChange={setSelectedPaperIds}
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-2 text-xs"
-                  onClick={() => navigate('/export', {
-                    state: {
-                      paperIds: selectedPaperIds,
-                      returnPath: '/groups',
-                      context: 'Groups'
-                    }
-                  })}
-                >
-                  Export {selectedPaperIds.length}
-                </Button>
-              </>
-            )}
-            {selectedPaperIds.length === 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2 text-xs"
-                onClick={() => navigate('/export', {
-                  state: {
-                    paperIds: group.papers?.map(p => p.id) || [],
-                    returnPath: '/groups',
-                    context: 'Groups'
-                  }
-                })}
-              >
-                Export All
-              </Button>
-            )}
-          </div>
-          <div className="overflow-hidden rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Paper Title</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>DOI</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {group.papers.map((paper) => (
-                  <DraggablePaperRow
-                    key={paper.id}
-                    paper={paper}
-                    isSelected={selectedPaperIds.includes(paper.id)}
-                    inSelectionMode={selectedPaperIds.length > 0}
-                    onSelect={(paperId) => {
-                      if (selectedPaperIds.includes(paperId))
-                      {
-                        setSelectedPaperIds(selectedPaperIds.filter(id => id !== paperId));
-                      } else
-                      {
-                        setSelectedPaperIds([...selectedPaperIds, paperId]);
-                      }
-                    }}
+          {group.papers && group.papers.length > 0 ? (
+            <>
+              {isSelectionMode && (
+                <div className="flex items-center justify-end gap-2 mb-2">
+                  <PaperMultiSelect
+                    papers={group.papers}
+                    selectedIds={selectedPaperIds}
+                    onSelectionChange={setSelectedPaperIds}
+                    isSelectionMode={isSelectionMode}
+                    onToggleSelectionMode={setIsSelectionMode}
                   />
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                  {selectedPaperIds.length > 0 && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-2 text-xs"
+                        onClick={() => navigate('/export', {
+                          state: {
+                            paperIds: selectedPaperIds,
+                            returnPath: '/groups',
+                            context: 'Groups'
+                          }
+                        })}
+                      >
+                        Export {selectedPaperIds.length}
+                      </Button>
+                      {onMovePapers && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-2 text-xs"
+                          onClick={() => onMovePapers(selectedPaperIds)}
+                        >
+                          Move {selectedPaperIds.length}
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+              <div className="overflow-hidden rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Paper Title</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>DOI</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {group.papers.map((paper) => (
+                      <DraggablePaperRow
+                        key={paper.id}
+                        paper={paper}
+                        isSelected={selectedPaperIds.includes(paper.id)}
+                        inSelectionMode={isSelectionMode}
+                        onSelect={(paperId) => {
+                          if (selectedPaperIds.includes(paperId))
+                          {
+                            setSelectedPaperIds(selectedPaperIds.filter(id => id !== paperId));
+                          } else
+                          {
+                            setSelectedPaperIds([...selectedPaperIds, paperId]);
+                          }
+                        }}
+                      />
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground text-sm border rounded-md">
+              No papers in this group
+            </div>
+          )}
+          {/* Render child groups recursively */}
+          {directChildren.map((child) => (
+            <GroupTableSection
+              key={child.id}
+              group={child}
+              allGroups={allGroups}
+              level={level + 1}
+              onCreateSubGroup={onCreateSubGroup}
+              onDeleteGroup={onDeleteGroup}
+              onMovePapers={onMovePapers}
+              onRenameGroup={onRenameGroup}
+            />
+          ))}
         </>
-      ) : (
-        <div className="text-center py-8 text-muted-foreground text-sm border rounded-md">
-          No papers in this group
-        </div>
       )}
-      {/* Render child groups recursively */}
-      {directChildren.map((child) => (
-        <GroupTableSection
-          key={child.id}
-          group={child}
-          allGroups={allGroups}
-          level={level + 1}
-          onCreateSubGroup={onCreateSubGroup}
-          onDeleteGroup={onDeleteGroup}
-        />
-      ))}
     </div>
   );
 }
@@ -656,6 +769,11 @@ export default function Groups() {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [renamingGroup, setRenamingGroup] = useState<Group | null>(null);
   const [renameGroupName, setRenameGroupName] = useState('');
+
+  // Move Papers Dialog State
+  const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
+  const [papersToMove, setPapersToMove] = useState<number[]>([]);
+
   const queryClient = useQueryClient();
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
@@ -738,6 +856,25 @@ export default function Groups() {
     },
   });
 
+  const movePapersMutation = useMutation({
+    mutationFn: async ({ paperIds, groupIds }: { paperIds: number[]; groupIds: number[] }) => {
+      // Execute all updates in parallel
+      await Promise.all(
+        paperIds.map(id => groupsApi.updatePaperGroups(id, groupIds))
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['papers'] });
+      setIsMoveDialogOpen(false);
+      setPapersToMove([]);
+      toastSuccess('Papers moved successfully');
+    },
+    onError: (error) => {
+      toastError('Failed to move papers: ' + error.message);
+    }
+  });
+
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (newGroupName.trim())
@@ -805,6 +942,15 @@ export default function Groups() {
       },
       { variant: 'destructive', confirmLabel: 'Delete' }
     );
+  };
+
+  const handleMovePapers = (paperIds: number[]) => {
+    setPapersToMove(paperIds);
+    setIsMoveDialogOpen(true);
+  };
+
+  const handleConfirmMove = (groupIds: number[]) => {
+    movePapersMutation.mutate({ paperIds: papersToMove, groupIds });
   };
 
   // Helper function to build flat group list with hierarchy indicators
@@ -897,7 +1043,7 @@ export default function Groups() {
   {
     return (
       <div className="w-full bg-anara-light-bg min-h-screen">
-        <div className="container py-8 sm:py-12">
+        <div className="container py-4 sm:py-8">
           <div className="flex items-center justify-between mb-6 sm:mb-8">
             <Skeleton className="h-10 w-32" />
             <Skeleton className="h-11 w-32" />
@@ -917,7 +1063,7 @@ export default function Groups() {
   {
     return (
       <div className="w-full bg-anara-light-bg min-h-screen">
-        <div className="container py-8 sm:py-12">
+        <div className="container py-4 sm:py-8">
           <div className="text-center text-red-600">Error loading groups: {error.message}</div>
         </div>
       </div>
@@ -926,7 +1072,7 @@ export default function Groups() {
 
   return (
     <div className="w-full bg-anara-light-bg min-h-screen">
-      <div className="container py-8 sm:py-12">
+      <div className="container py-4 sm:py-8">
         <div className="flex items-center justify-between mb-6 sm:mb-8">
           <h1 className="text-3xl sm:text-4xl font-medium text-anara-light-text">Groups</h1>
           <Button onClick={handleOpenCreateDialog}>
@@ -958,7 +1104,10 @@ export default function Groups() {
                 <div>
                   {/* Ungrouped Papers Section */}
                   {ungroupedPapers.length > 0 && (
-                    <UngroupedPapersSection ungroupedPapers={ungroupedPapers} />
+                    <UngroupedPapersSection
+                      ungroupedPapers={ungroupedPapers}
+                      onMovePapers={handleMovePapers}
+                    />
                   )}
                   {/* Grouped Papers */}
                   {groups && groups
@@ -971,6 +1120,7 @@ export default function Groups() {
                         onCreateSubGroup={handleCreateSubGroup}
                         onRenameGroup={handleRenameGroup}
                         onDeleteGroup={handleDeleteGroup}
+                        onMovePapers={handleMovePapers}
                       />
                     ))}
                 </div>
@@ -1124,6 +1274,18 @@ export default function Groups() {
             </form>
           </DialogContent>
         </Dialog>
+
+
+        {/* Move Papers Dialog */}
+        <MovePapersDialog
+          isOpen={isMoveDialogOpen}
+          onClose={() => setIsMoveDialogOpen(false)}
+          onMove={handleConfirmMove}
+          groups={groups || []}
+          paperCount={papersToMove.length}
+          isMoving={movePapersMutation.isPending}
+        />
+
         {confirmDialog}
       </div>
     </div>

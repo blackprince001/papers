@@ -8,22 +8,23 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 
 interface SavedSearchesPanelProps {
   onLoadSearch: (search: SavedSearch) => void;
+  currentQuery: string;
+  currentFilters: any;
 }
 
-export function SavedSearchesPanel({ onLoadSearch }: SavedSearchesPanelProps) {
+export function SavedSearchesPanel({ onLoadSearch, currentQuery, currentFilters }: SavedSearchesPanelProps) {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
 
-  const { data: savedSearches, isLoading } = useQuery({
+  const { data: savedSearches, isLoading, isError, error } = useQuery({
     queryKey: ['saved-searches'],
     queryFn: () => searchApi.listSavedSearches(),
   });
@@ -47,12 +48,13 @@ export function SavedSearchesPanel({ onLoadSearch }: SavedSearchesPanelProps) {
   });
 
   const handleSave = () => {
-    // Get current search params from URL or context
-    const currentQuery = new URLSearchParams(window.location.search).get('q') || '';
     createMutation.mutate({
       name,
       description,
-      query_params: { query: currentQuery },
+      query_params: {
+        query: currentQuery,
+        ...currentFilters,
+      },
     });
   };
 
@@ -63,12 +65,10 @@ export function SavedSearchesPanel({ onLoadSearch }: SavedSearchesPanelProps) {
           <Bookmark className="h-4 w-4" />
           Saved Searches
         </h3>
+        <Button variant="ghost" size="sm" onClick={() => setDialogOpen(true)}>
+          <Plus className="h-4 w-4" />
+        </Button>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="ghost" size="sm">
-              <Plus className="h-4 w-4" />
-            </Button>
-          </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Save Search</DialogTitle>
@@ -90,6 +90,11 @@ export function SavedSearchesPanel({ onLoadSearch }: SavedSearchesPanelProps) {
                   placeholder="Description..."
                 />
               </div>
+              {createMutation.isError && (
+                <div className="text-xs text-red-600 p-2 bg-red-50 rounded border border-red-200">
+                  Error: {createMutation.error instanceof Error ? createMutation.error.message : 'Failed to save'}
+                </div>
+              )}
               <Button onClick={handleSave} disabled={!name || createMutation.isPending}>
                 {createMutation.isPending ? 'Saving...' : 'Save'}
               </Button>
@@ -100,6 +105,10 @@ export function SavedSearchesPanel({ onLoadSearch }: SavedSearchesPanelProps) {
 
       {isLoading ? (
         <div className="text-sm text-gray-600">Loading...</div>
+      ) : isError ? (
+        <div className="text-sm text-red-600">
+          Error loading saved searches: {error instanceof Error ? error.message : 'Unknown error'}
+        </div>
       ) : savedSearches && savedSearches.length > 0 ? (
         <div className="space-y-1">
           {savedSearches.map((search) => (

@@ -238,7 +238,11 @@ export default function Search() {
             {/* Saved Searches Sidebar */}
             <div className="lg:col-span-1">
               <div className="bg-grayscale-8 border border-green-6 rounded-lg p-4 sticky top-4">
-                <SavedSearchesPanel onLoadSearch={handleLoadSavedSearch} />
+                <SavedSearchesPanel
+                  onLoadSearch={handleLoadSavedSearch}
+                  currentQuery={searchQuery}
+                  currentFilters={filters}
+                />
               </div>
             </div>
           </div>
