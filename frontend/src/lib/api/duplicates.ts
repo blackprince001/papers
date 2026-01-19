@@ -1,4 +1,4 @@
-import apiClient from './client';
+import { api } from './client';
 import type { Paper } from './papers';
 
 export interface DuplicateMatch {
@@ -22,28 +22,24 @@ export interface MergePreview {
 
 export const duplicatesApi = {
   findDuplicates: async (paperId: number, threshold: number = 0.8): Promise<DuplicateMatch[]> => {
-    const response = await apiClient.post<DuplicateMatch[]>(
+    return api.post<DuplicateMatch[]>(
       `/papers/${paperId}/find-duplicates`,
       null,
       { params: { threshold } }
     );
-    return response.data;
   },
 
   mergePapers: async (request: MergeRequest): Promise<Paper> => {
-    const response = await apiClient.post<Paper>('/papers/merge', request);
-    return response.data;
+    return api.post<Paper>('/papers/merge', request);
   },
 
   getMergePreview: async (
     primaryPaperId: number,
     duplicatePaperId: number
   ): Promise<MergePreview> => {
-    const response = await apiClient.get<MergePreview>(
+    return api.get<MergePreview>(
       `/papers/${primaryPaperId}/merge-preview`,
       { params: { duplicate_paper_id: duplicatePaperId } }
     );
-    return response.data;
   },
 };
-

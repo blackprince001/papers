@@ -30,7 +30,7 @@ router = APIRouter()
 
 async def process_paper_background_task(paper_id: int, file_path: str):
   """Background task to process a paper: extract citations and generate AI content.
-  
+
   This task runs after paper ingestion and performs:
   1. Citation extraction from PDF
   2. AI summary generation
@@ -114,6 +114,7 @@ async def process_paper_background_task(paper_id: int, file_path: str):
   except Exception as e:
     logger.error(f"Paper {paper_id}: Background processing failed: {e}")
     import traceback
+
     traceback.print_exc()
 
 
@@ -159,7 +160,7 @@ async def ingest_paper_endpoint(
               )
 
     paper = await ingestion_service.ingest_paper(
-      session=session,
+      db_session=session,
       url=str(paper_in.url),
       title=paper_in.title,
       doi=paper_in.doi,
@@ -280,7 +281,7 @@ async def upload_files_endpoint(
 
       try:
         paper = await ingestion_service.ingest_paper_from_file(
-          session=async_session,
+          db_session=async_session,
           file_content=content,
           filename=cast(str, file.filename),
           title=None,
@@ -352,11 +353,7 @@ async def upload_files_endpoint(
         else:
           message = f"{len(paper_ids)} papers uploaded successfully."
 
-  return PaperUploadResponse(
-    paper_ids=paper_ids, 
-    errors=errors,
-    message=message
-  )
+  return PaperUploadResponse(paper_ids=paper_ids, errors=errors, message=message)
 
 
 async def _ingest_single_url(
@@ -369,7 +366,7 @@ async def _ingest_single_url(
     async with AsyncSessionLocal() as session:
       try:
         paper = await ingestion_service.ingest_paper(
-          session=session,
+          db_session=session,
           url=url,
           title=None,
           doi=None,
@@ -438,9 +435,7 @@ async def ingest_batch_endpoint(
         paper_ids.append(paper_id)
         if file_path:
           citation_extraction_count += 1
-          background_tasks.add_task(
-            process_paper_background_task, paper_id, file_path
-          )
+          background_tasks.add_task(process_paper_background_task, paper_id, file_path)
       elif error:
         errors.append(error)
 
@@ -504,9 +499,7 @@ async def ingest_urls_from_text_endpoint(
         paper_ids.append(paper_id)
         if file_path:
           citation_extraction_count += 1
-          background_tasks.add_task(
-            process_paper_background_task, paper_id, file_path
-          )
+          background_tasks.add_task(process_paper_background_task, paper_id, file_path)
       elif error:
         errors.append(error)
 

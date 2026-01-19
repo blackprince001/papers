@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,15 +16,10 @@ class GraphService:
     max_hops: int = 1,
   ) -> Dict[str, Any]:
     """Build citation graph for a paper with bidirectional connections and multi-hop support."""
-    # Get citations FROM this paper (outgoing)
-    citations_query = select(PaperCitation).where(PaperCitation.paper_id == paper_id)
-    result = await session.execute(citations_query)
-    citations = result.scalars().all()
+    nodes_dict: Dict[Any, Dict[str, Any]] = {}  # Use dict to avoid duplicates
+    edges: List[Dict[str, Any]] = []
 
-    nodes_dict = {}  # Use dict to avoid duplicates
-    edges = []
-
-    # Add current paper as node
+    # Fetch the main paper first
     paper_query = select(Paper).where(Paper.id == paper_id)
     paper_result = await session.execute(paper_query)
     paper = paper_result.scalar_one_or_none()
@@ -34,13 +29,29 @@ class GraphService:
 
     nodes_dict[paper.id] = {"id": paper.id, "title": paper.title, "type": "paper"}
 
-    # Add cited papers as nodes and edges (outgoing citations)
+    # Get outgoing citations FROM this paper
+    citations_query = select(PaperCitation).where(PaperCitation.paper_id == paper_id)
+    citations_result = await session.execute(citations_query)
+    citations = citations_result.scalars().all()
+
+    # Collect all cited paper IDs for batch query
+    cited_paper_ids = [
+      cast(int, c.cited_paper_id) for c in citations if c.cited_paper_id is not None
+    ]
+
+    # Batch fetch all cited papers in a single query
+    cited_papers_map: Dict[int, Paper] = {}
+    if cited_paper_ids:
+      cited_papers_query = select(Paper).where(Paper.id.in_(cited_paper_ids))
+      cited_papers_result = await session.execute(cited_papers_query)
+      cited_papers_map = {
+        cast(int, p.id): p for p in cited_papers_result.scalars().all()
+      }
+
+    # Process outgoing citations using pre-fetched data
     for citation in citations:
-      if citation.cited_paper_id:
-        # Internal paper
-        cited_query = select(Paper).where(Paper.id == citation.cited_paper_id)
-        cited_result = await session.execute(cited_query)
-        cited_paper = cited_result.scalar_one_or_none()
+      if citation.cited_paper_id is not None:
+        cited_paper = cited_papers_map.get(cast(int, citation.cited_paper_id))
         if cited_paper:
           nodes_dict[cited_paper.id] = {
             "id": cited_paper.id,
@@ -55,7 +66,7 @@ class GraphService:
             }
           )
       else:
-        # External paper
+        # External paper (no internal ID)
         node_id = f"ext_{citation.id}"
         nodes_dict[node_id] = {
           "id": node_id,
@@ -78,12 +89,19 @@ class GraphService:
       incoming_result = await session.execute(incoming_citations_query)
       incoming_citations = incoming_result.scalars().all()
 
-      for citation in incoming_citations:
-        # Get the paper that cites the current paper
-        citing_paper_query = select(Paper).where(Paper.id == citation.paper_id)
-        citing_result = await session.execute(citing_paper_query)
-        citing_paper = citing_result.scalar_one_or_none()
+      # Batch fetch all citing papers
+      citing_paper_ids = [cast(int, c.paper_id) for c in incoming_citations]
+      citing_papers_map: Dict[int, Paper] = {}
+      if citing_paper_ids:
+        citing_papers_query = select(Paper).where(Paper.id.in_(citing_paper_ids))
+        citing_papers_result = await session.execute(citing_papers_query)
+        citing_papers_map = {
+          cast(int, p.id): p for p in citing_papers_result.scalars().all()
+        }
 
+      # Process incoming citations using pre-fetched data
+      for citation in incoming_citations:
+        citing_paper = citing_papers_map.get(cast(int, citation.paper_id))
         if citing_paper:
           nodes_dict[citing_paper.id] = {
             "id": citing_paper.id,
@@ -98,41 +116,48 @@ class GraphService:
             }
           )
 
-      # Multi-hop: find papers that cite papers that cite this paper (2-hop)
-      if max_hops >= 2:
-        # Get papers cited by papers that cite this paper
-        for citation in incoming_citations:
-          citing_paper_id = citation.paper_id
-          # Get citations from this citing paper
-          hop2_citations_query = (
-            select(PaperCitation)
-            .where(PaperCitation.paper_id == citing_paper_id)
-            .where(PaperCitation.cited_paper_id != paper_id)
-          )  # Exclude current paper
-          hop2_result = await session.execute(hop2_citations_query)
-          hop2_citations = hop2_result.scalars().all()
+      # Multi-hop: find papers cited by papers that cite this paper (2-hop)
+      if max_hops >= 2 and citing_paper_ids:
+        # Batch fetch all 2-hop citations
+        hop2_citations_query = (
+          select(PaperCitation)
+          .where(PaperCitation.paper_id.in_(citing_paper_ids))
+          .where(PaperCitation.cited_paper_id != paper_id)
+        )
+        hop2_result = await session.execute(hop2_citations_query)
+        hop2_citations = hop2_result.scalars().all()
 
-          for hop2_citation in hop2_citations:
-            if hop2_citation.cited_paper_id:
-              hop2_paper_query = select(Paper).where(
-                Paper.id == hop2_citation.cited_paper_id
-              )
-              hop2_result = await session.execute(hop2_paper_query)
-              hop2_paper = hop2_result.scalar_one_or_none()
+        # Collect all hop2 paper IDs for batch fetch
+        hop2_paper_ids = [
+          cast(int, c.cited_paper_id)
+          for c in hop2_citations
+          if c.cited_paper_id is not None
+        ]
+        hop2_papers_map: Dict[int, Paper] = {}
+        if hop2_paper_ids:
+          hop2_papers_query = select(Paper).where(Paper.id.in_(hop2_paper_ids))
+          hop2_papers_result = await session.execute(hop2_papers_query)
+          hop2_papers_map = {
+            cast(int, p.id): p for p in hop2_papers_result.scalars().all()
+          }
 
-              if hop2_paper and hop2_paper.id not in nodes_dict:
-                nodes_dict[hop2_paper.id] = {
-                  "id": hop2_paper.id,
-                  "title": hop2_paper.title,
-                  "type": "paper",
+        # Process hop2 citations using pre-fetched data
+        for hop2_citation in hop2_citations:
+          if hop2_citation.cited_paper_id is not None:
+            hop2_paper = hop2_papers_map.get(cast(int, hop2_citation.cited_paper_id))
+            if hop2_paper and hop2_paper.id not in nodes_dict:
+              nodes_dict[hop2_paper.id] = {
+                "id": hop2_paper.id,
+                "title": hop2_paper.title,
+                "type": "paper",
+              }
+              edges.append(
+                {
+                  "source": hop2_citation.paper_id,
+                  "target": hop2_paper.id,
+                  "type": "cites",
                 }
-                edges.append(
-                  {
-                    "source": citing_paper_id,
-                    "target": hop2_paper.id,
-                    "type": "cites",
-                  }
-                )
+              )
 
     return {"nodes": list(nodes_dict.values()), "edges": edges}
 
@@ -144,13 +169,15 @@ class GraphService:
 
     timeline = []
     for paper in papers:
-      year = paper.created_at.year if paper.created_at else None
+      year = paper.created_at.year if paper.created_at is not None else None
       timeline.append(
         {
           "id": paper.id,
           "title": paper.title,
           "year": year,
-          "date": paper.created_at.isoformat() if paper.created_at else None,
+          "date": paper.created_at.isoformat()
+          if paper.created_at is not None
+          else None,
         }
       )
 
@@ -164,7 +191,7 @@ class GraphService:
     result = await session.execute(paper_query)
     paper = result.scalar_one_or_none()
 
-    if not paper or not paper.embedding:
+    if not paper or paper.embedding is None:
       return {"nodes": [], "edges": []}
 
     # Find similar papers using embeddings

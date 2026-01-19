@@ -2,101 +2,29 @@ import asyncio
 import io
 import json
 import re
-from typing import Optional
+from typing import Any
 
 from google import genai
 from google.genai import types
 from pypdf import PdfReader
 
 from app.core.config import settings
+from app.core.logger import get_logger
 from app.schemas.paper import PaperMetadata
 
+logger = get_logger(__name__)
 
-class PDFParser:
-  @staticmethod
-  def _extract_text_sync(pdf_content: bytes, max_pages: Optional[int] = None) -> str:
-    try:
-      pdf_file = io.BytesIO(pdf_content)
-      reader = PdfReader(pdf_file)
-
-      text_parts = []
-      pages_to_process = reader.pages[:max_pages] if max_pages else reader.pages
-      for page in pages_to_process:
-        text = page.extract_text()
-        if text:
-          text_parts.append(text)
-
-      return "\n\n".join(text_parts)
-    except Exception as e:
-      raise ValueError(f"Failed to parse PDF: {str(e)}") from e
-
-  @staticmethod
-  async def extract_text(pdf_content: bytes, max_pages: Optional[int] = None) -> str:
-    """Async wrapper for text extraction that runs in an executor."""
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(
-      None, PDFParser._extract_text_sync, pdf_content, max_pages
-    )
-
-  @staticmethod
-  async def extract_metadata_structured(pdf_content: bytes) -> Optional[PaperMetadata]:
-    """Extract metadata using structured output from genai SDK."""
-    if not settings.GOOGLE_API_KEY:
-      return None
-
-    try:
-      # Run PDF reading in executor
-      loop = asyncio.get_event_loop()
-      
-      def read_first_pages():
-        try:
-          pdf_file = io.BytesIO(pdf_content)
-          reader = PdfReader(pdf_file)
-
-          if len(reader.pages) == 0:
-            return None
-
-          # Extract text from first 2-3 pages (or first 5000 chars)
-          text_parts = []
-          char_count = 0
-          max_chars = 5000
-
-          for _, page in enumerate(reader.pages[:3]):  # First 3 pages max
-            text = page.extract_text()
-            if text:
-              if char_count + len(text) > max_chars:
-                # Add partial text to reach max_chars
-                remaining = max_chars - char_count
-                if remaining > 0:
-                  text_parts.append(text[:remaining])
-                break
-              text_parts.append(text)
-              char_count += len(text)
-          
-          if not text_parts:
-            return None
-            
-          result = "\n\n".join(text_parts)
-          return result[:max_chars] if len(result) > max_chars else result
-        except Exception:
-          return None
-
-      first_pages_text = await loop.run_in_executor(None, read_first_pages)
-      
-      if not first_pages_text:
-        return None
-
-      client = genai.Client(api_key=settings.GOOGLE_API_KEY)
-
-      prompt = f"""Extract metadata from this research paper. Analyze the following text from the first page(s) of the paper and extract all available metadata.
+METADATA_EXTRACTION_PROMPT = """Extract metadata from this research paper. \
+Analyze the following text from the first page(s) of the paper and extract \
+all available metadata.
 
 Text from first page(s):
-{first_pages_text}
+{text}
 
 Extract the following information:
 - Title: The exact paper title
-- Authors: List of all author names (format: "First Last" for each author, separate multiple authors with commas in the list)
-- Publication Date: Publication date in YYYY-MM-DD format if available, or YYYY if only year is available
+- Authors: List of all author names (format: "First Last" for each author)
+- Publication Date: Publication date in YYYY-MM-DD format if available
 - Journal: Journal or conference name if mentioned
 - Volume: Journal volume number if available
 - Issue: Journal issue number if available
@@ -105,12 +33,7 @@ Extract the following information:
 - Abstract: The abstract text if present
 - Keywords: List of keywords if mentioned
 
-Return the extracted metadata in the specified format. If any field is not found, leave it as null or empty list."""
-
-      # Request JSON format in the prompt and parse response
-      json_prompt = f"""{prompt}
-
-IMPORTANT: Return ONLY a valid JSON object with the following structure. Do not include any other text, explanations, or markdown formatting. Just the raw JSON:
+IMPORTANT: Return ONLY a valid JSON object with this structure:
 {{
   "title": "paper title here",
   "authors": ["Author One", "Author Two"],
@@ -124,257 +47,102 @@ IMPORTANT: Return ONLY a valid JSON object with the following structure. Do not 
   "keywords": ["keyword1", "keyword2"]
 }}"""
 
-      try:
-        # Run synchronous genai call in executor to avoid blocking
-        loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(
-          None,
-          lambda: client.models.generate_content(
-            model=settings.GENAI_MODEL,
-            contents=types.Part.from_text(text=json_prompt),
-          ),
-        )
-      except Exception as api_error:
-        # Handle API errors (rate limits, network errors, etc.)
-        error_str = str(api_error)
-        if (
-          "429" in error_str
-          or "RESOURCE_EXHAUSTED" in error_str
-          or "quota" in error_str.lower()
-        ):
-          print(
-            f"Rate limit or quota exceeded in structured metadata extraction: {str(api_error)}"
-          )
-        else:
-          print(f"API error in structured metadata extraction: {str(api_error)}")
-        return None
 
-      if hasattr(response, "text") and response.text:
-        try:
-          # Clean response text - remove markdown code blocks if present
-          response_text = response.text.strip()
-          # Remove markdown code blocks
-          if response_text.startswith("```"):
-            # Find the first newline after ```
-            first_newline = response_text.find("\n")
-            if first_newline != -1:
-              response_text = response_text[first_newline + 1 :]
-            # Remove closing ```
-            if response_text.endswith("```"):
-              response_text = response_text[:-3]
-            response_text = response_text.strip()
+def _clean_json_response(response_text: str) -> str:
+  """Remove markdown code blocks from JSON response."""
+  cleaned = response_text.strip()
+  if not cleaned.startswith("```"):
+    return cleaned
 
-          # Parse JSON response
-          response_data = json.loads(response_text)
+  first_newline = cleaned.find("\n")
+  if first_newline != -1:
+    cleaned = cleaned[first_newline + 1 :]
 
-          # Create PaperMetadata instance
-          metadata = PaperMetadata(
-            title=response_data.get("title"),
-            authors=response_data.get("authors", []),
-            publication_date=response_data.get("publication_date"),
-            journal=response_data.get("journal"),
-            volume=response_data.get("volume"),
-            issue=response_data.get("issue"),
-            pages=response_data.get("pages"),
-            doi=response_data.get("doi"),
-            abstract=response_data.get("abstract"),
-            keywords=response_data.get("keywords"),
-          )
+  if cleaned.endswith("```"):
+    cleaned = cleaned[:-3]
 
-          # Validate that at least title or authors are present
-          if metadata.title or metadata.authors:
-            return metadata
-        except (json.JSONDecodeError, ValueError, TypeError) as e:
-          print(f"Error parsing structured metadata response: {str(e)}")
-          return None
+  return cleaned.strip()
 
-      return None
 
-    except Exception as e:
-      print(f"Error extracting metadata with structured output: {str(e)}")
-      return None
+def _parse_metadata_response(response_text: str) -> PaperMetadata | None:
+  """Parse JSON response into PaperMetadata object."""
+  try:
+    cleaned_text = _clean_json_response(response_text)
+    response_data = json.loads(cleaned_text)
 
+    metadata = PaperMetadata(
+      title=response_data.get("title"),
+      authors=response_data.get("authors", []),
+      publication_date=response_data.get("publication_date"),
+      journal=response_data.get("journal"),
+      volume=response_data.get("volume"),
+      issue=response_data.get("issue"),
+      pages=response_data.get("pages"),
+      doi=response_data.get("doi"),
+      abstract=response_data.get("abstract"),
+      keywords=response_data.get("keywords"),
+    )
+
+    has_title_or_authors = metadata.title or metadata.authors
+    return metadata if has_title_or_authors else None
+
+  except (json.JSONDecodeError, ValueError, TypeError) as e:
+    logger.warning("Failed to parse metadata response", error=str(e))
+    return None
+
+
+def _is_author_line(line: str) -> bool:
+  """Check if line looks like an author name."""
+  pattern = r"^[A-Z][a-z]+\s+[A-Z][a-z]+"
+  return bool(re.match(pattern, line)) and len(line.split()) <= 4
+
+
+def _is_affiliation_line(line: str) -> bool:
+  """Check if line looks like institutional affiliation."""
+  affiliation_markers = ["@", ".edu", ".com", "university", "department", "institute"]
+  return any(marker in line.lower() for marker in affiliation_markers)
+
+
+def _find_abstract_index(lines: list[str]) -> int | None:
+  """Find the line index where abstract/introduction starts."""
+  section_markers = ["abstract", "introduction", "keywords", "1. introduction"]
+
+  for i, line in enumerate(lines[:20]):
+    line_lower = line.lower()
+    if any(keyword in line_lower for keyword in section_markers):
+      return i
+
+  return None
+
+
+class PDFParser:
   @staticmethod
-  async def extract_metadata(pdf_content: bytes) -> dict:
-    """Extract metadata from PDF using AI-structured extraction only."""
-    metadata = {}
-
-    # Get num_pages for basic info
+  def _extract_text_sync(pdf_content: bytes, max_pages: int | None = None) -> str:
+    """Synchronously extract text from PDF."""
     try:
       pdf_file = io.BytesIO(pdf_content)
       reader = PdfReader(pdf_file)
-      metadata["num_pages"] = len(reader.pages)
-    except Exception:
-      pass
 
-    # Use only AI-structured extraction
-    structured_metadata = await PDFParser.extract_metadata_structured(pdf_content)
+      pages_to_process = reader.pages[:max_pages] if max_pages else reader.pages
+      text_parts = [
+        page.extract_text() for page in pages_to_process if page.extract_text()
+      ]
 
-    if structured_metadata:
-      # Convert Pydantic model to dict format compatible with existing code
-      metadata["title"] = structured_metadata.title or ""
-      # Convert authors list to string format for backward compatibility
-      if structured_metadata.authors:
-        # Join authors with comma for backward compatibility
-        metadata["author"] = ", ".join(structured_metadata.authors)
-      else:
-        metadata["author"] = ""
-
-      metadata["subject"] = structured_metadata.journal or ""
-      metadata["publication_date"] = structured_metadata.publication_date or ""
-      metadata["volume"] = structured_metadata.volume or ""
-      metadata["issue"] = structured_metadata.issue or ""
-      metadata["pages"] = structured_metadata.pages or ""
-      metadata["doi"] = structured_metadata.doi or ""
-      metadata["abstract"] = structured_metadata.abstract or ""
-      metadata["keywords"] = structured_metadata.keywords or []
-
-      # Also store structured data for easier access
-      metadata["authors_list"] = structured_metadata.authors
-      metadata["journal"] = structured_metadata.journal or ""
-
-    # If structured extraction fails, return minimal metadata (just num_pages if available)
-    # This allows papers to be created with minimal info for later regeneration
-
-    return metadata
-
-  @staticmethod
-  def _extract_title_heuristic(first_pages_text: str) -> Optional[str]:
-    """Extract title using heuristics from first page text."""
-    if not first_pages_text:
-      return None
-
-    # Split into lines and clean
-    lines = [line.strip() for line in first_pages_text.split("\n") if line.strip()]
-    if not lines:
-      return None
-
-    # Find where abstract/introduction starts
-    abstract_idx = None
-    for i, line in enumerate(lines[:20]):  # Check first 20 lines
-      line_lower = line.lower()
-      if any(
-        keyword in line_lower
-        for keyword in ["abstract", "introduction", "keywords", "1. introduction"]
-      ):
-        abstract_idx = i
-        break
-
-    # If we found abstract/intro, title should be before it
-    if abstract_idx is not None and abstract_idx > 0:
-      # Collect consecutive lines before abstract that look like a title
-      title_lines = []
-      for i in range(abstract_idx):
-        line = lines[i]
-        line_lower = line.lower()
-
-        # Skip author names (First Last format)
-        if re.match(r"^[A-Z][a-z]+\s+[A-Z][a-z]+", line) and len(line.split()) <= 4:
-          # Might be author name, but could also be part of title
-          # Check if next line is also author-like or affiliation
-          if i + 1 < abstract_idx:
-            next_line = lines[i + 1].lower()
-            if re.search(r"@|\.edu|\.com|university|department|institute", next_line):
-              # This is likely author section, stop collecting
-              break
-
-        # Skip affiliations
-        if re.search(r"@|\.edu|\.com|university|department|institute", line_lower):
-          # If we already have title lines, stop here
-          if title_lines:
-            break
-          continue
-
-        # Add line to title if it looks reasonable
-        word_count = len(line.split())
-        if word_count >= 2:  # At least 2 words
-          title_lines.append(line)
-        elif title_lines:
-          # Short line might be continuation of title (e.g., "and" or single word)
-          title_lines.append(line)
-
-      # Combine title lines
-      if title_lines:
-        candidate = " ".join(title_lines)
-        word_count = len(candidate.split())
-        # Titles are typically 3-30 words
-        if 3 <= word_count <= 50:  # Allow up to 50 for multi-line titles
-          return candidate
-
-    # Fallback: look for first substantial text block (2-4 consecutive lines)
-    for i in range(min(10, len(lines) - 2)):
-      # Try combining 2-4 consecutive lines
-      for num_lines in [4, 3, 2]:
-        if i + num_lines <= len(lines):
-          candidate_lines = lines[i : i + num_lines]
-          # Skip if any line looks like author/affiliation
-          if any(
-            re.search(r"@|\.edu|\.com|university|department|institute", line.lower())
-            for line in candidate_lines
-          ):
-            continue
-          if any(
-            re.match(r"^[A-Z][a-z]+\s+[A-Z][a-z]+$", line) and len(line.split()) <= 3
-            for line in candidate_lines
-          ):
-            continue
-
-          candidate = " ".join(candidate_lines)
-          word_count = len(candidate.split())
-          if 3 <= word_count <= 50:
-            return candidate
-
-    # Last resort: use first substantial single line
-    for line in lines[:10]:
-      word_count = len(line.split())
-      if 3 <= word_count <= 30:
-        if not re.search(r"@|\.edu|\.com|university|department", line.lower()):
-          return line
-
-    return None
-
-  @staticmethod
-  def _extract_title_llm(first_pages_text: str) -> Optional[str]:
-    """Extract title using LLM from first page text."""
-    if not settings.GOOGLE_API_KEY:
-      return None
-
-    try:
-      client = genai.Client(api_key=settings.GOOGLE_API_KEY)
-
-      # Limit text to first 2000 characters for efficiency
-      text_preview = first_pages_text[:2000]
-      if len(first_pages_text) > 2000:
-        text_preview += "..."
-
-      prompt = f"""Extract the exact title of this research paper from the following text from the first page(s).
-
-Text from first page(s):
-{text_preview}
-
-Extract ONLY the paper title. Do not include authors, affiliations, abstract, or any other text. Return just the title as it appears in the paper, nothing else."""
-
-      response = client.models.generate_content(
-        model=settings.GENAI_MODEL, contents=types.Part.from_text(text=prompt)
-      )
-
-      if hasattr(response, "text") and response.text:
-        title = response.text.strip()
-        # Clean up common LLM artifacts
-        title = re.sub(r'^["\']|["\']$', "", title)  # Remove quotes
-        title = title.strip()
-        if title and 3 <= len(title.split()) <= 50:  # Reasonable title
-          return title
-
-      return None
-
+      return "\n\n".join(text_parts)
     except Exception as e:
-      print(f"Error extracting title with LLM: {str(e)}")
-      return None
+      raise ValueError(f"Failed to parse PDF: {str(e)}") from e
 
   @staticmethod
-  def extract_title_from_content(pdf_content: bytes) -> Optional[str]:
-    """Extract paper title from PDF content using heuristics and LLM fallback."""
+  async def extract_text(pdf_content: bytes, max_pages: int | None = None) -> str:
+    """Async wrapper for text extraction."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+      None, PDFParser._extract_text_sync, pdf_content, max_pages
+    )
+
+  @staticmethod
+  def _read_first_pages_text(pdf_content: bytes, max_chars: int = 5000) -> str | None:
+    """Extract limited text from first pages for metadata extraction."""
     try:
       pdf_file = io.BytesIO(pdf_content)
       reader = PdfReader(pdf_file)
@@ -382,31 +150,279 @@ Extract ONLY the paper title. Do not include authors, affiliations, abstract, or
       if len(reader.pages) == 0:
         return None
 
-      # Extract text from first 1-2 pages
       text_parts = []
-      for _, page in enumerate(reader.pages[:2]):  # First 2 pages max
+      char_count = 0
+
+      for page in reader.pages[:3]:
         text = page.extract_text()
-        if text:
-          text_parts.append(text)
+        if not text:
+          continue
+
+        remaining = max_chars - char_count
+        if remaining <= 0:
+          break
+
+        if len(text) > remaining:
+          text_parts.append(text[:remaining])
+          break
+
+        text_parts.append(text)
+        char_count += len(text)
+
+      if not text_parts:
+        return None
+
+      result = "\n\n".join(text_parts)
+      return result[:max_chars]
+    except Exception:
+      return None
+
+  @staticmethod
+  async def _call_metadata_api(client: genai.Client, prompt: str) -> str | None:
+    """Call GenAI API for metadata extraction."""
+    try:
+      loop = asyncio.get_event_loop()
+      response = await loop.run_in_executor(
+        None,
+        lambda: client.models.generate_content(
+          model=settings.GENAI_MODEL,
+          contents=types.Part.from_text(text=prompt),
+        ),
+      )
+
+      if hasattr(response, "text") and response.text:
+        return response.text
+
+      return None
+
+    except Exception as e:
+      error_str = str(e)
+      is_rate_limited = (
+        "429" in error_str
+        or "RESOURCE_EXHAUSTED" in error_str
+        or "quota" in error_str.lower()
+      )
+
+      if is_rate_limited:
+        logger.warning("Rate limit in metadata extraction", error=error_str)
+      else:
+        logger.error("API error in metadata extraction", error=error_str)
+
+      return None
+
+  @staticmethod
+  async def extract_metadata_structured(
+    pdf_content: bytes,
+  ) -> PaperMetadata | None:
+    """Extract metadata using structured output from GenAI."""
+    if not settings.GOOGLE_API_KEY:
+      return None
+
+    try:
+      loop = asyncio.get_event_loop()
+      first_pages_text = await loop.run_in_executor(
+        None, PDFParser._read_first_pages_text, pdf_content
+      )
+
+      if not first_pages_text:
+        return None
+
+      client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+      prompt = METADATA_EXTRACTION_PROMPT.format(text=first_pages_text)
+
+      response_text = await PDFParser._call_metadata_api(client, prompt)
+      if not response_text:
+        return None
+
+      return _parse_metadata_response(response_text)
+
+    except Exception as e:
+      logger.error("Error in structured metadata extraction", error=str(e))
+      return None
+
+  @staticmethod
+  async def extract_metadata(pdf_content: bytes) -> dict[str, Any]:
+    """Extract metadata from PDF using AI-structured extraction."""
+    extracted_metadata: dict[str, Any] = {}
+
+    try:
+      pdf_file = io.BytesIO(pdf_content)
+      reader = PdfReader(pdf_file)
+      extracted_metadata["num_pages"] = len(reader.pages)
+    except Exception:
+      pass
+
+    structured = await PDFParser.extract_metadata_structured(pdf_content)
+
+    if not structured:
+      return extracted_metadata
+
+    extracted_metadata["title"] = structured.title or ""
+    extracted_metadata["author"] = (
+      ", ".join(structured.authors) if structured.authors else ""
+    )
+    extracted_metadata["subject"] = structured.journal or ""
+    extracted_metadata["publication_date"] = structured.publication_date or ""
+    extracted_metadata["volume"] = structured.volume or ""
+    extracted_metadata["issue"] = structured.issue or ""
+    extracted_metadata["pages"] = structured.pages or ""
+    extracted_metadata["doi"] = structured.doi or ""
+    extracted_metadata["abstract"] = structured.abstract or ""
+    extracted_metadata["keywords"] = structured.keywords or []
+    extracted_metadata["authors_list"] = structured.authors
+    extracted_metadata["journal"] = structured.journal or ""
+
+    return extracted_metadata
+
+  @staticmethod
+  def _extract_title_before_abstract(lines: list[str], abstract_idx: int) -> str | None:
+    """Extract title from lines before abstract section."""
+    title_lines = []
+
+    for i in range(abstract_idx):
+      line = lines[i]
+
+      if _is_author_line(line) and i + 1 < abstract_idx:
+        next_line = lines[i + 1].lower()
+        if _is_affiliation_line(next_line):
+          break
+
+      if _is_affiliation_line(line):
+        if title_lines:
+          break
+        continue
+
+      word_count = len(line.split())
+      if word_count >= 2:
+        title_lines.append(line)
+      elif title_lines:
+        title_lines.append(line)
+
+    if not title_lines:
+      return None
+
+    candidate = " ".join(title_lines)
+    word_count = len(candidate.split())
+    return candidate if 3 <= word_count <= 50 else None
+
+  @staticmethod
+  def _extract_title_fallback(lines: list[str]) -> str | None:
+    """Fallback title extraction using heuristics."""
+    for i in range(min(10, len(lines) - 2)):
+      for num_lines in [4, 3, 2]:
+        if i + num_lines > len(lines):
+          continue
+
+        candidate_lines = lines[i : i + num_lines]
+
+        has_affiliations = any(_is_affiliation_line(line) for line in candidate_lines)
+        if has_affiliations:
+          continue
+
+        has_author_only = any(
+          _is_author_line(line) and len(line.split()) <= 3 for line in candidate_lines
+        )
+        if has_author_only:
+          continue
+
+        candidate = " ".join(candidate_lines)
+        word_count = len(candidate.split())
+        if 3 <= word_count <= 50:
+          return candidate
+
+    for line in lines[:10]:
+      word_count = len(line.split())
+      if 3 <= word_count <= 30 and not _is_affiliation_line(line):
+        return line
+
+    return None
+
+  @staticmethod
+  def _extract_title_heuristic(first_pages_text: str) -> str | None:
+    """Extract title using heuristics from first page text."""
+    if not first_pages_text:
+      return None
+
+    lines = [line.strip() for line in first_pages_text.split("\n") if line.strip()]
+    if not lines:
+      return None
+
+    abstract_idx = _find_abstract_index(lines)
+
+    if abstract_idx is not None and abstract_idx > 0:
+      title = PDFParser._extract_title_before_abstract(lines, abstract_idx)
+      if title:
+        return title
+
+    return PDFParser._extract_title_fallback(lines)
+
+  @staticmethod
+  def _extract_title_llm(first_pages_text: str) -> str | None:
+    """Extract title using LLM from first page text."""
+    if not settings.GOOGLE_API_KEY:
+      return None
+
+    try:
+      client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+
+      text_preview = first_pages_text[:2000]
+      if len(first_pages_text) > 2000:
+        text_preview += "..."
+
+      prompt = f"""Extract the exact title of this research paper.
+
+Text from first page(s):
+{text_preview}
+
+Extract ONLY the paper title. Return just the title, nothing else."""
+
+      response = client.models.generate_content(
+        model=settings.GENAI_MODEL, contents=types.Part.from_text(text=prompt)
+      )
+
+      if not (hasattr(response, "text") and response.text):
+        return None
+
+      title = response.text.strip()
+      title = re.sub(r'^["\']|["\']$', "", title).strip()
+
+      word_count = len(title.split())
+      return title if 3 <= word_count <= 50 else None
+
+    except Exception as e:
+      logger.error("Error extracting title with LLM", error=str(e))
+      return None
+
+  @staticmethod
+  def extract_title_from_content(pdf_content: bytes) -> str | None:
+    """Extract paper title from PDF content."""
+    try:
+      pdf_file = io.BytesIO(pdf_content)
+      reader = PdfReader(pdf_file)
+
+      if len(reader.pages) == 0:
+        return None
+
+      text_parts = [
+        page.extract_text() for page in reader.pages[:2] if page.extract_text()
+      ]
 
       if not text_parts:
         return None
 
       first_pages_text = "\n\n".join(text_parts)
 
-      # Try heuristic first
       title = PDFParser._extract_title_heuristic(first_pages_text)
 
-      # If heuristic failed or produced a poor result, try LLM
       if not title or len(title.split()) < 3:
         llm_title = PDFParser._extract_title_llm(first_pages_text)
         if llm_title:
           title = llm_title
 
-      return title if title else None
+      return title
 
     except Exception as e:
-      print(f"Error extracting title from PDF content: {str(e)}")
+      logger.error("Error extracting title from PDF", error=str(e))
       return None
 
 

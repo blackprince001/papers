@@ -1,31 +1,93 @@
-from typing import Optional
+from typing import Any
 
 import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.logger import get_logger
 from app.models.paper import Paper
 from app.services.embeddings import embedding_service
 from app.services.pdf_parser import pdf_parser
 from app.services.storage import storage_service
 from app.services.url_parser import url_parser
 
+logger = get_logger(__name__)
+
+
+def sanitize_text(text: str) -> str:
+  """Remove null bytes and fix encoding issues in text."""
+  if not text:
+    return text
+
+  text = text.replace("\x00", "")
+  text = text.encode("utf-8", errors="replace").decode("utf-8", errors="replace")
+  return text
+
+
+def sanitize_metadata(metadata: dict[str, Any] | None) -> dict[str, Any]:
+  """Sanitize all string values in metadata dict."""
+  if not metadata:
+    return {}
+
+  sanitized: dict[str, Any] = {}
+  for key, value in metadata.items():
+    if isinstance(value, str):
+      sanitized[key] = sanitize_text(value)
+    elif isinstance(value, list):
+      sanitized[key] = [
+        sanitize_text(item) if isinstance(item, str) else item for item in value
+      ]
+    else:
+      sanitized[key] = value
+
+  return sanitized
+
+
+def _extract_title_from_metadata(metadata: dict[str, Any] | None, fallback: str) -> str:
+  """Extract title from metadata or use fallback."""
+  if metadata is None:
+    return fallback
+
+  title = metadata.get("title")
+  if title and isinstance(title, str) and len(title.strip()) > 0:
+    return title.strip()
+
+  return fallback
+
+
+def _should_use_metadata_title(
+  provided_title: str, metadata: dict[str, Any] | None
+) -> bool:
+  """Check if we should prefer metadata title over provided one."""
+  is_filename_like = (
+    provided_title.endswith(".pdf")
+    or "/" in provided_title
+    or len(provided_title.split()) < 3
+  )
+
+  if not is_filename_like:
+    return False
+
+  if metadata is None:
+    return False
+
+  title = metadata.get("title")
+  has_better_metadata = title and isinstance(title, str) and len(title.strip()) > 3
+
+  return bool(has_better_metadata)
+
+
+def _normalize_optional_field(value: str | None) -> str | None:
+  """Convert empty strings to None for optional fields."""
+  if value and value.strip():
+    return value.strip()
+  return None
+
 
 class IngestionService:
   @staticmethod
-  def sanitize_text(text: str) -> str:
-    if not text:
-      return text
-
-    text = text.replace("\x00", "")
-    text = text.encode("utf-8", errors="replace").decode("utf-8", errors="replace")
-
-    return text
-
-  @staticmethod
   async def download_pdf(url: str) -> bytes:
     """Download PDF from URL, handling various academic sites."""
-    # Use URL parser to get the actual PDF URL
     parsed = url_parser.parse_url(url)
     pdf_url = parsed.pdf_url or url
     headers = parsed.headers or {}
@@ -35,45 +97,100 @@ class IngestionService:
       response.raise_for_status()
 
       content_type = response.headers.get("content-type", "").lower()
-      if "pdf" not in content_type and not pdf_url.endswith(".pdf"):
-        if "html" in content_type:
-          raise ValueError(f"URL does not point to a PDF: {url}")
+      is_not_pdf = "pdf" not in content_type and not pdf_url.endswith(".pdf")
+      is_html = "html" in content_type
+
+      if is_not_pdf and is_html:
+        raise ValueError(f"URL does not point to a PDF: {url}")
 
       return response.content
 
   @staticmethod
-  async def extract_doi_from_url(url: str) -> Optional[str]:
+  async def extract_doi_from_url(url: str) -> str | None:
     """Extract DOI or identifier from URL using the URL parser."""
     import re
 
-    # First try the URL parser for site-specific extraction
     parsed = url_parser.parse_url(url)
     if parsed.doi:
       return parsed.doi
     if parsed.arxiv_id:
-      return f"arxiv:{parsed.arxiv_id.split('v')[0]}"  # Remove version
+      arxiv_base = parsed.arxiv_id.split("v")[0]
+      return f"arxiv:{arxiv_base}"
 
-    # Fallback to generic DOI pattern
     doi_pattern = r"10\.\d+/[^\s/]+"
     match = re.search(doi_pattern, url)
-    if match:
-      return match.group(0)
+    return match.group(0) if match else None
 
-    return None
+  @staticmethod
+  async def _check_existing_paper(
+    db_session: AsyncSession, doi: str | None
+  ) -> Paper | None:
+    """Check if paper with given DOI already exists."""
+    if not doi:
+      return None
+
+    result = await db_session.execute(select(Paper).where(Paper.doi == doi))
+    return result.scalar_one_or_none()
+
+  @staticmethod
+  async def _generate_embedding(title: str, content: str) -> list[float]:
+    """Generate embedding for paper."""
+    embedding_text = f"{title}\n\n{content[:1000]}"
+    return await embedding_service.generate_embedding_async(embedding_text)
+
+  @staticmethod
+  async def _assign_groups(
+    db_session: AsyncSession, paper: Paper, group_ids: list[int] | None
+  ) -> None:
+    """Assign paper to groups if specified."""
+    if not group_ids:
+      return
+
+    from app.models.group import Group
+
+    groups = await db_session.execute(select(Group).where(Group.id.in_(group_ids)))
+    paper.groups = groups.scalars().all()
+
+  @staticmethod
+  def _create_paper_from_data(
+    title: str,
+    doi: str | None,
+    url: str,
+    file_path: str,
+    text_content: str,
+    embedding: list[float],
+    metadata: dict[str, Any] | None,
+  ) -> Paper:
+    """Create Paper object from extracted data."""
+    volume = _normalize_optional_field(metadata.get("volume") if metadata else None)
+    issue = _normalize_optional_field(metadata.get("issue") if metadata else None)
+    pages = _normalize_optional_field(metadata.get("pages") if metadata else None)
+
+    return Paper(
+      title=title,
+      doi=doi,
+      url=url,
+      file_path=file_path,
+      content_text=text_content,
+      embedding=embedding,
+      metadata_json=metadata,
+      volume=volume,
+      issue=issue,
+      pages=pages,
+    )
 
   @staticmethod
   async def ingest_paper(
-    session: AsyncSession,
+    db_session: AsyncSession,
     url: str,
-    title: Optional[str] = None,
-    doi: Optional[str] = None,
-    group_ids: Optional[list[int]] = None,
+    title: str | None = None,
+    doi: str | None = None,
+    group_ids: list[int] | None = None,
   ) -> Paper:
-    if doi:
-      existing = await session.execute(select(Paper).where(Paper.doi == doi))
-      existing_paper = existing.scalar_one_or_none()
-      if existing_paper:
-        return existing_paper
+    """Ingest paper from URL."""
+    existing = await IngestionService._check_existing_paper(db_session, doi)
+    if existing:
+      return existing
 
     if not doi:
       doi = await IngestionService.extract_doi_from_url(url)
@@ -82,219 +199,107 @@ class IngestionService:
     filename = storage_service.save_file(pdf_content, url, doi)
     file_path = str(storage_service.get_file_path(filename))
 
-    # Extract text (limited to first 5 pages initially for speed)
-    # Full text can be extracted later if needed
     text_content = await pdf_parser.extract_text(pdf_content, max_pages=5)
     metadata = await pdf_parser.extract_metadata(pdf_content)
-    text_content = IngestionService.sanitize_text(text_content)
 
-    if metadata:
-      sanitized_metadata = {}
-      for key, value in metadata.items():
-        if isinstance(value, str):
-          sanitized_metadata[key] = IngestionService.sanitize_text(value)
-        elif isinstance(value, list):
-          # Sanitize list items if they're strings
-          sanitized_metadata[key] = [
-            IngestionService.sanitize_text(item) if isinstance(item, str) else item
-            for item in value
-          ]
-        else:
-          sanitized_metadata[key] = value
-      metadata = sanitized_metadata
+    text_content = sanitize_text(text_content)
+    metadata = sanitize_metadata(metadata)
 
-    # Extract title: prioritize structured metadata title, fallback to filename/URL
     if not title:
-      # First try structured metadata title (most accurate)
-      if (
-        metadata
-        and metadata.get("title")
-        and len(metadata.get("title", "").strip()) > 0
-      ):
-        t = metadata.get("title")
-        title = t.strip() if t else ""
-      else:
-        # If AI extraction failed, use filename from URL as minimal fallback
-        title = url.split("/")[-1]
-        # Remove .pdf extension if present
-        if title.endswith(".pdf"):
-          title = title[:-4]
-    # If title was provided but seems like a filename/URL, use structured metadata if available
-    elif title and (title.endswith(".pdf") or "/" in title or len(title.split()) < 3):
-      # Check if structured metadata has a better title
-      if (
-        metadata
-        and metadata.get("title")
-        and len(metadata.get("title", "").strip()) > 3
-      ):
-        t = metadata.get("title")
-        title = t.strip() if t else ""
+      fallback = url.split("/")[-1]
+      if fallback.endswith(".pdf"):
+        fallback = fallback[:-4]
+      title = _extract_title_from_metadata(metadata, fallback)
+    elif _should_use_metadata_title(title, metadata):
+      title = metadata["title"].strip()
 
-    title = IngestionService.sanitize_text(title)
+    title = sanitize_text(title)
 
-    # Generate embedding asynchronously
-    embedding_text = f"{title}\n\n{text_content[:1000]}"
-    embedding_list = await embedding_service.generate_embedding_async(embedding_text)
-
-    # Extract fields from metadata if available (from structured extraction)
-    # These are direct columns in the Paper model
-    volume = metadata.get("volume") if metadata else None
-    issue = metadata.get("issue") if metadata else None
-    pages = metadata.get("pages") if metadata else None
-
-    # Use DOI from metadata if not already set
     if not doi and metadata and metadata.get("doi"):
-      doi = metadata.get("doi")
+      doi = _normalize_optional_field(metadata.get("doi"))
 
-    # Ensure empty strings are converted to None for consistency
-    volume = volume if volume and volume.strip() else None
-    issue = issue if issue and issue.strip() else None
-    pages = pages if pages and pages.strip() else None
-    doi = doi if doi and doi.strip() else None
+    embedding = await IngestionService._generate_embedding(title, text_content)
 
-    paper = Paper(
+    paper = IngestionService._create_paper_from_data(
       title=title,
       doi=doi,
       url=url,
       file_path=file_path,
-      content_text=text_content,
-      embedding=embedding_list,
-      metadata_json=metadata,
-      volume=volume,
-      issue=issue,
-      pages=pages,
+      text_content=text_content,
+      embedding=embedding,
+      metadata=metadata,
     )
 
-    if group_ids:
-      from app.models.group import Group
+    await IngestionService._assign_groups(db_session, paper, group_ids)
 
-      groups = await session.execute(select(Group).where(Group.id.in_(group_ids)))
-      paper.groups = groups.scalars().all()
-
-    session.add(paper)
-    await session.flush()
+    db_session.add(paper)
+    await db_session.flush()
 
     return paper
 
   @staticmethod
   async def ingest_paper_background(
-    session: AsyncSession,
+    db_session: AsyncSession,
     url: str,
-    title: Optional[str] = None,
-    doi: Optional[str] = None,
-    group_ids: Optional[list[int]] = None,
+    title: str | None = None,
+    doi: str | None = None,
+    group_ids: list[int] | None = None,
   ) -> Paper:
-    return await IngestionService.ingest_paper(session, url, title, doi, group_ids)
+    """Ingest paper in background task."""
+    return await IngestionService.ingest_paper(db_session, url, title, doi, group_ids)
 
   @staticmethod
   async def ingest_paper_from_file(
-    session: AsyncSession,
+    db_session: AsyncSession,
     file_content: bytes,
     filename: str,
-    title: Optional[str] = None,
-    doi: Optional[str] = None,
-    group_ids: Optional[list[int]] = None,
+    title: str | None = None,
+    doi: str | None = None,
+    group_ids: list[int] | None = None,
   ) -> Paper:
-    existing = None
-    if doi:
-      existing = await session.execute(select(Paper).where(Paper.doi == doi))
-      existing_paper = existing.scalar_one_or_none()
-      if existing_paper:
-        return existing_paper
+    """Ingest paper from uploaded file."""
+    existing = await IngestionService._check_existing_paper(db_session, doi)
+    if existing:
+      return existing
 
     url = f"file://{filename}"
 
     filename_stored = storage_service.save_file(file_content, url, doi)
     file_path = str(storage_service.get_file_path(filename_stored))
 
-    # Extract text (limited to first 5 pages initially for speed)
-    # Full text can be extracted later if needed
     text_content = await pdf_parser.extract_text(file_content, max_pages=5)
     metadata = await pdf_parser.extract_metadata(file_content)
-    text_content = IngestionService.sanitize_text(text_content)
 
-    if metadata:
-      sanitized_metadata = {}
-      for key, value in metadata.items():
-        if isinstance(value, str):
-          sanitized_metadata[key] = IngestionService.sanitize_text(value)
-        elif isinstance(value, list):
-          # Sanitize list items if they're strings
-          sanitized_metadata[key] = [
-            IngestionService.sanitize_text(item) if isinstance(item, str) else item
-            for item in value
-          ]
-        else:
-          sanitized_metadata[key] = value
-      metadata = sanitized_metadata
+    text_content = sanitize_text(text_content)
+    metadata = sanitize_metadata(metadata)
 
-    # Extract title: prioritize structured metadata title, fallback to filename
     if not title:
-      # First try structured metadata title (most accurate)
-      if (
-        metadata
-        and metadata.get("title")
-        and len(metadata.get("title", "").strip()) > 0
-      ):
-        t = metadata.get("title")
-        title = t.strip() if t else ""
-      else:
-        # If AI extraction failed, use filename as minimal fallback
-        title = filename.rsplit(".", 1)[0] if "." in filename else filename
-    # If title was provided but seems like a filename, use structured metadata if available
-    elif title and (title.endswith(".pdf") or len(title.split()) < 3):
-      # Check if structured metadata has a better title
-      if (
-        metadata
-        and metadata.get("title")
-        and len(metadata.get("title", "").strip()) > 3
-      ):
-        t = metadata.get("title")
-        title = t.strip() if t else ""
+      fallback = filename.rsplit(".", 1)[0] if "." in filename else filename
+      title = _extract_title_from_metadata(metadata, fallback)
+    elif _should_use_metadata_title(title, metadata):
+      title = metadata["title"].strip()
 
-    title = IngestionService.sanitize_text(title)
+    title = sanitize_text(title)
 
-    # Generate embedding asynchronously
-    embedding_text = f"{title}\n\n{text_content[:1000]}"
-    embedding_list = await embedding_service.generate_embedding_async(embedding_text)
-
-    # Extract fields from metadata if available (from structured extraction)
-    # These are direct columns in the Paper model
-    volume = metadata.get("volume") if metadata else None
-    issue = metadata.get("issue") if metadata else None
-    pages = metadata.get("pages") if metadata else None
-
-    # Use DOI from metadata if not already set
     if not doi and metadata and metadata.get("doi"):
-      doi = metadata.get("doi")
+      doi = _normalize_optional_field(metadata.get("doi"))
 
-    # Ensure empty strings are converted to None for consistency
-    volume = volume if volume and volume.strip() else None
-    issue = issue if issue and issue.strip() else None
-    pages = pages if pages and pages.strip() else None
-    doi = doi if doi and doi.strip() else None
+    embedding = await IngestionService._generate_embedding(title, text_content)
 
-    paper = Paper(
+    paper = IngestionService._create_paper_from_data(
       title=title,
       doi=doi,
       url=url,
       file_path=file_path,
-      content_text=text_content,
-      embedding=embedding_list,
-      metadata_json=metadata,
-      volume=volume,
-      issue=issue,
-      pages=pages,
+      text_content=text_content,
+      embedding=embedding,
+      metadata=metadata,
     )
 
-    if group_ids:
-      from app.models.group import Group
+    await IngestionService._assign_groups(db_session, paper, group_ids)
 
-      groups = await session.execute(select(Group).where(Group.id.in_(group_ids)))
-      paper.groups = groups.scalars().all()
-
-    session.add(paper)
-    await session.flush()
+    db_session.add(paper)
+    await db_session.flush()
 
     return paper
 

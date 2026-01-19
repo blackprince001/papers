@@ -1,4 +1,4 @@
-import apiClient from './client';
+import { api } from './client';
 
 export interface Annotation {
   id: number;
@@ -36,30 +36,25 @@ export interface AnnotationUpdate {
 
 export const annotationsApi = {
   list: async (paperId: number): Promise<Annotation[]> => {
-    const response = await apiClient.get<Annotation[]>(`/papers/${paperId}/annotations`);
-    return response.data;
+    return api.get<Annotation[]>(`/papers/${paperId}/annotations`);
   },
 
   get: async (id: number): Promise<Annotation> => {
-    const response = await apiClient.get<Annotation>(`/annotations/${id}`);
-    return response.data;
+    return api.get<Annotation>(`/annotations/${id}`);
   },
 
   create: async (annotation: AnnotationCreate): Promise<Annotation> => {
-    const response = await apiClient.post<Annotation>(
+    return api.post<Annotation>(
       `/papers/${annotation.paper_id}/annotations`,
       annotation
     );
-    return response.data;
   },
 
   update: async (id: number, updates: AnnotationUpdate): Promise<Annotation> => {
-    const response = await apiClient.patch<Annotation>(`/annotations/${id}`, updates);
-    return response.data;
+    return api.patch<Annotation>(`/annotations/${id}`, updates);
   },
 
   delete: async (id: number): Promise<void> => {
-    await apiClient.delete(`/annotations/${id}`);
+    await api.delete(`/annotations/${id}`);
   },
 };
-

@@ -1,4 +1,4 @@
-import apiClient from './client';
+import { api } from './client';
 import type { Paper } from './papers';
 
 export interface SearchRequest {
@@ -42,13 +42,11 @@ export interface SavedSearch {
 
 export const searchApi = {
   search: async (request: SearchRequest): Promise<SearchResponse> => {
-    const response = await apiClient.post<SearchResponse>('/search', request);
-    return response.data;
+    return api.post<SearchResponse>('/search', request);
   },
 
   fulltextSearch: async (request: SearchRequest): Promise<SearchResponse> => {
-    const response = await apiClient.post<SearchResponse>('/search/fulltext', request);
-    return response.data;
+    return api.post<SearchResponse>('/search/fulltext', request);
   },
 
   searchAnnotations: async (query: string, limit: number = 10): Promise<{
@@ -60,24 +58,20 @@ export const searchApi = {
     }>;
     total: number;
   }> => {
-    const response = await apiClient.post('/search/annotations', null, {
+    return api.post('/search/annotations', null, {
       params: { query, limit },
     });
-    return response.data;
   },
 
   listSavedSearches: async (): Promise<SavedSearch[]> => {
-    const response = await apiClient.get<SavedSearch[]>('/saved-searches');
-    return response.data;
+    return api.get<SavedSearch[]>('/saved-searches');
   },
 
   createSavedSearch: async (search: { name: string; description?: string; query_params: SearchRequest }): Promise<SavedSearch> => {
-    const response = await apiClient.post<SavedSearch>('/saved-searches', search);
-    return response.data;
+    return api.post<SavedSearch>('/saved-searches', search);
   },
 
   deleteSavedSearch: async (id: number): Promise<void> => {
-    await apiClient.delete(`/saved-searches/${id}`);
+    await api.delete(`/saved-searches/${id}`);
   },
 };
-

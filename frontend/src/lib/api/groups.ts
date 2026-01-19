@@ -1,4 +1,4 @@
-import apiClient from './client';
+import { api } from './client';
 import type { Paper } from './papers';
 import { papersApi } from './papers';
 
@@ -26,31 +26,26 @@ export interface GroupUpdate {
 
 export const groupsApi = {
   list: async (): Promise<Group[]> => {
-    const response = await apiClient.get<Group[]>('/groups');
-    return response.data;
+    return api.get<Group[]>('/groups');
   },
 
   get: async (id: number): Promise<Group> => {
-    const response = await apiClient.get<Group>(`/groups/${id}`);
-    return response.data;
+    return api.get<Group>(`/groups/${id}`);
   },
 
   create: async (group: GroupCreate): Promise<Group> => {
-    const response = await apiClient.post<Group>('/groups', group);
-    return response.data;
+    return api.post<Group>('/groups', group);
   },
 
   update: async (id: number, updates: GroupUpdate): Promise<Group> => {
-    const response = await apiClient.patch<Group>(`/groups/${id}`, updates);
-    return response.data;
+    return api.patch<Group>(`/groups/${id}`, updates);
   },
 
   delete: async (id: number): Promise<void> => {
-    await apiClient.delete(`/groups/${id}`);
+    await api.delete(`/groups/${id}`);
   },
 
   updatePaperGroups: async (paperId: number, groupIds: number[]): Promise<void> => {
     await papersApi.update(paperId, { group_ids: groupIds });
   },
 };
-

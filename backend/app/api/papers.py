@@ -7,6 +7,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.logger import get_logger
 from app.dependencies import get_db
 from app.models.bookmark import Bookmark
 from app.models.paper import Paper
@@ -24,10 +25,13 @@ from app.schemas.reading_progress import (
 )
 from app.schemas.related import RelatedPapersResponse
 from app.services.citation_extractor import citation_extractor
+from app.services.ingestion import sanitize_text
 from app.services.pdf_parser import pdf_parser
 from app.services.reading_tracker import reading_tracker_service
 from app.services.references import reference_formatter
 from app.services.semantic_scholar import semantic_scholar_service
+
+logger = get_logger(__name__)
 
 router = APIRouter()
 
@@ -421,8 +425,9 @@ async def get_related_papers(paper_id: int, session: AsyncSession = Depends(get_
           if pid in lib_papers
         ]
     except Exception as e:
-      # Log error but continue - return empty list for related_library
-      print(f"Error fetching related papers from library for paper {paper_id}: {e}")
+      logger.error(
+        "Error fetching related papers from library", paper_id=paper_id, error=str(e)
+      )
 
     # 3. External API Calls (Semantic Scholar)
     try:
@@ -443,7 +448,7 @@ async def get_related_papers(paper_id: int, session: AsyncSession = Depends(get_
         try:
           identifier = await semantic_scholar_service.search_paper(str(paper.title))
         except Exception as e:
-          print(f"Error searching paper by title: {e}")
+          logger.error("Error searching paper by title", error=str(e))
 
       if identifier:
         import asyncio
@@ -465,20 +470,19 @@ async def get_related_papers(paper_id: int, session: AsyncSession = Depends(get_
             related_internet = results[2] or []
 
         except Exception as e:
-          # Log error and return empty lists for external results
-          print(
-            f"Error fetching related papers from external API for {identifier}: {e}"
+          logger.error(
+            "Error fetching from external API", identifier=identifier, error=str(e)
           )
 
     except Exception as e:
-      # Log error but continue - return empty lists for external results
-      print(f"Error in external API section for paper {paper_id}: {e}")
+      logger.error("Error in external API section", paper_id=paper_id, error=str(e))
 
   except HTTPException:
     raise
   except Exception as e:
-    # Log unexpected errors but still return a valid response
-    print(f"Unexpected error in get_related_papers for paper {paper_id}: {e}")
+    logger.error(
+      "Unexpected error in get_related_papers", paper_id=paper_id, error=str(e)
+    )
 
   return RelatedPapersResponse(
     cited_by=cited_by or [],
@@ -527,17 +531,14 @@ async def regenerate_paper_metadata(
     # Regenerate metadata using AI extraction
     metadata = await pdf_parser.extract_metadata(pdf_content)
 
-    # Sanitize metadata
-    from app.services.ingestion import IngestionService
-
     if metadata:
       sanitized_metadata = {}
       for key, value in metadata.items():
         if isinstance(value, str):
-          sanitized_metadata[key] = IngestionService.sanitize_text(value)
+          sanitized_metadata[key] = sanitize_text(value)
         elif isinstance(value, list):
           sanitized_metadata[key] = [
-            IngestionService.sanitize_text(item) if isinstance(item, str) else item
+            sanitize_text(item) if isinstance(item, str) else item
             for item in value
           ]
         else:
@@ -549,11 +550,9 @@ async def regenerate_paper_metadata(
     if (
       metadata and metadata.get("title") and len(metadata.get("title", "").strip()) > 0
     ):
-      from app.services.ingestion import IngestionService
-
       t = metadata.get("title")
 
-      paper.title = IngestionService.sanitize_text(t.strip() if t else "")
+      paper.title = sanitize_text(t.strip() if t else "")
 
     # Update metadata_json completely
     paper.metadata_json = metadata or {}
@@ -583,7 +582,7 @@ async def regenerate_paper_metadata(
   except Exception as e:
     raise HTTPException(
       status_code=500, detail=f"Error regenerating metadata: {str(e)}"
-    )
+    ) from e
 
 
 @router.post("/papers/{paper_id}/extract-citations")
@@ -624,7 +623,9 @@ async def extract_paper_citations(
   except HTTPException:
     raise
   except Exception as e:
-    raise HTTPException(status_code=500, detail=f"Error extracting citations: {str(e)}")
+    raise HTTPException(
+      status_code=500, detail=f"Error extracting citations: {str(e)}"
+    ) from e
 
 
 class BulkRegenerateRequest(BaseModel):
@@ -676,17 +677,14 @@ async def regenerate_paper_metadata_bulk(
       # Regenerate metadata using AI extraction
       metadata = await pdf_parser.extract_metadata(pdf_content)
 
-      # Sanitize metadata
-      from app.services.ingestion import IngestionService
-
       if metadata:
         sanitized_metadata = {}
         for key, value in metadata.items():
           if isinstance(value, str):
-            sanitized_metadata[key] = IngestionService.sanitize_text(value)
+            sanitized_metadata[key] = sanitize_text(value)
           elif isinstance(value, list):
             sanitized_metadata[key] = [
-              IngestionService.sanitize_text(item) if isinstance(item, str) else item
+              sanitize_text(item) if isinstance(item, str) else item
               for item in value
             ]
           else:
@@ -700,7 +698,7 @@ async def regenerate_paper_metadata_bulk(
         and len(metadata.get("title", "").strip()) > 0
       ):
         t = metadata.get("title")
-        paper.title = IngestionService.sanitize_text(t.strip() if t else "")
+        paper.title = sanitize_text(t.strip() if t else "")
 
       paper.metadata_json = metadata or {}
 

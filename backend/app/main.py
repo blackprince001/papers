@@ -19,6 +19,10 @@ from app.api.statistics import router as statistics_router
 from app.api.tags import router as tags_router
 from app.core.config import settings
 from app.core.database import init_db
+from app.core.logger import configure_logging, get_logger
+
+configure_logging(is_debug=settings.DEBUG)
+logger = get_logger(__name__)
 
 storage_path = Path(settings.STORAGE_PATH)
 storage_path.mkdir(parents=True, exist_ok=True)

@@ -1,5 +1,4 @@
 import json
-import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -8,9 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.logger import get_logger
 from app.dependencies import get_db
-
-logger = logging.getLogger(__name__)
 from app.models.chat import ChatMessage, ChatSession
 from app.models.paper import Paper
 from app.schemas.chat import (
@@ -26,6 +24,8 @@ from app.schemas.chat import (
   ChatSession as ChatSessionSchema,
 )
 from app.services.chat import chat_service
+
+logger = get_logger(__name__)
 
 router = APIRouter()
 
@@ -45,7 +45,7 @@ async def send_chat_message(
 
   try:
     assistant_message = await chat_service.send_message(
-      session=session,
+      db_session=session,
       paper_id=paper_id,
       user_message=chat_request.message,
       references=chat_request.references,
@@ -99,7 +99,9 @@ async def get_chat_history(
   if not paper:
     raise HTTPException(status_code=404, detail="Paper not found")
 
-  chat_session = await chat_service.get_latest_session(session, paper_id)
+  chat_session = await chat_service.get_latest_session(
+    db_session=session, paper_id=paper_id
+  )
 
   if not chat_session:
     return None
@@ -137,7 +139,7 @@ async def stream_chat_message(
   async def generate_stream():
     try:
       async for chunk in chat_service.stream_message(
-        session=session,
+        db_session=session,
         paper_id=paper_id,
         user_message=chat_request.message,
         references=chat_request.references,
@@ -206,7 +208,7 @@ async def create_new_session(
     raise HTTPException(status_code=404, detail="Paper not found")
 
   chat_session = await chat_service.create_session(
-    session, paper_id, name=session_data.name
+    db_session=session, paper_id=paper_id, name=session_data.name
   )
 
   # Re-fetch with messages loaded

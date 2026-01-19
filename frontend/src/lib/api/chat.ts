@@ -1,4 +1,4 @@
-import apiClient from './client';
+import { api } from './client';
 
 export interface ChatMessage {
   id: number;
@@ -47,12 +47,11 @@ export type StreamChunk = {
 
 export const chatApi = {
   sendMessage: async (paperId: number, message: string, references?: Record<string, any>, sessionId?: number): Promise<ChatResponse> => {
-    const response = await apiClient.post<ChatResponse>(`/papers/${paperId}/chat`, {
+    return api.post<ChatResponse>(`/papers/${paperId}/chat`, {
       message,
       references: references || {},
       session_id: sessionId,
     });
-    return response.data;
   },
 
   streamMessage: async function* (
@@ -136,39 +135,34 @@ export const chatApi = {
   },
 
   getHistory: async (paperId: number): Promise<ChatSession | null> => {
-    const response = await apiClient.get<ChatSession | null>(`/papers/${paperId}/chat`);
-    return response.data;
+    return api.get<ChatSession | null>(`/papers/${paperId}/chat`);
   },
 
   getSession: async (sessionId: number): Promise<ChatSession> => {
-    const response = await apiClient.get<ChatSession>(`/sessions/${sessionId}`);
-    return response.data;
+    return api.get<ChatSession>(`/sessions/${sessionId}`);
   },
 
   getSessions: async (paperId: number): Promise<ChatSession[]> => {
-    const response = await apiClient.get<ChatSession[]>(`/papers/${paperId}/sessions`);
-    return response.data;
+    return api.get<ChatSession[]>(`/papers/${paperId}/sessions`);
   },
 
   createSession: async (paperId: number, name?: string): Promise<ChatSession> => {
-    const response = await apiClient.post<ChatSession>(`/papers/${paperId}/sessions`, name ? { name } : {});
-    return response.data;
+    return api.post<ChatSession>(`/papers/${paperId}/sessions`, name ? { name } : {});
   },
 
   updateSession: async (sessionId: number, name: string): Promise<ChatSession> => {
-    const response = await apiClient.patch<ChatSession>(`/sessions/${sessionId}`, { name });
-    return response.data;
+    return api.patch<ChatSession>(`/sessions/${sessionId}`, { name });
   },
 
   deleteSession: async (sessionId: number): Promise<void> => {
-    await apiClient.delete(`/sessions/${sessionId}`);
+    await api.delete(`/sessions/${sessionId}`);
   },
 
   clearHistory: async (paperId: number): Promise<void> => {
-    await apiClient.delete(`/papers/${paperId}/chat`);
+    await api.delete(`/papers/${paperId}/chat`);
   },
 
   clearSessionMessages: async (sessionId: number): Promise<void> => {
-    await apiClient.delete(`/sessions/${sessionId}/messages`);
+    await api.delete(`/sessions/${sessionId}/messages`);
   },
 };

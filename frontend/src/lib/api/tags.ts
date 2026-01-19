@@ -1,4 +1,4 @@
-import apiClient from './client';
+import { api } from './client';
 
 export interface Tag {
   id: number;
@@ -18,30 +18,26 @@ export const tagsApi = {
       page: page.toString(),
       page_size: pageSize.toString(),
     });
-    if (search) {
+    if (search)
+    {
       params.append('search', search);
     }
-    const response = await apiClient.get<TagListResponse>('/tags', { params });
-    return response.data;
+    return api.get<TagListResponse>(`/tags?${params}`);
   },
 
   get: async (id: number): Promise<Tag> => {
-    const response = await apiClient.get<Tag>(`/tags/${id}`);
-    return response.data;
+    return api.get<Tag>(`/tags/${id}`);
   },
 
   create: async (name: string): Promise<Tag> => {
-    const response = await apiClient.post<Tag>('/tags', { name });
-    return response.data;
+    return api.post<Tag>('/tags', { name });
   },
 
   update: async (id: number, name: string): Promise<Tag> => {
-    const response = await apiClient.patch<Tag>(`/tags/${id}`, { name });
-    return response.data;
+    return api.patch<Tag>(`/tags/${id}`, { name });
   },
 
   delete: async (id: number): Promise<void> => {
-    await apiClient.delete(`/tags/${id}`);
+    await api.delete(`/tags/${id}`);
   },
 };
-

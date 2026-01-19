@@ -26,6 +26,7 @@ def _sanitize_similarity(value: float) -> float:
     return 0.0
   return float(value)
 
+
 router = APIRouter()
 
 

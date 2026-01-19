@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Any, Optional, cast
+from typing import Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -41,7 +41,7 @@ async def generate_summary(
   if not settings.GOOGLE_API_KEY:
     raise HTTPException(
       status_code=400,
-      detail="Google API key not configured. Please set GOOGLE_API_KEY environment variable."
+      detail="Google API key not configured. Please set GOOGLE_API_KEY environment variable.",
     )
 
   summary = await ai_summarizer_service.generate_summary(
@@ -51,7 +51,7 @@ async def generate_summary(
   if not summary:
     raise HTTPException(
       status_code=500,
-      detail="Failed to generate summary. Please check your Google API key configuration and ensure it is valid. If you've changed your API key, please restart the backend server."
+      detail="Failed to generate summary. Please check your Google API key configuration and ensure it is valid. If you've changed your API key, please restart the backend server.",
     )
 
   paper.ai_summary = summary
@@ -81,7 +81,7 @@ async def get_summary(paper_id: int, session: AsyncSession = Depends(get_db)):
     )
 
   return SummaryResponse(
-    summary=paper.ai_summary,
+    summary=cast(str, paper.ai_summary),
     generated_at=cast(datetime | None, paper.summary_generated_at),
   )
 
@@ -144,7 +144,11 @@ async def get_findings(paper_id: int, session: AsyncSession = Depends(get_db)):
     raise HTTPException(status_code=404, detail="Paper not found")
 
   # Ensure key_findings is a dict, default to empty dict if None
-  findings = paper.key_findings if paper.key_findings is not None and isinstance(paper.key_findings, dict) else {}
+  findings = (
+    paper.key_findings
+    if paper.key_findings is not None and isinstance(paper.key_findings, dict)
+    else {}
+  )
 
   return FindingsResponse(findings=findings)
 
@@ -211,7 +215,11 @@ async def get_reading_guide(paper_id: int, session: AsyncSession = Depends(get_d
     raise HTTPException(status_code=404, detail="Paper not found")
 
   # Ensure reading_guide is a dict, default to empty structure if None
-  guide = paper.reading_guide if paper.reading_guide is not None and isinstance(paper.reading_guide, dict) else {"pre_reading": [], "during_reading": [], "post_reading": []}
+  guide = (
+    paper.reading_guide
+    if paper.reading_guide is not None and isinstance(paper.reading_guide, dict)
+    else {"pre_reading": [], "during_reading": [], "post_reading": []}
+  )
 
   return ReadingGuideResponse(guide=guide)
 

@@ -1,4 +1,3 @@
-import logging
 from typing import List, Optional
 
 from google import genai
@@ -6,8 +5,9 @@ from google.genai import types
 from pgvector.sqlalchemy import Vector
 
 from app.core.config import settings
+from app.core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class EmbeddingService:
@@ -119,12 +119,12 @@ class EmbeddingService:
       )
 
       # Build full results list with zeros for empty texts
-      full_results: List[List[float]] = [
-        [0.0] * self.get_embedding_dimension()
-      ] * len(texts)
+      full_results: List[List[float]] = [[0.0] * self.get_embedding_dimension()] * len(
+        texts
+      )
 
       if result.embeddings:
-        for idx, embedding in zip(non_empty_indices, result.embeddings):
+        for idx, embedding in zip(non_empty_indices, result.embeddings, strict=True):
           full_results[idx] = list(embedding.values)
 
       return full_results

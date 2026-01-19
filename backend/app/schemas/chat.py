@@ -61,10 +61,3 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
   message: ChatMessage
   session: ChatSession
-
-
-
-
-
-
-

@@ -1,4 +1,4 @@
-import apiClient from './client';
+import { api } from './client';
 
 export interface ReadingStatistics {
   papers_read_this_week: number;
@@ -20,13 +20,10 @@ export interface ReadingStreak {
 
 export const statisticsApi = {
   getDashboard: async (): Promise<ReadingStatistics> => {
-    const response = await apiClient.get<ReadingStatistics>('/statistics/dashboard');
-    return response.data;
+    return api.get<ReadingStatistics>('/statistics/dashboard');
   },
 
   getReadingStreaks: async (): Promise<ReadingStreak> => {
-    const response = await apiClient.get<ReadingStreak>('/statistics/reading-streaks');
-    return response.data;
+    return api.get<ReadingStreak>('/statistics/reading-streaks');
   },
 };
-

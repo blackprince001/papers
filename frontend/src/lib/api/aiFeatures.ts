@@ -1,4 +1,4 @@
-import apiClient from './client';
+import { api } from './client';
 
 export interface SummaryResponse {
   summary: string;
@@ -25,53 +25,42 @@ export interface ReadingGuideResponse {
 
 export const aiFeaturesApi = {
   generateSummary: async (paperId: number): Promise<SummaryResponse> => {
-    const response = await apiClient.post<SummaryResponse>(`/papers/${paperId}/generate-summary`);
-    return response.data;
+    return api.post<SummaryResponse>(`/papers/${paperId}/generate-summary`);
   },
 
   getSummary: async (paperId: number): Promise<SummaryResponse> => {
-    const response = await apiClient.get<SummaryResponse>(`/papers/${paperId}/summary`);
-    return response.data;
+    return api.get<SummaryResponse>(`/papers/${paperId}/summary`);
   },
 
   updateSummary: async (paperId: number, summary: string): Promise<SummaryResponse> => {
-    const response = await apiClient.put<SummaryResponse>(`/papers/${paperId}/summary`, { summary });
-    return response.data;
+    return api.put<SummaryResponse>(`/papers/${paperId}/summary`, { summary });
   },
 
   extractFindings: async (paperId: number): Promise<FindingsResponse> => {
-    const response = await apiClient.post<FindingsResponse>(`/papers/${paperId}/extract-findings`);
-    return response.data;
+    return api.post<FindingsResponse>(`/papers/${paperId}/extract-findings`);
   },
 
   getFindings: async (paperId: number): Promise<FindingsResponse> => {
-    const response = await apiClient.get<FindingsResponse>(`/papers/${paperId}/findings`);
-    return response.data;
+    return api.get<FindingsResponse>(`/papers/${paperId}/findings`);
   },
 
   updateFindings: async (paperId: number, findings: any): Promise<FindingsResponse> => {
-    const response = await apiClient.put<FindingsResponse>(`/papers/${paperId}/findings`, { findings });
-    return response.data;
+    return api.put<FindingsResponse>(`/papers/${paperId}/findings`, { findings });
   },
 
   generateReadingGuide: async (paperId: number): Promise<ReadingGuideResponse> => {
-    const response = await apiClient.post<ReadingGuideResponse>(`/papers/${paperId}/generate-reading-guide`);
-    return response.data;
+    return api.post<ReadingGuideResponse>(`/papers/${paperId}/generate-reading-guide`);
   },
 
   getReadingGuide: async (paperId: number): Promise<ReadingGuideResponse> => {
-    const response = await apiClient.get<ReadingGuideResponse>(`/papers/${paperId}/reading-guide`);
-    return response.data;
+    return api.get<ReadingGuideResponse>(`/papers/${paperId}/reading-guide`);
   },
 
   updateReadingGuide: async (paperId: number, guide: any): Promise<ReadingGuideResponse> => {
-    const response = await apiClient.put<ReadingGuideResponse>(`/papers/${paperId}/reading-guide`, { guide });
-    return response.data;
+    return api.put<ReadingGuideResponse>(`/papers/${paperId}/reading-guide`, { guide });
   },
 
   generateHighlights: async (paperId: number): Promise<{ message: string; count: number }> => {
-    const response = await apiClient.post(`/papers/${paperId}/generate-highlights`);
-    return response.data;
+    return api.post(`/papers/${paperId}/generate-highlights`);
   },
 };
-

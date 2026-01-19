@@ -2,7 +2,7 @@ import asyncio
 import io
 import json
 import re
-from typing import Dict, List, Optional, cast
+from typing import Any, cast
 
 from google import genai
 from google.genai import types
@@ -11,44 +11,195 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.logger import get_logger
 from app.models.paper import Paper
 from app.models.paper_citation import PaperCitation
+
+logger = get_logger(__name__)
+
+CITATION_EXTRACTION_PROMPT = """You are extracting citations from an academic paper. \
+Identify and extract ONLY the citation entries from the text below.
+
+Text from paper:
+{text}
+
+INSTRUCTIONS:
+1. Identify citation entries - formatted bibliographic entries with authors, titles, etc.
+2. Ignore body text, figures, tables, footnotes
+3. Focus on entries following common citation formats (APA, MLA, Chicago, IEEE)
+4. Extract ALL citations you find
+
+For EACH citation entry, extract:
+- title: The paper/article/book title (required)
+- authors: List of author names as array
+- year: Publication year as integer
+- journal: Journal, conference, or venue name
+- doi: DOI if mentioned (normalize by removing prefixes)
+- pages: Page numbers or range
+- volume: Volume number
+- issue: Issue number
+
+Return a JSON array of citations.
+
+IMPORTANT: Return ONLY valid JSON array, no other text or markdown."""
+
+
+REFERENCES_SECTION_PATTERNS = [
+  r"(?i)^\s*references\s*$",
+  r"(?i)^\s*bibliography\s*$",
+  r"(?i)^\s*works\s+cited\s*$",
+  r"(?i)^\s*literature\s+cited\s*$",
+  r"(?i)^\s*citations\s*$",
+  r"(?i)^\s*references\s+and\s+notes\s*$",
+]
+
+
+def _clean_json_response(response_text: str) -> str:
+  """Remove markdown code blocks from response."""
+  cleaned = response_text.strip()
+  if not cleaned.startswith("```"):
+    return cleaned
+
+  first_newline = cleaned.find("\n")
+  if first_newline != -1:
+    cleaned = cleaned[first_newline + 1 :]
+
+  if cleaned.endswith("```"):
+    cleaned = cleaned[:-3]
+
+  cleaned = cleaned.strip()
+  if cleaned.startswith("json\n"):
+    cleaned = cleaned[5:]
+
+  return cleaned
+
+
+def _normalize_doi(doi: str | None) -> str | None:
+  """Normalize DOI by removing common prefixes."""
+  if not doi:
+    return None
+
+  normalized = re.sub(
+    r"^(doi:|DOI:|https?://(dx\.)?doi\.org/)",
+    "",
+    doi,
+    flags=re.IGNORECASE,
+  ).strip()
+
+  return normalized if normalized else None
+
+
+def _normalize_title(title: str) -> str:
+  """Normalize title for comparison."""
+  normalized = title.lower()
+  normalized = re.sub(r"[^\w\s]", "", normalized)
+  normalized = re.sub(r"\s+", " ", normalized)
+  return normalized.strip()
+
+
+def _calculate_jaccard_similarity(words1: set[str], words2: set[str]) -> float:
+  """Calculate Jaccard similarity between two word sets."""
+  if not words1 or not words2:
+    return 0.0
+
+  intersection = words1.intersection(words2)
+  union = words1.union(words2)
+
+  jaccard = len(intersection) / len(union) if union else 0.0
+
+  if len(intersection) >= 3:
+    jaccard = min(1.0, jaccard * 1.2)
+
+  return jaccard
+
+
+def _normalize_citation_field(value: Any) -> str | None:
+  """Normalize a citation field to string or None."""
+  if not value:
+    return None
+  result = str(value).strip()
+  return result if result else None
+
+
+def _parse_single_citation(raw_citation: dict[str, Any]) -> dict[str, Any] | None:
+  """Parse and normalize a single citation dict."""
+  if not isinstance(raw_citation, dict):
+    return None
+
+  title = _normalize_citation_field(raw_citation.get("title"))
+  if not title:
+    return None
+
+  authors = raw_citation.get("authors", [])
+  if not isinstance(authors, list):
+    authors = []
+
+  return {
+    "title": title,
+    "authors": authors,
+    "year": raw_citation.get("year"),
+    "journal": _normalize_citation_field(raw_citation.get("journal")),
+    "doi": _normalize_doi(_normalize_citation_field(raw_citation.get("doi"))),
+    "pages": _normalize_citation_field(raw_citation.get("pages")),
+    "volume": _normalize_citation_field(raw_citation.get("volume")),
+    "issue": _normalize_citation_field(raw_citation.get("issue")),
+  }
+
+
+def _build_citation_context(citation: dict[str, Any]) -> str:
+  """Build a formatted context string from citation data."""
+  parts = []
+
+  if citation.get("authors"):
+    parts.append(", ".join(citation["authors"][:3]))
+  if citation.get("title"):
+    parts.append(citation["title"])
+  if citation.get("journal"):
+    parts.append(citation["journal"])
+  if citation.get("year"):
+    parts.append(str(citation["year"]))
+
+  return ". ".join(parts)[:500]
 
 
 class CitationExtractor:
   @staticmethod
   def _find_references_start_position(full_text: str) -> int:
-    """Find the start position of references section by looking for section headers."""
-    # Look for common references section headers
-    patterns = [
-      r"(?i)^\s*references\s*$",
-      r"(?i)^\s*bibliography\s*$",
-      r"(?i)^\s*works\s+cited\s*$",
-      r"(?i)^\s*literature\s+cited\s*$",
-      r"(?i)^\s*citations\s*$",
-      r"(?i)^\s*references\s+and\s+notes\s*$",
-    ]
-
+    """Find the start position of references section."""
     lines = full_text.split("\n")
-    # Check from end backwards (references are usually at the end)
-    # Search in last 40% of document for efficiency
     search_start = max(0, int(len(lines) * 0.6))
+
     for i in range(len(lines) - 1, search_start - 1, -1):
       line = lines[i].strip()
-      for pattern in patterns:
+      for pattern in REFERENCES_SECTION_PATTERNS:
         if re.match(pattern, line):
-          # Found references section start, return character position
-          return sum(len(lines[j]) + 1 for j in range(i))  # +1 for newline
+          return sum(len(lines[j]) + 1 for j in range(i))
 
     return -1
 
   @staticmethod
-  def extract_references_section(pdf_content: bytes) -> Optional[str]:
-    """Extract text from PDF starting at the References section marker.
-    
-    Uses heuristics to find the "References" header, then extracts text from that point.
-    Falls back to last 50% of pages if no marker is found.
-    """
+  def _extract_all_text(reader: PdfReader) -> str | None:
+    """Extract text from all pages of PDF."""
+    text_parts = [page.extract_text() for page in reader.pages if page.extract_text()]
+    return "\n\n".join(text_parts) if text_parts else None
+
+  @staticmethod
+  def _extract_fallback_text(reader: PdfReader) -> str | None:
+    """Extract text from last half of document as fallback."""
+    total_pages = len(reader.pages)
+    start_page = 0 if total_pages < 10 else total_pages // 2
+
+    text_parts = []
+    for i in range(start_page, total_pages):
+      text = reader.pages[i].extract_text()
+      if text:
+        text_parts.append(text)
+
+    return "\n\n".join(text_parts) if text_parts else None
+
+  @staticmethod
+  def extract_references_section(pdf_content: bytes) -> str | None:
+    """Extract text from PDF starting at the References section."""
     try:
       pdf_file = io.BytesIO(pdf_content)
       reader = PdfReader(pdf_file)
@@ -56,115 +207,32 @@ class CitationExtractor:
       if len(reader.pages) == 0:
         return None
 
-      # Extract full text from all pages
-      text_parts = []
-      for page in reader.pages:
-        text = page.extract_text()
-        if text:
-          text_parts.append(text)
-
-      if not text_parts:
+      full_text = CitationExtractor._extract_all_text(reader)
+      if not full_text:
         return None
 
-      full_text = "\n\n".join(text_parts)
-
-      # Try to find References section marker
       references_start = CitationExtractor._find_references_start_position(full_text)
-      
+
       if references_start >= 0:
-        # Found references marker, extract from that point
         return full_text[references_start:]
-      else:
-        # No marker found, fallback to last 50% of pages
-        total_pages = len(reader.pages)
-        if total_pages < 10:
-          start_page = 0
-        else:
-          start_page = total_pages // 2
 
-        # Extract text from selected pages
-        fallback_text_parts = []
-        for i in range(start_page, total_pages):
-          page = reader.pages[i]
-          text = page.extract_text()
-          if text:
-            fallback_text_parts.append(text)
-
-        if not fallback_text_parts:
-          return None
-
-        return "\n\n".join(fallback_text_parts)
+      return CitationExtractor._extract_fallback_text(reader)
 
     except Exception as e:
-      print(f"Error extracting references section: {str(e)}")
+      logger.error("Error extracting references section", error=str(e))
       return None
 
   @staticmethod
-  async def parse_citations(references_text: str) -> List[Dict]:
-    """Parse individual citations from references text using AI."""
-    if not references_text or not references_text.strip():
-      return []
-
+  async def _call_citation_api(prompt: str) -> str | None:
+    """Call GenAI API for citation extraction."""
     if not settings.GOOGLE_API_KEY:
-      print("Google API key not available for citation parsing")
-      return []
+      logger.warning("Google API key not available for citation parsing")
+      return None
 
     try:
       client = genai.Client(api_key=settings.GOOGLE_API_KEY)
-
-      # Limit text to avoid token limits (process in chunks if needed)
-      max_chars = 20000
-      text_to_parse = references_text
-      if len(references_text) > max_chars:
-        text_to_parse = references_text[
-          -max_chars:
-        ]  # Use last portion (most citations)
-
-      prompt = f"""You are extracting citations from an academic paper. The text below may contain citation entries mixed with other content (body text, figures, tables, etc.). Your task is to identify and extract ONLY the citation entries.
-
-Text from paper:
-{text_to_parse}
-
-INSTRUCTIONS:
-1. Identify citation entries in the text - these typically appear as formatted bibliographic entries with authors, titles, publication information
-2. Ignore body text, figures, tables, footnotes, and other non-citation content
-3. Focus on entries that follow common citation formats (APA, MLA, Chicago, IEEE, etc.)
-4. Each citation entry usually appears on one or more lines and contains bibliographic information
-5. Extract ALL citations you find - do not skip any
-
-For EACH citation entry, extract:
-- title: The paper/article/book title (required)
-- authors: List of author names as array (e.g., ["Author1", "Author2"])
-- year: Publication year as integer (if available)
-- journal: Journal, conference, or venue name (if applicable)
-- doi: DOI if mentioned (format: 10.xxxx/xxxx, normalize by removing "doi:" or URL prefixes)
-- pages: Page numbers or page range (e.g., "123-145" or "pp. 123-145")
-- volume: Volume number (if applicable)
-- issue: Issue number (if applicable)
-
-Return a JSON array of citations. Each citation should be a JSON object with these fields.
-Handle various citation formats and be flexible with parsing.
-Extract ALL citations - do not skip any valid citation entries.
-
-Example output format:
-[
-  {{
-    "title": "Paper Title",
-    "authors": ["Author One", "Author Two"],
-    "year": 2023,
-    "journal": "Journal Name",
-    "doi": "10.1234/example",
-    "pages": "123-145",
-    "volume": "42",
-    "issue": "3"
-  }},
-  ...
-]
-
-IMPORTANT: Return ONLY valid JSON array, no other text, explanations, or markdown formatting."""
-
-      # Use run_in_executor to run synchronous genai call in executor
       loop = asyncio.get_event_loop()
+
       response = await loop.run_in_executor(
         None,
         lambda: client.models.generate_content(
@@ -174,292 +242,289 @@ IMPORTANT: Return ONLY valid JSON array, no other text, explanations, or markdow
       )
 
       if hasattr(response, "text") and response.text:
-        try:
-          # Clean response text - remove markdown code blocks if present
-          response_text = response.text.strip()
-          if response_text.startswith("```"):
-            # Find the first newline after ```
-            first_newline = response_text.find("\n")
-            if first_newline != -1:
-              response_text = response_text[first_newline + 1 :]
-            # Remove closing ```
-            if response_text.endswith("```"):
-              response_text = response_text[:-3]
-            response_text = response_text.strip()
-            # Also remove language specifier like ```json
-            if response_text.startswith("json\n"):
-              response_text = response_text[5:]
+        return response.text
 
-          # Parse JSON response
-          citations_data = json.loads(response_text)
+      return None
 
-          # Validate and normalize citations
-          parsed_citations = []
-          if isinstance(citations_data, list):
-            for citation in citations_data:
-              if isinstance(citation, dict) and citation.get("title"):
-                # Normalize fields
-                parsed_citation = {
-                  "title": str(citation.get("title", "")).strip(),
-                  "authors": (
-                    citation.get("authors", [])
-                    if isinstance(citation.get("authors"), list)
-                    else []
-                  ),
-                  "year": citation.get("year"),
-                  "journal": str(citation.get("journal", "")).strip() or None,
-                  "doi": str(citation.get("doi", "")).strip() or None,
-                  "pages": str(citation.get("pages", "")).strip() or None,
-                  "volume": str(citation.get("volume", "")).strip() or None,
-                  "issue": str(citation.get("issue", "")).strip() or None,
-                }
-                # Clean DOI format
-                if parsed_citation["doi"]:
-                  doi = str(parsed_citation["doi"])
-                  # Remove common prefixes
-                  doi = re.sub(
-                    r"^(doi:|DOI:|https?://(dx\.)?doi\.org/)",
-                    "",
-                    doi,
-                    flags=re.IGNORECASE,
-                  )
-                  parsed_citation["doi"] = doi.strip()
-                  if not parsed_citation["doi"]:
-                    parsed_citation["doi"] = None
-
-                parsed_citations.append(parsed_citation)
-
-          return parsed_citations
-        except (json.JSONDecodeError, ValueError, TypeError) as e:
-          print(f"Error parsing citations JSON: {str(e)}")
-          print(f"Response text: {response_text[:500]}")
-          return []
-
-      return []
     except Exception as e:
-      print(f"Error parsing citations with AI: {str(e)}")
+      logger.error("Error calling citation API", error=str(e))
+      return None
+
+  @staticmethod
+  def _parse_citations_response(response_text: str) -> list[dict[str, Any]]:
+    """Parse API response into list of citation dicts."""
+    try:
+      cleaned = _clean_json_response(response_text)
+      citations_data = json.loads(cleaned)
+
+      if not isinstance(citations_data, list):
+        return []
+
+      parsed = []
+      for raw in citations_data:
+        citation = _parse_single_citation(raw)
+        if citation:
+          parsed.append(citation)
+
+      return parsed
+
+    except (json.JSONDecodeError, ValueError, TypeError) as e:
+      logger.warning("Error parsing citations JSON", error=str(e))
       return []
 
   @staticmethod
-  async def match_citation_to_paper(
-    session: AsyncSession, citation: Dict
-  ) -> Optional[int]:
-    """Match a citation to an existing paper in the database using multiple criteria."""
-    if not citation:
+  async def parse_citations(references_text: str) -> list[dict[str, Any]]:
+    """Parse individual citations from references text using AI."""
+    if not references_text or not references_text.strip():
+      return []
+
+    max_chars = 20000
+    text_to_parse = (
+      references_text[-max_chars:]
+      if len(references_text) > max_chars
+      else references_text
+    )
+
+    prompt = CITATION_EXTRACTION_PROMPT.format(text=text_to_parse)
+    response_text = await CitationExtractor._call_citation_api(prompt)
+
+    if not response_text:
+      return []
+
+    return CitationExtractor._parse_citations_response(response_text)
+
+  @staticmethod
+  async def _match_by_doi(db_session: AsyncSession, doi: str | None) -> int | None:
+    """Try to match citation by DOI."""
+    if not doi:
       return None
 
-    # Primary: Try DOI match (most reliable)
-    if citation.get("doi"):
-      doi = citation["doi"]
-      # Normalize DOI
-      doi = re.sub(r"^(doi:|DOI:)", "", doi, flags=re.IGNORECASE).strip()
+    normalized_doi = re.sub(r"^(doi:|DOI:)", "", doi, flags=re.IGNORECASE).strip()
 
-      query = select(Paper).where(Paper.doi == doi)
-      result = await session.execute(query)
-      paper = result.scalar_one_or_none()
-      if paper:
-        return cast(int, paper.id)
+    query = select(Paper).where(Paper.doi == normalized_doi)
+    result = await db_session.execute(query)
+    paper = result.scalar_one_or_none()
 
-    # Secondary: Try title + author + year matching (high confidence)
-    title = citation.get("title")
-    authors = citation.get("authors", [])
-    year = citation.get("year")
+    return cast(int, paper.id) if paper else None
 
-    if title and len(title.strip()) > 5:
-      # Get papers with similar titles
-      query = select(Paper).where(Paper.title.ilike(f"%{title[:50]}%"))
-      result = await session.execute(query)
-      papers = result.scalars().all()
+  @staticmethod
+  def _calculate_author_score(
+    citation_authors: list[str], paper_metadata: dict[str, Any] | None
+  ) -> float:
+    """Calculate author matching score."""
+    if not citation_authors or not paper_metadata:
+      return 0.0
 
-      if papers:
-        best_match = None
-        best_score = 0.6  # Lower threshold when using multiple criteria
+    paper_authors = paper_metadata.get("authors_list", [])
+    if not isinstance(paper_authors, list) or not paper_authors:
+      return 0.0
 
-        for paper in papers:
-          # Calculate composite score using multiple criteria
-          title_score = CitationExtractor._calculate_title_similarity(
-            title.lower(), (paper.title or "").lower()
-          )
+    citation_lastnames = {
+      a.split()[-1].lower() for a in citation_authors[:3] if a.split()
+    }
+    paper_lastnames = {a.split()[-1].lower() for a in paper_authors[:3] if a.split()}
 
-          # Author matching
-          author_score = 0.0
-          if authors and paper.metadata_json:
-            paper_authors = paper.metadata_json.get("authors_list", [])
-            if isinstance(paper_authors, list) and len(paper_authors) > 0:
-              # Check if any author from citation matches any author in paper
-              citation_author_lastnames = {
-                a.split()[-1].lower() if len(a.split()) > 0 else "" for a in authors[:3]
-              }
-              paper_author_lastnames = {
-                a.split()[-1].lower() if len(a.split()) > 0 else ""
-                for a in paper_authors[:3]
-              }
-              if citation_author_lastnames.intersection(paper_author_lastnames):
-                author_score = 0.8
+    if citation_lastnames.intersection(paper_lastnames):
+      return 0.8
 
-          # Year matching (exact match gets bonus, ±1 year gets partial)
-          year_score = 0.0
-          if year and paper.metadata_json:
-            paper_year = None
-            # Try to extract year from metadata
-            if paper.metadata_json.get("year"):
-              try:
-                paper_year = int(str(paper.metadata_json["year"])[:4])
-              except (ValueError, TypeError):
-                pass
-            # Fallback to created_at year
-            if not paper_year and paper.created_at:
-              paper_year = paper.created_at.year
+    return 0.0
 
-            if paper_year:
-              year_diff = abs(year - paper_year)
-              if year_diff == 0:
-                year_score = 1.0
-              elif year_diff == 1:
-                year_score = 0.7
-              elif year_diff <= 3:
-                year_score = 0.4
+  @staticmethod
+  def _calculate_year_score(citation_year: int | None, paper: Paper) -> float:
+    """Calculate year matching score."""
+    if not citation_year:
+      return 0.0
 
-          # Composite score: weighted combination
-          # Title is most important, then authors, then year
-          composite_score = title_score * 0.6 + author_score * 0.25 + year_score * 0.15
+    paper_year = None
+    if paper.metadata_json and paper.metadata_json.get("year"):
+      try:
+        paper_year = int(str(paper.metadata_json["year"])[:4])
+      except (ValueError, TypeError):
+        pass
 
-          # Boost score if title similarity is very high (>0.85)
-          if title_score > 0.85:
-            composite_score = max(composite_score, title_score * 0.9)
+    if not paper_year and paper.created_at:
+      paper_year = paper.created_at.year
 
-          if composite_score > best_score:
-            best_score = composite_score
-            best_match = paper
+    if not paper_year:
+      return 0.0
 
-        if best_match and best_score >= 0.6:
-          return cast(int, best_match.id)
+    year_diff = abs(citation_year - paper_year)
+    if year_diff == 0:
+      return 1.0
+    if year_diff == 1:
+      return 0.7
+    if year_diff <= 3:
+      return 0.4
 
-    return None
+    return 0.0
 
   @staticmethod
   def _calculate_title_similarity(title1: str, title2: str) -> float:
-    """Calculate similarity between two titles using simple string matching."""
+    """Calculate similarity between two titles."""
     if not title1 or not title2:
       return 0.0
 
-    # Normalize titles: lowercase, remove punctuation, extra spaces
-    def normalize(s: str) -> str:
-      s = s.lower()
-      s = re.sub(r"[^\w\s]", "", s)
-      s = re.sub(r"\s+", " ", s)
-      return s.strip()
-
-    norm1 = normalize(title1)
-    norm2 = normalize(title2)
+    norm1 = _normalize_title(title1)
+    norm2 = _normalize_title(title2)
 
     if norm1 == norm2:
       return 1.0
 
-    # Check if one title contains the other
     if norm1 in norm2 or norm2 in norm1:
       return 0.85
 
-    # Calculate word overlap
     words1 = set(norm1.split())
     words2 = set(norm2.split())
 
-    if not words1 or not words2:
-      return 0.0
+    return _calculate_jaccard_similarity(words1, words2)
 
-    intersection = words1.intersection(words2)
-    union = words1.union(words2)
+  @staticmethod
+  def _compute_match_score(
+    citation: dict[str, Any], paper: Paper, title_score: float
+  ) -> float:
+    """Compute composite match score for a paper."""
+    author_score = CitationExtractor._calculate_author_score(
+      citation.get("authors", []), cast(dict[str, Any], paper.metadata_json)
+    )
+    year_score = CitationExtractor._calculate_year_score(citation.get("year"), paper)
 
-    jaccard = len(intersection) / len(union) if union else 0.0
+    composite = title_score * 0.6 + author_score * 0.25 + year_score * 0.15
 
-    # Boost score if significant overlap
-    if len(intersection) >= 3:
-      jaccard = min(1.0, jaccard * 1.2)
+    if title_score > 0.85:
+      composite = max(composite, title_score * 0.9)
 
-    return jaccard
+    return composite
+
+  @staticmethod
+  async def match_citation_to_paper(
+    db_session: AsyncSession, citation: dict[str, Any]
+  ) -> int | None:
+    """Match a citation to an existing paper in the database."""
+    if not citation:
+      return None
+
+    doi_match = await CitationExtractor._match_by_doi(db_session, citation.get("doi"))
+    if doi_match:
+      return doi_match
+
+    title = citation.get("title")
+    if not title or len(title.strip()) <= 5:
+      return None
+
+    query = select(Paper).where(Paper.title.ilike(f"%{title[:50]}%"))
+    result = await db_session.execute(query)
+    candidate_papers = result.scalars().all()
+
+    if not candidate_papers:
+      return None
+
+    best_match = None
+    best_score = 0.6
+
+    for paper in candidate_papers:
+      title_score = CitationExtractor._calculate_title_similarity(
+        title.lower(), (paper.title or "").lower()
+      )
+      composite = CitationExtractor._compute_match_score(citation, paper, title_score)
+
+      if composite > best_score:
+        best_score = composite
+        best_match = paper
+
+    return cast(int, best_match.id) if best_match and best_score >= 0.6 else None
+
+  @staticmethod
+  async def _delete_existing_citations(db_session: AsyncSession, paper_id: int) -> None:
+    """Delete existing citations for a paper."""
+    query = select(PaperCitation).where(PaperCitation.paper_id == paper_id)
+    result = await db_session.execute(query)
+    existing = result.scalars().all()
+
+    for citation in existing:
+      await db_session.delete(citation)
+
+    await db_session.flush()
+
+  @staticmethod
+  async def _store_single_citation(
+    db_session: AsyncSession,
+    paper_id: int,
+    citation: dict[str, Any],
+  ) -> bool:
+    """Store a single citation. Returns True on success."""
+    try:
+      cited_paper_id = await CitationExtractor.match_citation_to_paper(
+        db_session, citation
+      )
+
+      paper_citation = PaperCitation(
+        paper_id=paper_id,
+        cited_paper_id=cited_paper_id,
+        citation_context=_build_citation_context(citation),
+        external_paper_title=citation.get("title"),
+        external_paper_doi=citation.get("doi"),
+      )
+
+      db_session.add(paper_citation)
+      return True
+
+    except Exception as e:
+      logger.error(
+        "Error storing citation",
+        paper_id=paper_id,
+        error=str(e),
+      )
+      return False
 
   @staticmethod
   async def extract_and_store_citations(
-    session: AsyncSession, paper_id: int, pdf_content: bytes
+    db_session: AsyncSession, paper_id: int, pdf_content: bytes
   ) -> int:
     """Extract citations from PDF and store them in database."""
     try:
-      # Verify paper exists before extracting citations
       paper_query = select(Paper).where(Paper.id == paper_id)
-      paper_result = await session.execute(paper_query)
+      paper_result = await db_session.execute(paper_query)
       paper = paper_result.scalar_one_or_none()
-      
-      if not paper:
-        print(f"Paper {paper_id} not found, skipping citation extraction")
-        return 0
-      
-      # Delete existing citations for this paper (idempotent operation)
-      delete_query = select(PaperCitation).where(PaperCitation.paper_id == paper_id)
-      result = await session.execute(delete_query)
-      existing_citations = result.scalars().all()
-      for citation in existing_citations:
-        await session.delete(citation)
-      await session.flush()
 
-      # Extract references section (run in executor to avoid blocking)
+      if not paper:
+        logger.warning("Paper not found for citation extraction", paper_id=paper_id)
+        return 0
+
+      await CitationExtractor._delete_existing_citations(db_session, paper_id)
+
       loop = asyncio.get_event_loop()
       references_text = await loop.run_in_executor(
         None, CitationExtractor.extract_references_section, pdf_content
       )
+
       if not references_text:
-        print(f"No references section found for paper {paper_id}")
+        logger.info("No references section found", paper_id=paper_id)
         return 0
 
-      # Parse citations
-      citations = await CitationExtractor.parse_citations(references_text)
-      if not citations:
-        print(f"No citations parsed for paper {paper_id}")
+      parsed_citations = await CitationExtractor.parse_citations(references_text)
+      if not parsed_citations:
+        logger.info("No citations parsed", paper_id=paper_id)
         return 0
 
-      # Match and store citations
       stored_count = 0
-      for citation in citations:
-        try:
-          # Match citation to existing paper
-          cited_paper_id = await CitationExtractor.match_citation_to_paper(
-            session, citation
-          )
-
-          # Build citation context (first 500 chars of formatted citation)
-          citation_context_parts = []
-          if citation.get("authors"):
-            citation_context_parts.append(", ".join(citation["authors"][:3]))
-          if citation.get("title"):
-            citation_context_parts.append(citation["title"])
-          if citation.get("journal"):
-            citation_context_parts.append(citation["journal"])
-          if citation.get("year"):
-            citation_context_parts.append(str(citation["year"]))
-          citation_context = ". ".join(citation_context_parts)[:500]
-
-          # Create PaperCitation record
-          paper_citation = PaperCitation(
-            paper_id=paper_id,
-            cited_paper_id=cited_paper_id,
-            citation_context=citation_context,
-            external_paper_title=citation.get("title"),
-            external_paper_doi=citation.get("doi"),
-          )
-
-          session.add(paper_citation)
+      for citation in parsed_citations:
+        is_stored = await CitationExtractor._store_single_citation(
+          db_session, paper_id, citation
+        )
+        if is_stored:
           stored_count += 1
-        except Exception as e:
-          print(f"Error storing citation for paper {paper_id}: {str(e)}")
-          continue
 
-      # Commit all citations
-      await session.commit()
-      print(f"Stored {stored_count} citations for paper {paper_id}")
+      await db_session.commit()
+      logger.info(
+        "Citations extracted and stored",
+        paper_id=paper_id,
+        count=stored_count,
+      )
       return stored_count
 
     except Exception as e:
-      print(f"Error extracting citations for paper {paper_id}: {str(e)}")
-      await session.rollback()
+      logger.error("Error extracting citations", paper_id=paper_id, error=str(e))
+      await db_session.rollback()
       return 0
 
 

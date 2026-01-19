@@ -1,4 +1,4 @@
-import apiClient from './client';
+import { api } from './client';
 
 export interface ExportRequest {
   paper_ids: number[];
@@ -13,17 +13,15 @@ export interface CitationExportRequest {
 
 export const exportApi = {
   exportPapers: async (request: ExportRequest): Promise<Blob> => {
-    const response = await apiClient.post('/papers/export', request, {
+    return api.post<Blob>('/papers/export', request, {
       responseType: 'blob',
     });
-    return response.data;
   },
 
   exportCitations: async (request: CitationExportRequest): Promise<Blob> => {
-    const response = await apiClient.post('/papers/export/citations', request, {
+    return api.post<Blob>('/papers/export/citations', request, {
       responseType: 'blob',
     });
-    return response.data;
   },
 
   generateBibliography: async (
@@ -34,15 +32,13 @@ export const exportApi = {
     const params = new URLSearchParams();
     paperIds.forEach(id => params.append('paper_ids', id.toString()));
     params.append('format', format);
-    
-    const response = await apiClient.post(
+
+    return api.post<Blob>(
       `/papers/export/bibliography?${params.toString()}`,
       null,
       {
         responseType: 'blob',
       }
     );
-    return response.data;
   },
 };
-

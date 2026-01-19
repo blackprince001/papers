@@ -1,4 +1,4 @@
-import apiClient from './client';
+import { api } from './client';
 
 export interface Tag {
   id: number;
@@ -143,39 +143,34 @@ export const papersApi = {
       if (filters.date_from) params.append('date_from', filters.date_from);
       if (filters.date_to) params.append('date_to', filters.date_to);
     }
-    const response = await apiClient.get<PaperListResponse>(`/papers?${params}`);
-    return response.data;
+    return api.get<PaperListResponse>(`/papers?${params}`);
   },
 
   get: async (id: number): Promise<Paper> => {
-    const response = await apiClient.get<Paper>(`/papers/${id}`);
-    return response.data;
+    return api.get<Paper>(`/papers/${id}`);
   },
 
   create: async (paper: PaperCreate): Promise<Paper> => {
-    const response = await apiClient.post<Paper>('/ingest', paper);
-    return response.data;
+    return api.post<Paper>('/ingest', paper);
   },
 
-  update: async (id: number, updates: Partial<PaperCreate> & { tag_ids?: number[] }): Promise<Paper> => {
-    const response = await apiClient.patch<Paper>(`/papers/${id}`, updates);
-    return response.data;
+  update: async (id: number, updates: Partial<PaperCreate> & { tag_ids?: number[]; group_ids?: number[] }): Promise<Paper> => {
+    return api.patch<Paper>(`/papers/${id}`, updates);
   },
 
   delete: async (id: number): Promise<void> => {
-    await apiClient.delete(`/papers/${id}`);
+    await api.delete(`/papers/${id}`);
   },
 
   deleteBulk: async (ids: number[]): Promise<void> => {
     if (ids.length === 0) return;
     const params = new URLSearchParams();
     ids.forEach(id => params.append('paper_ids', id.toString()));
-    await apiClient.delete(`/papers?${params.toString()}`);
+    await api.delete(`/papers?${params.toString()}`);
   },
 
   getReference: async (id: number, format: 'apa' | 'mla' | 'bibtex' = 'apa'): Promise<PaperReference> => {
-    const response = await apiClient.get<PaperReference>(`/papers/${id}/reference?format=${format}`);
-    return response.data;
+    return api.get<PaperReference>(`/papers/${id}/reference?format=${format}`);
   },
 
   uploadFiles: async (files: File[], groupIds?: number[]): Promise<PaperUploadResponse> => {
@@ -190,46 +185,34 @@ export const papersApi = {
       formData.append('group_ids', JSON.stringify(groupIds));
     }
 
-    const response = await apiClient.post<PaperUploadResponse>('/ingest/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-
-    return response.data;
+    return api.post<PaperUploadResponse>('/ingest/upload', formData);
   },
 
   getRelated: async (id: number): Promise<RelatedPapersResponse> => {
-    const response = await apiClient.get<RelatedPapersResponse>(`/papers/${id}/related`);
-    return response.data;
+    return api.get<RelatedPapersResponse>(`/papers/${id}/related`);
   },
 
   regenerateMetadata: async (id: number): Promise<Paper> => {
-    const response = await apiClient.post<Paper>(`/papers/${id}/regenerate-metadata`);
-    return response.data;
+    return api.post<Paper>(`/papers/${id}/regenerate-metadata`);
   },
 
   regenerateMetadataBulk: async (paperIds: number[]): Promise<{ successful: number[]; failed: Array<{ paper_id: number; error: string }> }> => {
-    const response = await apiClient.post<{ successful: number[]; failed: Array<{ paper_id: number; error: string }> }>(
+    return api.post<{ successful: number[]; failed: Array<{ paper_id: number; error: string }> }>(
       '/papers/regenerate-metadata-bulk',
       { paper_ids: paperIds }
     );
-    return response.data;
   },
 
   extractCitations: async (id: number): Promise<{ paper_id: number; citations_extracted: number }> => {
-    const response = await apiClient.post<{ paper_id: number; citations_extracted: number }>(`/papers/${id}/extract-citations`);
-    return response.data;
+    return api.post<{ paper_id: number; citations_extracted: number }>(`/papers/${id}/extract-citations`);
   },
 
   updateReadingStatus: async (id: number, reading_status: 'not_started' | 'in_progress' | 'read' | 'archived'): Promise<Paper> => {
-    const response = await apiClient.patch<Paper>(`/papers/${id}/reading-status`, { reading_status });
-    return response.data;
+    return api.patch<Paper>(`/papers/${id}/reading-status`, { reading_status });
   },
 
   updatePriority: async (id: number, priority: 'low' | 'medium' | 'high' | 'critical'): Promise<Paper> => {
-    const response = await apiClient.patch<Paper>(`/papers/${id}/priority`, { priority });
-    return response.data;
+    return api.patch<Paper>(`/papers/${id}/priority`, { priority });
   },
 
   getReadingProgress: async (id: number): Promise<{
@@ -241,8 +224,7 @@ export const papersApi = {
     status_updated_at?: string;
     last_read_at?: string;
   }> => {
-    const response = await apiClient.get(`/papers/${id}/reading-progress`);
-    return response.data;
+    return api.get(`/papers/${id}/reading-progress`);
   },
 
   startReadingSession: async (id: number): Promise<{
@@ -253,8 +235,7 @@ export const papersApi = {
     duration_minutes: number;
     pages_viewed: number;
   }> => {
-    const response = await apiClient.post(`/papers/${id}/reading-session/start`);
-    return response.data;
+    return api.post(`/papers/${id}/reading-session/start`);
   },
 
   endReadingSession: async (id: number, updates?: {
@@ -270,8 +251,7 @@ export const papersApi = {
     duration_minutes: number;
     pages_viewed: number;
   }> => {
-    const response = await apiClient.post(`/papers/${id}/reading-session/end`, updates || {});
-    return response.data;
+    return api.post(`/papers/${id}/reading-session/end`, updates || {});
   },
 
   listBookmarks: async (id: number): Promise<Array<{
@@ -281,8 +261,7 @@ export const papersApi = {
     note?: string;
     created_at: string;
   }>> => {
-    const response = await apiClient.get(`/papers/${id}/bookmarks`);
-    return response.data;
+    return api.get(`/papers/${id}/bookmarks`);
   },
 
   createBookmark: async (id: number, page_number: number, note?: string): Promise<{
@@ -292,12 +271,11 @@ export const papersApi = {
     note?: string;
     created_at: string;
   }> => {
-    const response = await apiClient.post(`/papers/${id}/bookmarks`, { paper_id: id, page_number, note });
-    return response.data;
+    return api.post(`/papers/${id}/bookmarks`, { paper_id: id, page_number, note });
   },
 
   deleteBookmark: async (id: number, bookmark_id: number): Promise<void> => {
-    await apiClient.delete(`/papers/${id}/bookmarks/${bookmark_id}`);
+    await api.delete(`/papers/${id}/bookmarks/${bookmark_id}`);
   },
 
   getCitationGraph: async (
@@ -305,23 +283,20 @@ export const papersApi = {
     bidirectional: boolean = true,
     maxHops: number = 1
   ): Promise<CitationGraph> => {
-    const response = await apiClient.get<CitationGraph>(
+    return api.get<CitationGraph>(
       `/papers/${id}/citation-graph?bidirectional=${bidirectional}&max_hops=${maxHops}`
     );
-    return response.data;
   },
 
   getCitationsList: async (id: number): Promise<{ citations: Citation[] }> => {
-    const response = await apiClient.get<{ citations: Citation[] }>(`/papers/${id}/citations-list`);
-    return response.data;
+    return api.get<{ citations: Citation[] }>(`/papers/${id}/citations-list`);
   },
 
   ingestBatch: async (urls: string[], groupIds?: number[]): Promise<BatchIngestionResponse> => {
-    const response = await apiClient.post<BatchIngestionResponse>('/ingest/batch', {
+    return api.post<BatchIngestionResponse>('/ingest/batch', {
       urls,
       group_ids: groupIds && groupIds.length > 0 ? groupIds : undefined,
     });
-    return response.data;
   },
 
   ingestFromText: async (text: string, groupIds?: number[]): Promise<BatchIngestionResponse> => {
@@ -350,4 +325,3 @@ export const papersApi = {
     return response.json();
   },
 };
-

@@ -3,7 +3,7 @@
 import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, urlparse
 
 
 @dataclass
@@ -235,7 +235,9 @@ class URLParser:
       if match:
         year = match.group(1)
         hash_id = match.group(2)
-        pdf_url = f"https://neurips.cc/paper_files/paper/{year}/file/{hash_id}-Paper.pdf"
+        pdf_url = (
+          f"https://neurips.cc/paper_files/paper/{year}/file/{hash_id}-Paper.pdf"
+        )
         return ParsedURL(original_url=url, pdf_url=pdf_url, site="neurips")
 
     return ParsedURL(
