@@ -46,6 +46,12 @@ class ChatMessage(Base):
     nullable=False,
     index=True,
   )
+  parent_message_id = Column(
+    Integer,
+    ForeignKey("chat_messages.id", ondelete="CASCADE"),
+    nullable=True,
+    index=True,
+  )
   role = Column(String, nullable=False)
   content = Column(Text, nullable=False)
   references = Column(JSON, default=dict)
@@ -54,3 +60,9 @@ class ChatMessage(Base):
   )
 
   session = relationship("ChatSession", back_populates="messages")
+  parent_message = relationship(
+    "ChatMessage",
+    remote_side=[id],
+    backref="thread_replies",
+    foreign_keys=[parent_message_id],
+  )

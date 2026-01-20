@@ -19,6 +19,8 @@ from app.schemas.chat import (
   ChatResponse,
   ChatSessionCreate,
   ChatSessionUpdate,
+  ThreadRequest,
+  ThreadResponse,
 )
 from app.schemas.chat import (
   ChatSession as ChatSessionSchema,
@@ -190,8 +192,94 @@ async def clear_chat_history(
   await session.commit()
   return None
 
-
 # --- Session Management Endpoints ---
+
+
+# --- Thread Endpoints ---
+
+
+@router.get("/messages/{message_id}/thread", response_model=List[ChatMessageSchema])
+async def get_thread_messages(
+  message_id: int,
+  session: AsyncSession = Depends(get_db),
+):
+  """Get all replies in a thread."""
+  # Verify parent message exists
+  parent_message = await chat_service.get_message_by_id(session, message_id)
+  if not parent_message:
+    raise HTTPException(status_code=404, detail="Message not found")
+
+  thread_messages = await chat_service.get_thread_messages(session, message_id)
+  return [ChatMessageSchema.model_validate(msg) for msg in thread_messages]
+
+
+@router.post("/messages/{message_id}/thread", response_model=ThreadResponse)
+async def send_thread_message(
+  message_id: int,
+  request: ThreadRequest,
+  session: AsyncSession = Depends(get_db),
+):
+  """Send a message in a thread and get AI response."""
+  try:
+    user_msg, assistant_msg = await chat_service.send_thread_message(
+      db_session=session,
+      parent_message_id=message_id,
+      user_message=request.message,
+      references=request.references,
+    )
+
+    parent_message = await chat_service.get_message_by_id(session, message_id)
+    if not parent_message:
+      raise HTTPException(status_code=404, detail="Parent message not found")
+
+    return ThreadResponse(
+      message=ChatMessageSchema.model_validate(assistant_msg),
+      parent_message=ChatMessageSchema.model_validate(parent_message),
+    )
+  except ValueError as e:
+    raise HTTPException(status_code=400, detail=str(e)) from e
+  except Exception as e:
+    raise HTTPException(
+      status_code=500, detail=f"Failed to send thread message: {str(e)}"
+    ) from e
+
+
+@router.post("/messages/{message_id}/thread/stream")
+async def stream_thread_message(
+  message_id: int,
+  request: ThreadRequest,
+  session: AsyncSession = Depends(get_db),
+):
+  """Stream AI response in a thread."""
+  # Verify parent message exists
+  parent_message = await chat_service.get_message_by_id(session, message_id)
+  if not parent_message:
+    raise HTTPException(status_code=404, detail="Message not found")
+
+  async def generate_stream():
+    try:
+      async for chunk in chat_service.stream_thread_message(
+        db_session=session,
+        parent_message_id=message_id,
+        user_message=request.message,
+        references=request.references,
+      ):
+        data = json.dumps(chunk)
+        yield f"data: {data}\n\n"
+    except Exception as e:
+      error_chunk = {"type": "error", "error": str(e)[:200]}
+      yield f"data: {json.dumps(error_chunk)}\n\n"
+
+  return StreamingResponse(
+    generate_stream(),
+    media_type="text/event-stream",
+    headers={
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  )
+
 
 
 @router.post("/papers/{paper_id}/sessions", response_model=ChatSessionSchema)

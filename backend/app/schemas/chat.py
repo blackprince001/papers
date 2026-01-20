@@ -25,6 +25,8 @@ class ChatMessageCreate(BaseModel):
 class ChatMessage(ChatMessageBase):
   id: int
   session_id: int
+  parent_message_id: Optional[int] = None
+  thread_count: int = 0
   created_at: datetime
 
   model_config = {"from_attributes": True}
@@ -61,3 +63,13 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
   message: ChatMessage
   session: ChatSession
+
+
+class ThreadRequest(BaseModel):
+  message: str
+  references: Optional[Dict[str, Any]] = {}
+
+
+class ThreadResponse(BaseModel):
+  message: ChatMessage
+  parent_message: ChatMessage

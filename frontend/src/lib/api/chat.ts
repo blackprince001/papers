@@ -7,6 +7,8 @@ export interface ChatMessage {
   content: string;
   references?: Record<string, any>;
   created_at: string;
+  parent_message_id: number | null;
+  thread_count: number;
 }
 
 export interface ChatSession {
@@ -37,11 +39,22 @@ export interface ReferenceItem {
   title?: string;
 }
 
+export interface ThreadRequest {
+  message: string;
+  references?: Record<string, any>;
+}
+
+export interface ThreadResponse {
+  message: ChatMessage;
+  parent_message: ChatMessage;
+}
+
 export type StreamChunk = {
   type: 'chunk' | 'done' | 'error';
   content?: string;
   message_id?: number;
   session_id?: number;
+  parent_message_id?: number;
   error?: string;
 };
 
@@ -164,5 +177,94 @@ export const chatApi = {
 
   clearSessionMessages: async (sessionId: number): Promise<void> => {
     await api.delete(`/sessions/${sessionId}/messages`);
+  },
+
+  // Thread methods
+  getThreadMessages: async (messageId: number): Promise<ChatMessage[]> => {
+    return api.get<ChatMessage[]>(`/messages/${messageId}/thread`);
+  },
+
+  sendThreadMessage: async (messageId: number, message: string, references?: Record<string, any>): Promise<ThreadResponse> => {
+    return api.post<ThreadResponse>(`/messages/${messageId}/thread`, {
+      message,
+      references: references || {},
+    });
+  },
+
+  streamThreadMessage: async function* (
+    messageId: number,
+    message: string,
+    references?: Record<string, any>
+  ): AsyncGenerator<StreamChunk, void, unknown> {
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+    const url = `${API_BASE_URL}/messages/${messageId}/thread/stream`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message,
+        references: references || {},
+      }),
+    });
+
+    if (!response.ok)
+    {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader)
+    {
+      throw new Error('No response body');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    try
+    {
+      while (true)
+      {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines)
+        {
+          if (line.startsWith('data: '))
+          {
+            try
+            {
+              const data = JSON.parse(line.slice(6));
+              yield data as StreamChunk;
+            } catch (e)
+            {
+              console.error('Failed to parse SSE data:', e);
+            }
+          }
+        }
+      }
+
+      if (buffer.startsWith('data: '))
+      {
+        try
+        {
+          const data = JSON.parse(buffer.slice(6));
+          yield data as StreamChunk;
+        } catch (e)
+        {
+          console.error('Failed to parse SSE data:', e);
+        }
+      }
+    } finally
+    {
+      reader.releaseLock();
+    }
   },
 };

@@ -361,28 +361,16 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-green-24) var(--color-green-4);
+  /* Hide scrollbars globally while maintaining scroll functionality */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
 }
 
+/* Hide scrollbars for Webkit browsers (Chrome, Safari, Edge) */
 *::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
-}
-
-*::-webkit-scrollbar-track {
-  background: var(--color-green-4);
-  border-radius: 6px;
-}
-
-*::-webkit-scrollbar-thumb {
-  background: var(--color-green-24);
-  border-radius: 6px;
-  border: 2px solid var(--color-green-4);
-}
-
-*::-webkit-scrollbar-thumb:hover {
-  background: var(--color-green-34);
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 body {

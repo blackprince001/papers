@@ -598,5 +598,248 @@ class ChatService:
 
     return None
 
+  # ---- Thread Methods ----
+
+  async def get_thread_messages(
+    self, db_session: AsyncSession, parent_message_id: int
+  ) -> list[ChatMessage]:
+    """Get all replies in a thread."""
+    query = (
+      select(ChatMessage)
+      .where(ChatMessage.parent_message_id == parent_message_id)
+      .order_by(ChatMessage.created_at)
+    )
+    result = await db_session.execute(query)
+    return list(result.scalars().all())
+
+  async def get_thread_count(
+    self, db_session: AsyncSession, message_id: int
+  ) -> int:
+    """Get the count of thread replies for a message."""
+    from sqlalchemy import func
+
+    query = select(func.count()).where(ChatMessage.parent_message_id == message_id)
+    result = await db_session.execute(query)
+    return result.scalar() or 0
+
+  async def get_message_by_id(
+    self, db_session: AsyncSession, message_id: int
+  ) -> ChatMessage | None:
+    """Get a message by its ID."""
+    query = select(ChatMessage).where(ChatMessage.id == message_id)
+    result = await db_session.execute(query)
+    return result.scalar_one_or_none()
+
+  def build_thread_context(
+    self,
+    paper: Paper,
+    parent_message: ChatMessage,
+    thread_history: list[ChatMessage],
+  ) -> str:
+    """Build context for thread conversations.
+
+    Context includes:
+    - Paper metadata (title, authors)
+    - Paper content (truncated if needed)
+    - Parent message content (the message being replied to)
+    - Thread history (previous thread replies)
+
+    Does NOT include main session history.
+    """
+    context_parts = self._build_context_header(paper)
+    context_parts.append(self._build_context_content(paper))
+
+    # Add parent message context
+    context_parts.append("\n## Original Message (you are replying to this):")
+    context_parts.append(f"Assistant: {parent_message.content}")
+
+    # Add thread history if any
+    if thread_history:
+      context_parts.append("\n## Thread Conversation:")
+      for msg in thread_history[-5:]:  # Limit to last 5 thread messages
+        role_label = "User" if msg.role == "user" else "Assistant"
+        msg_content = msg.content[:500]
+        if len(msg.content) > 500:
+          msg_content += "..."
+        context_parts.append(f"\n{role_label}: {msg_content}")
+
+    return "\n".join(context_parts)
+
+  async def _save_thread_message(
+    self,
+    db_session: AsyncSession,
+    session_id: int,
+    parent_message_id: int,
+    role: str,
+    content: str,
+    references: dict[str, Any] | None = None,
+  ) -> ChatMessage:
+    """Save a thread message to database."""
+    msg = ChatMessage(
+      session_id=session_id,
+      parent_message_id=parent_message_id,
+      role=role,
+      content=content,
+      references=references or {},
+    )
+    db_session.add(msg)
+    await db_session.commit()
+    await db_session.refresh(msg)
+    return msg
+
+  async def stream_thread_message(
+    self,
+    db_session: AsyncSession,
+    parent_message_id: int,
+    user_message: str,
+    references: dict[str, Any] | None = None,
+  ) -> AsyncGenerator[dict[str, Any], None]:
+    """Stream AI response for a thread message."""
+    client = self._get_client()
+    if not client:
+      yield {
+        "type": "error",
+        "error": "Google API key not configured. Please set GOOGLE_API_KEY.",
+      }
+      return
+
+    # Get parent message
+    parent_message = await self.get_message_by_id(db_session, parent_message_id)
+    if not parent_message:
+      yield {"type": "error", "error": "Parent message not found"}
+      return
+
+    if parent_message.role != "assistant":
+      yield {"type": "error", "error": "Can only create threads on assistant messages"}
+      return
+
+    # Get the session from parent message
+    session_id = parent_message.session_id
+    chat_session = await self.get_session(db_session, session_id)
+    if not chat_session:
+      yield {"type": "error", "error": "Session not found"}
+      return
+
+    paper_id = chat_session.paper_id
+    paper = await self._fetch_paper(db_session, paper_id)
+    if not paper:
+      yield {"type": "error", "error": f"Paper {paper_id} not found"}
+      return
+
+    # Get thread history
+    thread_history = await self.get_thread_messages(db_session, parent_message_id)
+
+    # Build thread-specific context
+    context = self.build_thread_context(paper, parent_message, thread_history)
+
+    # Save user's thread message
+    await self._save_thread_message(
+      db_session, session_id, parent_message_id, "user", user_message, references
+    )
+
+    full_prompt = f"{context}\n\n## User Question (in thread):\n{user_message}"
+
+    try:
+      response = self._call_genai_api(client, full_prompt)
+      full_content = add_citations(response)
+
+      chunk_size = 50
+      for i in range(0, len(full_content), chunk_size):
+        chunk = full_content[i : i + chunk_size]
+        yield {"type": "chunk", "content": chunk}
+        await asyncio.sleep(0.01)
+
+      assistant_msg = await self._save_thread_message(
+        db_session, session_id, parent_message_id, "assistant", full_content
+      )
+
+      yield {
+        "type": "done",
+        "message_id": assistant_msg.id,
+        "parent_message_id": parent_message_id,
+      }
+
+    except Exception as e:
+      logger.error(
+        "Google API error in stream_thread_message",
+        error_type=type(e).__name__,
+        error_message=str(e),
+      )
+      error_content = _build_error_message(e)
+      await self._save_thread_message(
+        db_session, session_id, parent_message_id, "assistant", error_content
+      )
+      yield {"type": "error", "error": error_content}
+
+  async def send_thread_message(
+    self,
+    db_session: AsyncSession,
+    parent_message_id: int,
+    user_message: str,
+    references: dict[str, Any] | None = None,
+  ) -> tuple[ChatMessage, ChatMessage]:
+    """Send a thread message and get AI response (non-streaming).
+
+    Returns tuple of (user_message, assistant_message).
+    """
+    client = self._get_client()
+    if not client:
+      raise ValueError("Google API key not configured. Please set GOOGLE_API_KEY.")
+
+    # Get parent message
+    parent_message = await self.get_message_by_id(db_session, parent_message_id)
+    if not parent_message:
+      raise ValueError("Parent message not found")
+
+    if parent_message.role != "assistant":
+      raise ValueError("Can only create threads on assistant messages")
+
+    # Get the session from parent message
+    session_id = parent_message.session_id
+    chat_session = await self.get_session(db_session, session_id)
+    if not chat_session:
+      raise ValueError("Session not found")
+
+    paper_id = chat_session.paper_id
+    paper = await self._fetch_paper(db_session, paper_id)
+    if not paper:
+      raise ValueError(f"Paper {paper_id} not found")
+
+    # Get thread history
+    thread_history = await self.get_thread_messages(db_session, parent_message_id)
+
+    # Build thread-specific context
+    context = self.build_thread_context(paper, parent_message, thread_history)
+
+    # Save user's thread message
+    user_msg = await self._save_thread_message(
+      db_session, session_id, parent_message_id, "user", user_message, references
+    )
+
+    full_prompt = f"{context}\n\n## User Question (in thread):\n{user_message}"
+
+    try:
+      response = self._call_genai_api(client, full_prompt)
+      full_content = add_citations(response)
+
+      assistant_msg = await self._save_thread_message(
+        db_session, session_id, parent_message_id, "assistant", full_content
+      )
+
+      return user_msg, assistant_msg
+
+    except Exception as e:
+      logger.error(
+        "Google API error in send_thread_message",
+        error_type=type(e).__name__,
+        error_message=str(e),
+      )
+      error_content = _build_error_message(e)
+      error_msg = await self._save_thread_message(
+        db_session, session_id, parent_message_id, "assistant", error_content
+      )
+      return user_msg, error_msg
+
 
 chat_service = ChatService()
+

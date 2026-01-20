@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toastError } from '@/lib/utils/toast';
 import { useConfirmDialog } from './ConfirmDialog';
+import { MessageThread } from './MessageThread';
 
 interface ChatPanelProps {
   paperId: number;
@@ -30,6 +31,7 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
   const [isPromptsOpen, setIsPromptsOpen] = useState(false);
   const [isSuggestedPromptsExpanded, setIsSuggestedPromptsExpanded] = useState(false);
   const [pendingUserMessage, setPendingUserMessage] = useState<{ content: string; references: Record<string, any> } | null>(null);
+  const [expandedThreadId, setExpandedThreadId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -269,7 +271,9 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
                   role: 'user',
                   content: userMessage,
                   references: userReferences,
-                  created_at: new Date().toISOString()
+                  created_at: new Date().toISOString(),
+                  parent_message_id: null,
+                  thread_count: 0
                 };
 
                 const newAssistantMsg: ChatMessage = {
@@ -277,7 +281,9 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
                   session_id: finalSessionId,
                   role: 'assistant',
                   content: accumulatedResponse,
-                  created_at: new Date().toISOString()
+                  created_at: new Date().toISOString(),
+                  parent_message_id: null,
+                  thread_count: 0
                 };
 
                 return {
@@ -468,7 +474,13 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
       <div className="flex flex-col h-full max-w-3xl mx-auto w-full">
         {/* Header */}
         <div className="flex items-center justify-between p-2 border-b border-green-6 flex-shrink-0">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
+          {/* Session Name Display */}
+          <div className="flex-1 min-w-0 mr-2">
+            <h3 className="text-sm font-semibold text-green-38 truncate">
+              {currentSessionId && sessions.find(s => s.id === currentSessionId)?.name || 'New Conversation'}
+            </h3>
+          </div>
+          <div className="flex items-center gap-2">
             <Select
               value={currentSessionId?.toString() || ""}
               onValueChange={(val: string | null) => {
@@ -708,12 +720,12 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
               </div>
             ) : (
               <>
-                {messages.map((msg, index) => (
+                {messages.filter(msg => msg.parent_message_id === null).map((msg, index) => (
                   <div
                     key={msg.id}
                     className={cn(
-                      "flex animate-in fade-in slide-in-from-bottom-2 duration-300",
-                      msg.role === 'user' ? 'justify-end' : 'justify-start'
+                      "flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300",
+                      msg.role === 'user' ? 'items-end' : 'items-start'
                     )}
                     style={{
                       animationDelay: `${Math.min(index * 50, 500)}ms`,
@@ -737,12 +749,24 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
                         {format(new Date(msg.created_at), 'HH:mm')}
                       </div>
                     </div>
+                    {/* Thread component for assistant messages */}
+                    {msg.role === 'assistant' && (
+                      <div className="w-full">
+                        <MessageThread
+                          parentMessage={msg}
+                          isExpanded={expandedThreadId === msg.id}
+                          onToggle={() => setExpandedThreadId(
+                            expandedThreadId === msg.id ? null : msg.id
+                          )}
+                        />
+                      </div>
+                    )}
                   </div>
                 ))}
                 {/* Show pending user message immediately */}
                 {pendingUserMessage && (
                   <div className="flex justify-end animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="rounded-lg px-4 py-3 bg-corca-blue-light text-gray-700 text-sm max-w-[90%] sm:max-w-[85%]">
+                    <div className="rounded-lg px-4 py-3 bg-blue-5 text-green-34 text-sm max-w-[90%] sm:max-w-[85%]">
                       <div className="whitespace-pre-wrap break-words">
                         {parseMentions(pendingUserMessage.content).map((part, index) => {
                           if (typeof part === 'string')
@@ -753,7 +777,7 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
                             return (
                               <span
                                 key={index}
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 bg-white/50 text-gray-700 rounded text-xs"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 bg-green-4 text-green-34 rounded text-xs"
                               >
                                 {getReferenceIcon(part.type)}
                                 {part.type} {part.id}
@@ -762,7 +786,7 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
                           }
                         })}
                       </div>
-                      <div className="text-xs mt-2 text-gray-600">
+                      <div className="text-xs mt-2 text-green-28">
                         {format(new Date(), 'HH:mm')}
                       </div>
                     </div>
@@ -770,45 +794,45 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
                 )}
                 {isStreaming && (
                   <div className="flex justify-start animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="rounded-lg px-4 py-3 bg-gray-100 text-gray-900 text-sm max-w-[90%] sm:max-w-[85%]">
+                    <div className="rounded-lg px-4 py-3 bg-green-4 text-green-38 text-sm max-w-[90%] sm:max-w-[85%]">
                       {displayContent ? (
                         <MarkdownMessage content={displayContent} />
                       ) : (
                         <div className="space-y-2.5 w-72">
                           {/* Word-like skeleton - mimics actual text layout */}
                           <div className="flex flex-wrap gap-1.5">
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-12" />
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-16" />
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-8" />
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-20" />
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-14" />
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-10" />
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-24" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-12" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-16" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-8" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-20" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-14" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-10" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-24" />
                           </div>
                           <div className="flex flex-wrap gap-1.5">
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-20" />
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-8" />
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-16" />
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-12" />
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-18" />
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-10" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-20" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-8" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-16" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-12" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-18" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-10" />
                           </div>
                           <div className="flex flex-wrap gap-1.5">
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-14" />
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-20" />
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-8" />
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-12" />
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-16" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-14" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-20" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-8" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-12" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-16" />
                           </div>
                           <div className="flex flex-wrap gap-1.5">
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-10" />
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-16" />
-                            <div className="h-3 bg-gray-200 rounded animate-pulse w-12" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-10" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-16" />
+                            <div className="h-3 bg-green-6 rounded animate-pulse w-12" />
                           </div>
                         </div>
                       )}
                       {displayContent && (
-                        <div className="text-xs mt-2 text-gray-500 flex items-center gap-1">
+                        <div className="text-xs mt-2 text-green-28 flex items-center gap-1">
                           <Loader2 className="w-3 h-3 animate-spin" />
                           <span>Typing...</span>
                         </div>
@@ -819,19 +843,19 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
 
                 {/* Show collapsible prompts section when messages exist and not streaming */}
                 {currentSession && messages.length > 0 && !isStreaming && !pendingUserMessage && (
-                  <div className="mt-6 pt-4 border-t border-gray-200">
+                  <div className="mt-6 pt-4 border-t border-green-6">
                     <button
                       onClick={() => setIsSuggestedPromptsExpanded(!isSuggestedPromptsExpanded)}
-                      className="w-full flex items-center justify-between py-2 px-1 hover:bg-gray-50 rounded-lg transition-colors"
+                      className="w-full flex items-center justify-between py-2 px-1 hover:bg-green-4 rounded-lg transition-colors"
                     >
                       <div className="flex items-center gap-2">
-                        <Sparkles className="w-3.5 h-3.5 text-gray-400" />
-                        <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Suggested Prompts</h4>
+                        <Sparkles className="w-3.5 h-3.5 text-green-24" />
+                        <h4 className="text-xs font-semibold text-green-28 uppercase tracking-wide">Suggested Prompts</h4>
                       </div>
                       {isSuggestedPromptsExpanded ? (
-                        <ChevronUp className="w-4 h-4 text-gray-400" />
+                        <ChevronUp className="w-4 h-4 text-green-24" />
                       ) : (
-                        <ChevronDown className="w-4 h-4 text-gray-400" />
+                        <ChevronDown className="w-4 h-4 text-green-24" />
                       )}
                     </button>
                     {isSuggestedPromptsExpanded && (
@@ -842,15 +866,15 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
                             onClick={() => {
                               handleSend(undefined, p.content);
                             }}
-                            className="flex flex-col items-start p-3 bg-gray-50 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50/50 transition-all text-left group"
+                            className="flex flex-col items-start p-3 bg-green-4 border border-green-6 rounded-lg hover:border-blue-19 hover:bg-blue-5/50 transition-all text-left group"
                           >
                             <div className="flex items-center gap-2 mb-1">
-                              <div className="p-1.5 bg-white rounded-md group-hover:bg-blue-100 text-gray-600 group-hover:text-blue-600 transition-colors">
+                              <div className="p-1.5 bg-grayscale-8 rounded-md group-hover:bg-blue-5 text-green-28 group-hover:text-blue-43 transition-colors">
                                 <p.icon className="w-3.5 h-3.5" />
                               </div>
-                              <span className="font-medium text-xs text-gray-900">{p.label}</span>
+                              <span className="font-medium text-xs text-green-38">{p.label}</span>
                             </div>
-                            <p className="text-xs text-gray-600 line-clamp-2">
+                            <p className="text-xs text-green-28 line-clamp-2">
                               {p.description}
                             </p>
                           </button>
@@ -866,9 +890,9 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
         </div>
 
         {/* Input */}
-        <div className="border-t border-gray-200 relative flex-shrink-0 p-3">
+        <div className="border-t border-green-6 relative flex-shrink-0 p-3">
           <div className="w-full">
-            <div className="bg-white border border-gray-200 rounded-2xl">
+            <div className="bg-grayscale-8 border border-green-6 rounded-2xl">
               <div className="px-3 pt-3 pb-2 relative">
                 <form onSubmit={handleSend}>
                   <MentionAutocomplete
@@ -904,7 +928,7 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
                     size="sm"
                     type="button"
                     onClick={() => setShowMentionHint(!showMentionHint)}
-                    className="h-7 w-7 p-0 rounded-full border border-gray-200 hover:bg-gray-100"
+                    className="h-7 w-7 p-0 rounded-full border border-green-6 hover:bg-green-4"
                     title="Mention references"
                   >
                     <AtSign className="size-3" />
@@ -916,19 +940,19 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
                         variant="ghost"
                         size="sm"
                         type="button"
-                        className="h-7 w-7 p-0 rounded-full border border-gray-300 hover:bg-blue-50 hover:border-blue-400 ml-1 transition-colors"
+                        className="h-7 w-7 p-0 rounded-full border border-green-6 hover:bg-blue-5 hover:border-blue-19 ml-1 transition-colors"
                         title="AI Prompts"
                       >
                         <Sparkles className="size-3.5 text-blue-600" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-80 p-0" align="start" side="top">
-                      <div className="p-2 border-b border-gray-200">
+                      <div className="p-2 border-b border-green-6">
                         <div className="flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-blue-600" />
-                          <span className="text-sm font-semibold text-gray-900">Suggested Prompts</span>
+                          <Sparkles className="w-4 h-4 text-blue-43" />
+                          <span className="text-sm font-semibold text-green-38">Suggested Prompts</span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">Choose a prompt to start or continue your conversation</p>
+                        <p className="text-xs text-green-28 mt-1">Choose a prompt to start or continue your conversation</p>
                       </div>
                       <div className="grid gap-1 p-1 max-h-80 overflow-y-auto">
                         {defaultPrompts.map((p) => (
@@ -939,14 +963,14 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
                               handleSend(undefined, p.content);
                               setIsPromptsOpen(false);
                             }}
-                            className="w-full text-left flex items-start gap-3 p-2 rounded-md hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200"
+                            className="w-full text-left flex items-start gap-3 p-2 rounded-md hover:bg-blue-5 transition-colors border border-transparent hover:border-blue-19"
                           >
-                            <div className="mt-0.5 text-blue-600 flex-shrink-0">
+                            <div className="mt-0.5 text-blue-43 flex-shrink-0">
                               <p.icon className="w-4 h-4" />
                             </div>
                             <div className="min-w-0">
-                              <div className="text-sm font-medium text-gray-900">{p.label}</div>
-                              <div className="text-xs text-gray-500 line-clamp-2 text-wrap">
+                              <div className="text-sm font-medium text-green-38">{p.label}</div>
+                              <div className="text-xs text-green-28 line-clamp-2 text-wrap">
                                 {p.description}
                               </div>
                             </div>
@@ -957,7 +981,7 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
                   </Popover>
 
                   {Object.values(references).flat().length > 0 && (
-                    <div className="text-xs text-gray-500 px-2">
+                    <div className="text-xs text-green-28 px-2">
                       {Object.values(references).flat().length} reference(s)
                     </div>
                   )}
@@ -970,8 +994,8 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
                   className={cn(
                     "size-7 p-0 rounded-full disabled:opacity-50 disabled:cursor-not-allowed",
                     isStreaming
-                      ? "bg-gray-400"
-                      : "bg-gray-900 hover:bg-gray-800"
+                      ? "bg-green-24"
+                      : "bg-green-38 hover:bg-green-34"
                   )}
                 >
                   {isStreaming ? (
@@ -983,7 +1007,7 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
               </div>
 
               {showMentionHint && (
-                <div className="mt-2 text-xs text-gray-500 px-2 animate-in fade-in duration-200">
+                <div className="mt-2 text-xs text-green-28 px-2 animate-in fade-in duration-200">
                   💡 Type @ to mention notes, annotations, or other papers
                 </div>
               )}
