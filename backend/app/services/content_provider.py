@@ -171,12 +171,12 @@ class ContentProvider(BaseGoogleAIService):
     cached_uri = self._get_cached_uri(paper_id)
     if cached_uri:
       logger.info("Using cached file URI for AI context", paper_id=paper_id)
-      return [types.Part.from_uri(file_uri=cached_uri)]
+      return [types.Part.from_uri(file_uri=cached_uri, mime_type="application/pdf")]
 
     # Priority 2: Try public URL
     if await self._should_use_url(cast(str, paper.url)):
       logger.info("Using public URL for AI context", paper_id=paper_id, url=paper.url)
-      return [types.Part.from_uri(file_uri=cast(str, paper.url))]
+      return [types.Part.from_uri(file_uri=cast(str, paper.url), mime_type="application/pdf")]
 
     # Priority 3: Upload local file (and cache the URI)
     local_path = self._get_local_file_path(paper)
@@ -190,7 +190,7 @@ class ContentProvider(BaseGoogleAIService):
           paper_id=paper_id,
           uri=uri,
         )
-        return [types.Part.from_uri(file_uri=uri)]
+        return [types.Part.from_uri(file_uri=uri, mime_type="application/pdf")]
 
     # Priority 4: Text content fallback
     if include_text_fallback and paper.content_text:
