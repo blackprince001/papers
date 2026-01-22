@@ -71,10 +71,16 @@ export function PaperSidebar({
   if (!isOpen) return null;
 
   return (
-    <div
-      className="fixed inset-y-0 right-0 z-[70] bg-white border-l border-anara-light-border shadow-lg flex flex-col w-full sm:w-[36rem]"
-      onClick={(e) => e.stopPropagation()}
-    >
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-[65] bg-black/50"
+        onClick={onClose}
+      />
+      <div
+        className="fixed inset-y-0 right-0 z-[70] bg-white border-l border-anara-light-border shadow-lg flex flex-col w-full sm:w-[36rem]"
+        onClick={(e) => e.stopPropagation()}
+      >
       <div className="flex items-center justify-end px-4 py-3 border-b border-anara-light-border flex-shrink-0">
         <Button
           variant="ghost"
@@ -196,6 +202,7 @@ export function PaperSidebar({
         </TabsContent>
       </Tabs>
     </div>
+    </>
   );
 }
 
