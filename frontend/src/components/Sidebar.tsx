@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'motion/react';
-import { Home, Library, FileText, Folder, ChevronDown, ChevronRight, ChevronLeft, BarChart3, GitBranch } from 'lucide-react';
+import { Home, Library, FileText, Folder, ChevronDown, ChevronRight, ChevronLeft, BarChart3, GitBranch, Compass, Sparkles } from 'lucide-react';
 import { groupsApi, type Group } from '@/lib/api/groups';
 import { cn } from '@/lib/utils';
 
@@ -131,6 +131,8 @@ export default function Sidebar({ className, isOpen = true, onToggle }: SidebarP
   const navigationItems = [
     { href: '/', icon: Home, label: 'Home' },
     { href: '/dashboard', icon: BarChart3, label: 'Dashboard' },
+    { href: '/discovery', icon: Compass, label: 'Discovery' },
+    { href: '/recommendations', icon: Sparkles, label: 'For You' },
     { href: '/groups', icon: Library, label: 'Library' },
     { href: '/annotations', icon: FileText, label: 'Annotations' },
   ];

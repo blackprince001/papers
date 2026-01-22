@@ -9,6 +9,8 @@ import Dashboard from './pages/Dashboard';
 import PaperCitations from './pages/PaperCitations';
 import IngestPaper from './pages/IngestPaper';
 import ExportPapers from './pages/ExportPapers';
+import Discovery from './pages/Discovery';
+import Recommendations from './pages/Recommendations';
 import Layout from './components/Layout';
 
 import ErrorPage from './pages/ErrorPage';
@@ -58,6 +60,14 @@ export const router = createBrowserRouter([
       {
         path: 'export',
         element: <ExportPapers />,
+      },
+      {
+        path: 'discovery',
+        element: <Discovery />,
+      },
+      {
+        path: 'recommendations',
+        element: <Recommendations />,
       },
     ],
   },

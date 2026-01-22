@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.ai_features import router as ai_features_router
 from app.api.annotations import router as annotations_router
 from app.api.chat import router as chat_router
+from app.api.discovery import router as discovery_router
 from app.api.duplicates import router as duplicates_router
 from app.api.export import router as export_router
 from app.api.groups import router as groups_router
@@ -55,6 +56,7 @@ app.include_router(export_router, prefix="/api/v1")
 app.include_router(duplicates_router, prefix="/api/v1")
 app.include_router(relationships_router, prefix="/api/v1")
 app.include_router(ai_features_router, prefix="/api/v1")
+app.include_router(discovery_router, prefix="/api/v1/discovery", tags=["discovery"])
 
 app.mount("/storage", StaticFiles(directory=str(storage_path)), name="storage")
 
