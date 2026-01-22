@@ -20,8 +20,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
+    # Create the enum type first (required for PostgreSQL)
+    processingstatus = sa.Enum('pending', 'processing', 'completed', 'failed', name='processingstatus')
+    processingstatus.create(op.get_bind(), checkfirst=True)
+
     # Add processing_status and processing_error columns
-    op.add_column('papers', sa.Column('processing_status', sa.Enum('pending', 'processing', 'completed', 'failed', name='processingstatus'), server_default='pending', nullable=False))
+    op.add_column('papers', sa.Column('processing_status', processingstatus, server_default='pending', nullable=False))
     op.add_column('papers', sa.Column('processing_error', sa.Text(), nullable=True))
 
     # Create indexes for frequently filtered columns
