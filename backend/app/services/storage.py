@@ -1,34 +1,35 @@
 import hashlib
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urlparse
 
 from app.core.config import settings
 
 
 class StorageService:
-  def __init__(self, base_path: Optional[str] = None):
+  def __init__(self, base_path: str | None = None) -> None:
     self.base_path = Path(base_path or settings.STORAGE_PATH)
     self.base_path.mkdir(parents=True, exist_ok=True)
 
-  def _generate_file_name(self, url: str, doi: Optional[str] = None) -> str:
-    if doi:
-      safe_doi = doi.replace("/", "_").replace(":", "_")
-      return f"{safe_doi}.pdf"
+  def _generate_filename_from_doi(self, doi: str) -> str:
+    safe_doi = doi.replace("/", "_").replace(":", "_")
+    return f"{safe_doi}.pdf"
 
+  def _generate_filename_from_url(self, url: str) -> str:
     url_hash = hashlib.md5(url.encode()).hexdigest()[:12]
-    parsed = urlparse(url)
-    domain = parsed.netloc.replace(".", "_")
+    domain = urlparse(url).netloc.replace(".", "_")
     return f"{domain}_{url_hash}.pdf"
+
+  def generate_filename(self, url: str, doi: str | None = None) -> str:
+    if doi:
+      return self._generate_filename_from_doi(doi)
+    return self._generate_filename_from_url(url)
 
   def get_file_path(self, filename: str) -> Path:
     return self.base_path / filename
 
-  def save_file(self, content: bytes, url: str, doi: Optional[str] = None) -> str:
-    filename = self._generate_file_name(url, doi)
-    file_path = self.get_file_path(filename)
-    file_path.write_bytes(content)
-
+  def save_file(self, content: bytes, url: str, doi: str | None = None) -> str:
+    filename = self.generate_filename(url, doi)
+    self.get_file_path(filename).write_bytes(content)
     return filename
 
   def file_exists(self, filename: str) -> bool:
