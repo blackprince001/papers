@@ -182,9 +182,9 @@ export function ReadingGuide({ paperId }: ReadingGuideProps) {
 
   return (
     <div className="space-y-4">
-      <GuideSection title="Pre-Reading Questions" items={guideData.pre_reading} color="blue" />
-      <GuideSection title="During Reading" items={guideData.during_reading} color="green" />
-      <GuideSection title="Post-Reading Questions" items={guideData.post_reading} color="purple" />
+      <GuideSection title="Pre-Reading Questions" items={guideData.pre_reading || []} color="blue" />
+      <GuideSection title="During Reading" items={guideData.during_reading || []} color="green" />
+      <GuideSection title="Post-Reading Questions" items={guideData.post_reading || []} color="purple" />
 
       <div className="flex items-center gap-2 pt-2 border-t">
         <Button
