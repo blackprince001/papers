@@ -142,167 +142,186 @@ export function PaperDetailsPanel({
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-x-3 gap-y-4 sm:gap-y-3 text-sm">
-        <div className="text-anara-light-text-muted font-medium">File type</div>
-        <div className="text-anara-light-text">Document</div>
-
-        <div className="text-anara-light-text-muted font-medium">Title</div>
-        <div className="text-anara-light-text break-words">
-          {isEditingTitle && updatePaperTitleMutation ? (
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={editedTitle}
-                onChange={(e) => setEditedTitle(e.target.value)}
-                className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter')
-                  {
-                    handleSaveTitle();
-                  } else if (e.key === 'Escape')
-                  {
-                    handleCancelTitle();
-                  }
-                }}
-                autoFocus
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                onClick={handleSaveTitle}
-                disabled={!editedTitle.trim() || updatePaperTitleMutation.isPending}
-                title="Save"
-              >
-                <Check size={14} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                onClick={handleCancelTitle}
-                disabled={updatePaperTitleMutation.isPending}
-                title="Cancel"
-              >
-                <X size={14} />
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 group">
-              <span className="flex-1">{paper.title}</span>
-              {updatePaperTitleMutation && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
-                  onClick={() => setIsEditingTitle(true)}
-                  title="Edit title"
-                >
-                  <Pencil size={14} />
-                </Button>
-              )}
-            </div>
-          )}
+      <div className="space-y-4 text-sm">
+        <div className="flex flex-col gap-1">
+          <div className="text-anara-light-text-muted font-medium text-xs uppercase tracking-wide">File type</div>
+          <div className="text-anara-light-text">Document</div>
         </div>
 
-        <div className="text-anara-light-text-muted font-medium">Authors</div>
-        <div className="text-anara-light-text">
-          {paper.metadata_json?.authors_list && Array.isArray(paper.metadata_json.authors_list) && paper.metadata_json.authors_list.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {paper.metadata_json.authors_list.map((author: string, index: number) => (
-                <span key={index} className="bg-gray-100 px-2 py-1 rounded-sm inline-block">
-                  {author}
-                </span>
-              ))}
-            </div>
-          ) : paper.metadata_json?.author ? (
-            <div className="bg-gray-100 px-2 py-1 rounded-sm inline-block">
-              {paper.metadata_json.author}
-            </div>
-          ) : (
-            <span className="text-gray-400">Unavailable</span>
-          )}
+        <div className="flex flex-col gap-1">
+          <div className="text-anara-light-text-muted font-medium text-xs uppercase tracking-wide">Title</div>
+          <div className="text-anara-light-text break-words">
+            {isEditingTitle && updatePaperTitleMutation ? (
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <input
+                  type="text"
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-sm w-full"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter')
+                    {
+                      handleSaveTitle();
+                    } else if (e.key === 'Escape')
+                    {
+                      handleCancelTitle();
+                    }
+                  }}
+                  autoFocus
+                />
+                <div className="flex items-center gap-2 justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={handleSaveTitle}
+                    disabled={!editedTitle.trim() || updatePaperTitleMutation.isPending}
+                    title="Save"
+                  >
+                    <Check size={16} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={handleCancelTitle}
+                    disabled={updatePaperTitleMutation.isPending}
+                    title="Cancel"
+                  >
+                    <X size={16} />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 group">
+                <span className="flex-1 break-words">{paper.title}</span>
+                {updatePaperTitleMutation && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 flex-shrink-0"
+                    onClick={() => setIsEditingTitle(true)}
+                    title="Edit title"
+                  >
+                    <Pencil size={14} />
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="text-anara-light-text-muted font-medium">Published</div>
-        <div className="text-anara-light-text">{paper.metadata_json?.published_date ? format(new Date(paper.metadata_json.published_date), 'MMM d, yyyy') : 'Unavailable'}</div>
+        <div className="flex flex-col gap-1">
+          <div className="text-anara-light-text-muted font-medium text-xs uppercase tracking-wide">Authors</div>
+          <div className="text-anara-light-text">
+            {paper.metadata_json?.authors_list && Array.isArray(paper.metadata_json.authors_list) && paper.metadata_json.authors_list.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {paper.metadata_json.authors_list.map((author: string, index: number) => (
+                  <span key={index} className="bg-gray-100 px-2 py-1 rounded-sm text-sm">
+                    {author}
+                  </span>
+                ))}
+              </div>
+            ) : paper.metadata_json?.author ? (
+              <span className="bg-gray-100 px-2 py-1 rounded-sm text-sm">
+                {paper.metadata_json.author}
+              </span>
+            ) : (
+              <span className="text-gray-400">Unavailable</span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <div className="text-anara-light-text-muted font-medium text-xs uppercase tracking-wide">Published</div>
+          <div className="text-anara-light-text">{paper.metadata_json?.published_date ? format(new Date(paper.metadata_json.published_date), 'MMM d, yyyy') : 'Unavailable'}</div>
+        </div>
 
         {paper.doi && (
-          <>
-            <div className="text-anara-light-text-muted font-medium">DOI</div>
-            <div className="text-anara-light-text">
+          <div className="flex flex-col gap-1">
+            <div className="text-anara-light-text-muted font-medium text-xs uppercase tracking-wide">DOI</div>
+            <div className="text-anara-light-text break-all">
               <a href={`https://doi.org/${paper.doi}`} target="_blank" rel="noopener noreferrer" className="text-gray-900 hover:underline">
                 {paper.doi}
               </a>
             </div>
-          </>
+          </div>
         )}
 
-        {paper.volume && (
-          <>
-            <div className="text-anara-light-text-muted font-medium">Volume</div>
-            <div className="text-anara-light-text">{paper.volume}</div>
-          </>
+        {(paper.volume || paper.issue || paper.pages) && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {paper.volume && (
+              <div className="flex flex-col gap-1">
+                <div className="text-anara-light-text-muted font-medium text-xs uppercase tracking-wide">Volume</div>
+                <div className="text-anara-light-text">{paper.volume}</div>
+              </div>
+            )}
+            {paper.issue && (
+              <div className="flex flex-col gap-1">
+                <div className="text-anara-light-text-muted font-medium text-xs uppercase tracking-wide">Issue</div>
+                <div className="text-anara-light-text">{paper.issue}</div>
+              </div>
+            )}
+            {paper.pages && (
+              <div className="flex flex-col gap-1">
+                <div className="text-anara-light-text-muted font-medium text-xs uppercase tracking-wide">Pages</div>
+                <div className="text-anara-light-text">{paper.pages}</div>
+              </div>
+            )}
+          </div>
         )}
 
-        {paper.issue && (
-          <>
-            <div className="text-anara-light-text-muted font-medium">Issue</div>
-            <div className="text-anara-light-text">{paper.issue}</div>
-          </>
+        {(paper.isbn || paper.issn) && (
+          <div className="grid grid-cols-2 gap-4">
+            {paper.isbn && (
+              <div className="flex flex-col gap-1">
+                <div className="text-anara-light-text-muted font-medium text-xs uppercase tracking-wide">ISBN</div>
+                <div className="text-anara-light-text">{paper.isbn}</div>
+              </div>
+            )}
+            {paper.issn && (
+              <div className="flex flex-col gap-1">
+                <div className="text-anara-light-text-muted font-medium text-xs uppercase tracking-wide">ISSN</div>
+                <div className="text-anara-light-text">{paper.issn}</div>
+              </div>
+            )}
+          </div>
         )}
 
-        {paper.pages && (
-          <>
-            <div className="text-anara-light-text-muted font-medium">Pages</div>
-            <div className="text-anara-light-text">{paper.pages}</div>
-          </>
-        )}
-
-        {paper.isbn && (
-          <>
-            <div className="text-anara-light-text-muted font-medium">ISBN</div>
-            <div className="text-anara-light-text">{paper.isbn}</div>
-          </>
-        )}
-
-        {paper.issn && (
-          <>
-            <div className="text-anara-light-text-muted font-medium">ISSN</div>
-            <div className="text-anara-light-text">{paper.issn}</div>
-          </>
-        )}
-
-        <div className="text-anara-light-text-muted font-medium">Tags</div>
-        <div className="text-anara-light-text">
-          {paper.tags && paper.tags.length > 0 ? (
-            <TagList tags={paper.tags} className="mb-2" />
-          ) : (
-            <span className="text-gray-400 text-sm">No tags</span>
-          )}
-          <TagInput
-            selectedTags={paper.tags || []}
-            onTagsChange={(tags) => {
-              updatePaperTagsMutation.mutate(tags.map(t => t.id));
-            }}
-          />
+        <div className="flex flex-col gap-1">
+          <div className="text-anara-light-text-muted font-medium text-xs uppercase tracking-wide">Tags</div>
+          <div className="text-anara-light-text">
+            {paper.tags && paper.tags.length > 0 ? (
+              <TagList tags={paper.tags} className="mb-2" />
+            ) : (
+              <span className="text-gray-400 text-sm mb-2 block">No tags</span>
+            )}
+            <TagInput
+              selectedTags={paper.tags || []}
+              onTagsChange={(tags) => {
+                updatePaperTagsMutation.mutate(tags.map(t => t.id));
+              }}
+            />
+          </div>
         </div>
 
-        <div className="text-anara-light-text-muted font-medium">Added</div>
-        <div className="text-anara-light-text">{format(new Date(paper.created_at), 'MMMM d, yyyy')}</div>
+        <div className="flex flex-col gap-1">
+          <div className="text-anara-light-text-muted font-medium text-xs uppercase tracking-wide">Added</div>
+          <div className="text-anara-light-text">{format(new Date(paper.created_at), 'MMMM d, yyyy')}</div>
+        </div>
 
         {paper.url && (
-          <>
-            <div className="text-anara-light-text-muted font-medium">URL</div>
+          <div className="flex flex-col gap-1">
+            <div className="text-anara-light-text-muted font-medium text-xs uppercase tracking-wide">URL</div>
             <div className="text-anara-light-text">
-              <a href={paper.url} target="_blank" rel="noopener noreferrer" className="text-gray-900 hover:underline flex items-center gap-1">
-                {paper.url}
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <a href={paper.url} target="_blank" rel="noopener noreferrer" className="text-gray-900 hover:underline inline-flex items-center gap-1 break-all">
+                <span className="break-all">{paper.url}</span>
+                <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
               </a>
             </div>
-          </>
+          </div>
         )}
       </div>
 
