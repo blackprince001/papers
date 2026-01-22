@@ -6,7 +6,7 @@ import { Breadcrumb, type BreadcrumbItem } from '@/components/Breadcrumb';
 import { papersApi } from '@/lib/api/papers';
 import { groupsApi, type Group } from '@/lib/api/groups';
 import { Menu, Search, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/Button';
 
 interface NavbarProps {
   onMenuToggle?: () => void;
@@ -180,6 +180,7 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
             size="icon"
             className="md:hidden shrink-0"
             onClick={onMenuToggle}
+            aria-label="Toggle menu"
           >
             <Menu className="h-5 w-5" />
           </Button>
@@ -199,6 +200,7 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
             size="icon"
             className="md:hidden"
             onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+            aria-label={mobileSearchOpen ? "Close search" : "Open search"}
           >
             {mobileSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
           </Button>

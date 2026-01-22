@@ -1,11 +1,21 @@
+import { logger } from '../logger';
 import { api } from './client';
+
+/**
+ * Properly typed chat references
+ */
+export interface ChatReferences {
+  notes: Array<{ id: number; type: 'note'; content?: string; display?: string }>;
+  annotations: Array<{ id: number; type: 'annotation'; content?: string; highlighted_text?: string; display?: string }>;
+  papers: Array<{ id: number; type: 'paper'; title?: string; display?: string }>;
+}
 
 export interface ChatMessage {
   id: number;
   session_id: number;
   role: 'user' | 'assistant';
   content: string;
-  references?: Record<string, any>;
+  references?: ChatReferences;
   created_at: string;
   parent_message_id: number | null;
   thread_count: number;
@@ -22,7 +32,7 @@ export interface ChatSession {
 
 export interface ChatRequest {
   message: string;
-  references?: Record<string, any>;
+  references?: ChatReferences;
   session_id?: number;
 }
 
@@ -41,7 +51,7 @@ export interface ReferenceItem {
 
 export interface ThreadRequest {
   message: string;
-  references?: Record<string, any>;
+  references?: ChatReferences;
 }
 
 export interface ThreadResponse {
@@ -59,10 +69,10 @@ export type StreamChunk = {
 };
 
 export const chatApi = {
-  sendMessage: async (paperId: number, message: string, references?: Record<string, any>, sessionId?: number): Promise<ChatResponse> => {
+  sendMessage: async (paperId: number, message: string, references?: ChatReferences, sessionId?: number): Promise<ChatResponse> => {
     return api.post<ChatResponse>(`/papers/${paperId}/chat`, {
       message,
-      references: references || {},
+      references: references || { notes: [], annotations: [], papers: [] },
       session_id: sessionId,
     });
   },
@@ -70,7 +80,7 @@ export const chatApi = {
   streamMessage: async function* (
     paperId: number,
     message: string,
-    references?: Record<string, any>,
+    references?: ChatReferences,
     sessionId?: number
   ): AsyncGenerator<StreamChunk, void, unknown> {
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
@@ -83,7 +93,7 @@ export const chatApi = {
       },
       body: JSON.stringify({
         message,
-        references: references || {},
+        references: references || { notes: [], annotations: [], papers: [] },
         session_id: sessionId,
       }),
     });
@@ -123,7 +133,7 @@ export const chatApi = {
               yield data as StreamChunk;
             } catch (e)
             {
-              console.error('Failed to parse SSE data:', e);
+              logger.warn('Failed to parse SSE data:', e);
             }
           }
         }
@@ -138,7 +148,7 @@ export const chatApi = {
           yield data as StreamChunk;
         } catch (e)
         {
-          console.error('Failed to parse SSE data:', e);
+          logger.warn('Failed to parse SSE data:', e);
         }
       }
     } finally
@@ -184,17 +194,17 @@ export const chatApi = {
     return api.get<ChatMessage[]>(`/messages/${messageId}/thread`);
   },
 
-  sendThreadMessage: async (messageId: number, message: string, references?: Record<string, any>): Promise<ThreadResponse> => {
+  sendThreadMessage: async (messageId: number, message: string, references?: ChatReferences): Promise<ThreadResponse> => {
     return api.post<ThreadResponse>(`/messages/${messageId}/thread`, {
       message,
-      references: references || {},
+      references: references || { notes: [], annotations: [], papers: [] },
     });
   },
 
   streamThreadMessage: async function* (
     messageId: number,
     message: string,
-    references?: Record<string, any>
+    references?: ChatReferences
   ): AsyncGenerator<StreamChunk, void, unknown> {
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
     const url = `${API_BASE_URL}/messages/${messageId}/thread/stream`;
@@ -206,7 +216,7 @@ export const chatApi = {
       },
       body: JSON.stringify({
         message,
-        references: references || {},
+        references: references || { notes: [], annotations: [], papers: [] },
       }),
     });
 
@@ -245,7 +255,7 @@ export const chatApi = {
               yield data as StreamChunk;
             } catch (e)
             {
-              console.error('Failed to parse SSE data:', e);
+              logger.warn('Failed to parse SSE data:', e);
             }
           }
         }
@@ -259,7 +269,7 @@ export const chatApi = {
           yield data as StreamChunk;
         } catch (e)
         {
-          console.error('Failed to parse SSE data:', e);
+          logger.warn('Failed to parse SSE data:', e);
         }
       }
     } finally

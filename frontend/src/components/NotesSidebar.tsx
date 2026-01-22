@@ -47,7 +47,7 @@ export function NotesSidebar({
             size="sm"
             onClick={onClose}
             className="h-8 w-8 p-0"
-            title="Close"
+            aria-label="Close notes sidebar"
           >
             <X className="h-4 w-4" />
           </Button>

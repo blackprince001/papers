@@ -3,6 +3,7 @@ import re
 from typing import Any, AsyncGenerator, cast
 
 from google import genai
+from google.genai import errors as genai_errors
 from google.genai import types
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +13,8 @@ from app.core.logger import get_logger
 from app.models.annotation import Annotation
 from app.models.chat import ChatMessage, ChatSession
 from app.models.paper import Paper
+from app.services.base_ai_service import BaseGoogleAIService
+from app.services.content_provider import content_provider
 from app.utils.citation_extractor import add_citations
 
 logger = get_logger(__name__)
@@ -23,9 +26,20 @@ RATE_LIMIT_ERROR_MESSAGE = (
   "If you've changed your API key, please restart the backend server."
 )
 
+API_KEY_ERROR_MESSAGE = (
+  "I apologize, but there's an issue with the API key configuration. "
+  "Please check that your Google API key is valid and has the necessary permissions."
+)
+
 
 def _is_rate_limit_error(error: Exception) -> bool:
   """Determine if an exception is a rate limit/quota error."""
+  # Check specific exception type first
+  if isinstance(error, genai_errors.ServerError):
+    error_str = str(error)
+    if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+      return True
+
   error_str = str(error)
   error_type = type(error).__name__
 
@@ -40,36 +54,25 @@ def _is_rate_limit_error(error: Exception) -> bool:
   return is_rate_limited
 
 
+def _is_api_key_error(error: Exception) -> bool:
+  """Determine if an exception is an API key/authentication error."""
+  if isinstance(error, genai_errors.ClientError):
+    error_str = str(error)
+    return "API key" in error_str or "api_key" in error_str.lower() or "401" in error_str
+  return False
+
+
 def _build_error_message(error: Exception) -> str:
   """Build user-facing error message based on exception type."""
   if _is_rate_limit_error(error):
     return RATE_LIMIT_ERROR_MESSAGE
+  if _is_api_key_error(error):
+    return API_KEY_ERROR_MESSAGE
   return f"I apologize, but I encountered an error: {str(error)[:200]}"
 
 
-class ChatService:
-  def __init__(self) -> None:
-    self.client: genai.Client | None = None
-    self._last_api_key: str | None = None
-    self._initialize_client()
-
-  def _initialize_client(self) -> None:
-    """Initialize or refresh the Google API client with current settings."""
-    current_key = settings.GOOGLE_API_KEY
-    has_key_changed = self._last_api_key != current_key
-    should_recreate = not self.client or has_key_changed
-
-    if current_key and should_recreate:
-      self.client = genai.Client(api_key=current_key)
-      self._last_api_key = current_key
-    elif not current_key:
-      self.client = None
-      self._last_api_key = None
-
-  def _get_client(self) -> genai.Client | None:
-    """Get the current client, refreshing if API key changed."""
-    self._initialize_client()
-    return self.client
+class ChatService(BaseGoogleAIService):
+  """Service for chat functionality with research papers."""
 
   def parse_mentions(self, text: str) -> dict[str, list[int]]:
     """Parse @mentions from message text."""
@@ -277,10 +280,20 @@ class ChatService:
     paper: Paper,
     references: dict[str, Any],
     chat_history: list[ChatMessage],
+    use_file_context: bool = False,
   ) -> str:
-    """Build the full context string for the AI prompt."""
+    """Build the full context string for the AI prompt.
+
+    Args:
+        paper: The paper to build context for
+        references: Resolved references (notes, annotations, papers)
+        chat_history: Previous messages in the session
+        use_file_context: If True, skip paper content (it's passed as file)
+    """
     context_parts = self._build_context_header(paper)
-    context_parts.append(self._build_context_content(paper))
+    # Only include text content if not using file context
+    if not use_file_context:
+      context_parts.append(self._build_context_content(paper))
     context_parts.extend(self._build_context_references(references))
     context_parts.extend(self._build_context_history(chat_history))
     return "\n".join(context_parts)
@@ -377,8 +390,12 @@ class ChatService:
     user_message: str,
     references: dict[str, Any] | None,
     chat_session: ChatSession,
-  ) -> tuple[str, dict[str, Any]]:
-    """Prepare full context and resolved references for AI call."""
+  ) -> tuple[str, dict[str, Any], list[types.Part]]:
+    """Prepare full context, resolved references, and content parts for AI call.
+
+    Returns:
+        Tuple of (context_string, resolved_references, content_parts)
+    """
     has_explicit_refs = references and (
       references.get("notes")
       or references.get("annotations")
@@ -398,10 +415,30 @@ class ChatService:
     if not paper:
       raise ValueError(f"Paper {paper_id} not found")
 
-    chat_history = await self._get_chat_history(db_session, cast(int, chat_session.id))
-    context = self.build_context(paper, resolved_references, chat_history)
+    # Get content parts from content provider (file or URL if available)
+    paper_content_parts = await content_provider.get_content_parts(paper)
+    use_file_context = len(paper_content_parts) > 0 and not isinstance(
+      paper_content_parts[0], types.Part
+    ) or (
+      len(paper_content_parts) > 0
+      and hasattr(paper_content_parts[0], "file_data")
+      or hasattr(paper_content_parts[0], "file_uri")
+    )
 
-    return context, resolved_references
+    # Check if we got file-based content (not text fallback)
+    use_file_context = False
+    if paper_content_parts:
+      # If the part has file_uri attribute, it's file-based content
+      first_part = paper_content_parts[0]
+      if hasattr(first_part, "_pb") and first_part._pb.HasField("file_data"):
+        use_file_context = True
+
+    chat_history = await self._get_chat_history(db_session, cast(int, chat_session.id))
+    context = self.build_context(
+      paper, resolved_references, chat_history, use_file_context=use_file_context
+    )
+
+    return context, resolved_references, paper_content_parts
 
   async def _save_user_message(
     self,
@@ -439,14 +476,31 @@ class ChatService:
     await db_session.refresh(assistant_msg)
     return assistant_msg
 
-  def _call_genai_api(self, client: genai.Client, prompt: str) -> Any:
-    """Call the GenAI API with grounding."""
+  def _call_genai_api(
+    self,
+    client: genai.Client,
+    prompt: str,
+    content_parts: list[types.Part] | None = None,
+  ) -> Any:
+    """Call the GenAI API with grounding and optional file content.
+
+    Args:
+        client: The GenAI client
+        prompt: The text prompt to send
+        content_parts: Optional file/URL content parts to include
+    """
     grounding_tool = types.Tool(google_search=types.GoogleSearch())
     config = types.GenerateContentConfig(tools=[grounding_tool])
 
+    # Build contents list: file parts first, then text prompt
+    contents: list[types.Part] = []
+    if content_parts:
+      contents.extend(content_parts)
+    contents.append(types.Part.from_text(text=prompt))
+
     return client.models.generate_content(
       model=settings.GENAI_MODEL,
-      contents=types.Part.from_text(text=prompt),
+      contents=contents,
       config=config,
     )
 
@@ -480,7 +534,7 @@ class ChatService:
       return
 
     try:
-      context, resolved_refs = await self._prepare_message_context(
+      context, resolved_refs, content_parts = await self._prepare_message_context(
         db_session, paper_id, user_message, references, chat_session
       )
     except ValueError as e:
@@ -494,7 +548,7 @@ class ChatService:
     full_prompt = f"{context}\n\n## User Question:\n{user_message}"
 
     try:
-      response = self._call_genai_api(client, full_prompt)
+      response = self._call_genai_api(client, full_prompt, content_parts)
       full_content = add_citations(response)
 
       chunk_size = 50
@@ -545,7 +599,7 @@ class ChatService:
     if session_error or not chat_session:
       raise ValueError(session_error or "Failed to get session")
 
-    context, resolved_refs = await self._prepare_message_context(
+    context, resolved_refs, content_parts = await self._prepare_message_context(
       db_session, paper_id, user_message, references, chat_session
     )
 
@@ -559,7 +613,7 @@ class ChatService:
 
     for attempt in range(max_retries):
       try:
-        response = self._call_genai_api(client, full_prompt)
+        response = self._call_genai_api(client, full_prompt, content_parts)
         text_with_citations = add_citations(response)
 
         return await self._save_assistant_message(
@@ -635,19 +689,22 @@ class ChatService:
     paper: Paper,
     parent_message: ChatMessage,
     thread_history: list[ChatMessage],
+    use_file_context: bool = False,
   ) -> str:
     """Build context for thread conversations.
 
     Context includes:
     - Paper metadata (title, authors)
-    - Paper content (truncated if needed)
+    - Paper content (truncated if needed, unless using file context)
     - Parent message content (the message being replied to)
     - Thread history (previous thread replies)
 
     Does NOT include main session history.
     """
     context_parts = self._build_context_header(paper)
-    context_parts.append(self._build_context_content(paper))
+    # Only include text content if not using file context
+    if not use_file_context:
+      context_parts.append(self._build_context_content(paper))
 
     # Add parent message context
     context_parts.append("\n## Original Message (you are replying to this):")
@@ -729,8 +786,16 @@ class ChatService:
     # Get thread history
     thread_history = await self.get_thread_messages(db_session, parent_message_id)
 
+    # Get content parts for the paper
+    paper_content_parts = await content_provider.get_content_parts(paper)
+    use_file_context = bool(paper_content_parts) and any(
+      hasattr(p, "_pb") and p._pb.HasField("file_data") for p in paper_content_parts
+    )
+
     # Build thread-specific context
-    context = self.build_thread_context(paper, parent_message, thread_history)
+    context = self.build_thread_context(
+      paper, parent_message, thread_history, use_file_context=use_file_context
+    )
 
     # Save user's thread message
     await self._save_thread_message(
@@ -740,7 +805,7 @@ class ChatService:
     full_prompt = f"{context}\n\n## User Question (in thread):\n{user_message}"
 
     try:
-      response = self._call_genai_api(client, full_prompt)
+      response = self._call_genai_api(client, full_prompt, paper_content_parts)
       full_content = add_citations(response)
 
       chunk_size = 50
@@ -808,8 +873,16 @@ class ChatService:
     # Get thread history
     thread_history = await self.get_thread_messages(db_session, parent_message_id)
 
+    # Get content parts for the paper
+    paper_content_parts = await content_provider.get_content_parts(paper)
+    use_file_context = bool(paper_content_parts) and any(
+      hasattr(p, "_pb") and p._pb.HasField("file_data") for p in paper_content_parts
+    )
+
     # Build thread-specific context
-    context = self.build_thread_context(paper, parent_message, thread_history)
+    context = self.build_thread_context(
+      paper, parent_message, thread_history, use_file_context=use_file_context
+    )
 
     # Save user's thread message
     user_msg = await self._save_thread_message(
@@ -819,7 +892,7 @@ class ChatService:
     full_prompt = f"{context}\n\n## User Question (in thread):\n{user_message}"
 
     try:
-      response = self._call_genai_api(client, full_prompt)
+      response = self._call_genai_api(client, full_prompt, paper_content_parts)
       full_content = add_citations(response)
 
       assistant_msg = await self._save_thread_message(

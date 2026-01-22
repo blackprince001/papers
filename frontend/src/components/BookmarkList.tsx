@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { papersApi } from '@/lib/api/papers';
 import { Button } from './Button';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Bookmark } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface BookmarkListProps {
@@ -28,7 +28,13 @@ export function BookmarkList({ paperId }: BookmarkListProps) {
   }
 
   if (!bookmarks || bookmarks.length === 0) {
-    return <div className="text-sm text-gray-600">No bookmarks yet</div>;
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <Bookmark className="h-10 w-10 text-gray-300 mb-3" />
+        <p className="text-sm text-gray-500">No bookmarks yet</p>
+        <p className="text-xs text-gray-400 mt-1">Click the bookmark icon on any page to save your place</p>
+      </div>
+    );
   }
 
   return (
@@ -54,6 +60,7 @@ export function BookmarkList({ paperId }: BookmarkListProps) {
             size="icon"
             onClick={() => deleteMutation.mutate(bookmark.id)}
             className="ml-2"
+            aria-label="Delete bookmark"
           >
             <Trash2 className="h-4 w-4" />
           </Button>

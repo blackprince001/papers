@@ -100,7 +100,7 @@ export function NoteEditorSidebar({
           size="sm"
           onClick={handleCancel}
           className="h-8 w-8 p-0"
-          title="Close"
+          aria-label="Close note editor"
         >
           <X className="h-4 w-4" />
         </Button>

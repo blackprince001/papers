@@ -5,7 +5,11 @@
 @tailwind utilities;
 
 :root {
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', Arial, sans-serif;
+  /* MIT Media Lab inspired typography */
+  /* Inter: Clean grotesque sans-serif (similar to Akzidenz Grotesk) */
+  /* Literata: Elegant serif for reading (similar to Athelas) */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  --font-serif: 'Literata', Georgia, 'Times New Roman', Times, serif;
 
   --container-max: 1400px;
   --radius: 1rem;

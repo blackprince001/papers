@@ -17,7 +17,8 @@ export default {
         '4xl': ['2.75rem', { lineHeight: '1.2' }],     // 44px
       },
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        serif: ['Literata', 'Georgia', 'Times New Roman', 'Times', 'serif'],
       },
       borderRadius: {
         'sm': 'calc(var(--radius) - 4px)',

@@ -28,6 +28,15 @@ from app.services.url_parser import url_parser
 router = APIRouter()
 
 
+def _escape_like_pattern(value: str) -> str:
+  """Escape special characters for SQL LIKE patterns.
+
+  This prevents SQL injection and ensures special characters like % and _ are
+  treated as literals rather than wildcards.
+  """
+  return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 async def process_paper_background_task(paper_id: int, file_path: str):
   """Background task to process a paper: extract citations and generate AI content.
 
@@ -40,7 +49,6 @@ async def process_paper_background_task(paper_id: int, file_path: str):
   import logging
   from datetime import datetime, timezone
   from pathlib import Path
-  from typing import cast
 
   from app.services.ai_summarizer import ai_summarizer_service
 
@@ -57,9 +65,6 @@ async def process_paper_background_task(paper_id: int, file_path: str):
         logger.warning(f"Paper {paper_id} not found, skipping background processing")
         return
 
-      title = cast(str, paper.title) or ""
-      content = cast(str, paper.content_text) or ""
-
       # 1. Extract citations from PDF
       try:
         path_obj = Path(file_path)
@@ -75,9 +80,9 @@ async def process_paper_background_task(paper_id: int, file_path: str):
         logger.error(f"Paper {paper_id}: Citation extraction failed: {e}")
 
       # 2. Generate AI summary
-      if content and not paper.ai_summary:
+      if not paper.ai_summary:
         try:
-          summary = await ai_summarizer_service.generate_summary(title, content)
+          summary = await ai_summarizer_service.generate_summary(paper)
           if summary:
             paper.ai_summary = summary
             paper.summary_generated_at = datetime.now(timezone.utc)
@@ -86,9 +91,9 @@ async def process_paper_background_task(paper_id: int, file_path: str):
           logger.error(f"Paper {paper_id}: Summary generation failed: {e}")
 
       # 3. Extract key findings
-      if content and not paper.key_findings:
+      if not paper.key_findings:
         try:
-          findings = await ai_summarizer_service.extract_findings(title, content)
+          findings = await ai_summarizer_service.extract_findings(paper)
           if findings:
             paper.key_findings = findings
             paper.findings_extracted_at = datetime.now(timezone.utc)
@@ -97,9 +102,9 @@ async def process_paper_background_task(paper_id: int, file_path: str):
           logger.error(f"Paper {paper_id}: Findings extraction failed: {e}")
 
       # 4. Generate reading guide
-      if content and not paper.reading_guide:
+      if not paper.reading_guide:
         try:
-          guide = await ai_summarizer_service.generate_reading_guide(title, content)
+          guide = await ai_summarizer_service.generate_reading_guide(paper)
           if guide:
             paper.reading_guide = guide
             paper.guide_generated_at = datetime.now(timezone.utc)
@@ -144,8 +149,11 @@ async def ingest_paper_endpoint(
 
       # Check for similar titles
       if paper_in.title:
+        safe_title = _escape_like_pattern(paper_in.title[:50])
         existing_title = await session.execute(
-          select(PaperModel).where(PaperModel.title.ilike(f"%{paper_in.title[:50]}%"))
+          select(PaperModel).where(
+            PaperModel.title.ilike(f"%{safe_title}%", escape="\\")
+          )
         )
         similar = existing_title.scalars().all()
         if similar:

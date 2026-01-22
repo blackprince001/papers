@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { chatApi, type ChatMessage, type ChatSession } from '@/lib/api/chat';
+import { chatApi, type ChatMessage, type ChatSession, type ChatReferences } from '@/lib/api/chat';
 import { MentionAutocomplete, type MentionItem } from './MentionAutocomplete';
 import { MarkdownMessage } from './MarkdownMessage';
 import { Button } from './Button';
@@ -22,7 +22,7 @@ interface ChatPanelProps {
 export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
   const [message, setMessage] = useState('');
-  const [references, setReferences] = useState<Record<string, any>>({ notes: [], annotations: [], papers: [] });
+  const [references, setReferences] = useState<ChatReferences>({ notes: [], annotations: [], papers: [] });
   const [streamingContent, setStreamingContent] = useState('');
   const [displayContent, setDisplayContent] = useState(''); // Smoothly revealed content
   const [isStreaming, setIsStreaming] = useState(false);
@@ -30,7 +30,7 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPromptsOpen, setIsPromptsOpen] = useState(false);
   const [isSuggestedPromptsExpanded, setIsSuggestedPromptsExpanded] = useState(false);
-  const [pendingUserMessage, setPendingUserMessage] = useState<{ content: string; references: Record<string, any> } | null>(null);
+  const [pendingUserMessage, setPendingUserMessage] = useState<{ content: string; references: ChatReferences } | null>(null);
   const [expandedThreadId, setExpandedThreadId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
@@ -156,7 +156,12 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, displayContent, pendingUserMessage]);
 
-  // Smooth streaming effect - gradually reveal content
+  // Smooth streaming effect - gradually reveal content word-by-word
+  // Balanced for readability while feeling responsive
+  // ~12 words/second provides smooth flow without feeling sluggish
+  const WORDS_PER_SECOND = 12;
+  const WORD_REVEAL_DELAY_MS = 1000 / WORDS_PER_SECOND; // ~83ms per word
+
   useEffect(() => {
     if (streamingContent.length > displayContent.length)
     {
@@ -166,7 +171,7 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
         clearInterval(displayIntervalRef.current);
       }
 
-      // Reveal characters gradually (50ms per character for fancy typing effect)
+      // Reveal words gradually to match human cognitive processing rate
       displayIntervalRef.current = setInterval(() => {
         setDisplayContent(prev => {
           if (prev.length >= streamingContent.length)
@@ -178,10 +183,25 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
             }
             return prev;
           }
-          // Reveal 1 character at a time for premium typing appearance
-          return streamingContent.slice(0, prev.length + 1);
+
+          // Find the next word boundary in streamingContent
+          const remainingContent = streamingContent.slice(prev.length);
+
+          // Match whitespace followed by non-whitespace (next word) or end of string
+          const wordMatch = remainingContent.match(/^(\s*\S+)/);
+
+          if (wordMatch)
+          {
+            // Reveal up to and including the next word
+            return prev + wordMatch[1];
+          }
+          else
+          {
+            // Reveal any remaining whitespace
+            return streamingContent;
+          }
         });
-      }, 100);
+      }, WORD_REVEAL_DELAY_MS);
     }
 
     return () => {
@@ -254,10 +274,39 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
             setStreamingContent((prev) => prev + chunk.content);
           } else if (chunk.type === 'done')
           {
-            // Stream complete
+            // Stream complete - but wait for reveal animation to finish
             const finalSessionId = chunk.session_id || currentSessionId;
+            const fullResponse = accumulatedResponse;
 
-            // Manually update cache to ensure messages persist immediately
+            // Wait for the word-by-word reveal to complete before transitioning
+            // This ensures the pristine reading experience at human processing rate
+            const waitForRevealComplete = () => {
+              return new Promise<void>((resolve) => {
+                const checkInterval = setInterval(() => {
+                  // Get current display content length - we need to check if reveal is done
+                  // The reveal is complete when displayContent matches streamingContent
+                  setDisplayContent(currentDisplay => {
+                    if (currentDisplay.length >= fullResponse.length)
+                    {
+                      clearInterval(checkInterval);
+                      resolve();
+                    }
+                    return currentDisplay; // Don't modify, just check
+                  });
+                }, 100);
+
+                // Safety timeout - don't wait forever (max 60 seconds for very long responses)
+                setTimeout(() => {
+                  clearInterval(checkInterval);
+                  resolve();
+                }, 60000);
+              });
+            };
+
+            // Wait for reveal animation to complete
+            await waitForRevealComplete();
+
+            // Now add to cache and transition to static message
             if (finalSessionId)
             {
               queryClient.setQueryData<ChatSession>(['chat', 'session', finalSessionId], (oldSession) => {
@@ -280,7 +329,7 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
                   id: Date.now() + 1,
                   session_id: finalSessionId,
                   role: 'assistant',
-                  content: accumulatedResponse,
+                  content: fullResponse,
                   created_at: new Date().toISOString(),
                   parent_message_id: null,
                   thread_count: 0

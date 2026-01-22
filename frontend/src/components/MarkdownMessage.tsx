@@ -22,13 +22,13 @@ export function MarkdownMessage({ content, className = '' }: MarkdownMessageProp
             const match = /language-(\w+)/.exec(className || '');
             const language = match ? match[1] : '';
             const inline = !match; // If no language match, it's inline code
-            
+
             return !inline && language ? (
               <SyntaxHighlighter
                 style={oneLight}
                 language={language}
                 PreTag="div"
-                className="rounded-lg my-3 !p-4 text-xs"
+                className="rounded-lg my-3 !p-4 text-xs font-mono"
                 customStyle={{
                   marginTop: '0.75rem',
                   marginBottom: '0.75rem',
@@ -49,22 +49,22 @@ export function MarkdownMessage({ content, className = '' }: MarkdownMessageProp
             return <p className="mb-3 last:mb-0 leading-[1.75] text-sm">{children}</p>;
           },
           h1({ children }) {
-            return <h1 className="text-lg font-bold mb-3 mt-4 first:mt-0 leading-tight">{children}</h1>;
+            return <h1 className="text-lg font-semibold mb-3 mt-4 first:mt-0 leading-tight">{children}</h1>;
           },
           h2({ children }) {
-            return <h2 className="text-base font-bold mb-2 mt-3 first:mt-0 leading-tight">{children}</h2>;
+            return <h2 className="text-base font-semibold mb-2 mt-3 first:mt-0 leading-tight">{children}</h2>;
           },
           h3({ children }) {
-            return <h3 className="text-sm font-semibold mb-2 mt-3 first:mt-0 leading-tight">{children}</h3>;
+            return <h3 className="text-sm font-medium mb-2 mt-3 first:mt-0 leading-tight">{children}</h3>;
           },
           h4({ children }) {
-            return <h4 className="text-sm font-semibold mb-2 mt-2 first:mt-0 leading-tight">{children}</h4>;
+            return <h4 className="text-sm font-medium mb-2 mt-2 first:mt-0 leading-tight">{children}</h4>;
           },
           h5({ children }) {
-            return <h5 className="text-sm font-semibold mb-2 mt-2 first:mt-0 leading-tight">{children}</h5>;
+            return <h5 className="text-sm font-medium mb-2 mt-2 first:mt-0 leading-tight">{children}</h5>;
           },
           h6({ children }) {
-            return <h6 className="text-xs font-semibold mb-1 mt-2 first:mt-0 leading-tight">{children}</h6>;
+            return <h6 className="text-xs font-medium mb-1 mt-2 first:mt-0 leading-tight">{children}</h6>;
           },
           ul({ children }) {
             return <ul className="list-disc list-outside mb-4 space-y-2 ml-6">{children}</ul>;

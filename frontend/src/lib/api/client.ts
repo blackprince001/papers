@@ -1,3 +1,5 @@
+import { logger } from '../logger';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 export class ApiError extends Error {
@@ -59,7 +61,7 @@ export async function fetchApi<T>(
     body: isFormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
   };
 
-  console.log(`[API] ${config.method?.toUpperCase() || 'GET'} ${endpoint}`);
+  logger.debug(`${config.method?.toUpperCase() || 'GET'} ${endpoint}`);
 
   try
   {
@@ -85,7 +87,7 @@ export async function fetchApi<T>(
         }
       }
 
-      console.error('[API] Response error:', {
+      logger.error('Response error:', {
         url: endpoint,
         method: config.method || 'GET',
         status: response.status,
@@ -96,7 +98,7 @@ export async function fetchApi<T>(
       throw new ApiError(response.status, errorMessage, errorData);
     }
 
-    console.log(`[API] ${response.status} ${config.method?.toUpperCase() || 'GET'} ${endpoint}`);
+    logger.debug(`${response.status} ${config.method?.toUpperCase() || 'GET'} ${endpoint}`);
 
     if (responseType === 'blob')
     {
@@ -116,7 +118,7 @@ export async function fetchApi<T>(
       throw error;
     }
 
-    console.error('[API] Network error:', error);
+    logger.error('Network error:', error);
     throw new ApiError(0, 'Network error: Could not reach server');
   }
 }

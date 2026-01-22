@@ -4,7 +4,7 @@ import { annotationsApi, type Annotation } from '@/lib/api/annotations';
 import { Button } from './Button';
 import { TipTapEditor } from './TipTapEditor';
 import { format } from 'date-fns';
-import { FileText, BookOpen } from 'lucide-react';
+import { FileText, BookOpen, StickyNote } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -312,9 +312,13 @@ export function NotesPanel({ paperId, currentPage, annotations, isLoading, onEdi
             })}
           </div>
         ) : (
-          <p className="text-sm text-anara-light-text-muted text-center py-8">
-            {noteScope === 'page' ? `No notes for page ${currentPage} yet` : 'No document notes yet'}
-          </p>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <StickyNote className="h-10 w-10 text-gray-300 mb-3" />
+            <p className="text-sm text-gray-500">
+              {noteScope === 'page' ? `No notes for page ${currentPage} yet` : 'No document notes yet'}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">Click "New Note" above to add your first note</p>
+          </div>
         )}
       </div>
       {confirmDialog}

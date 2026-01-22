@@ -2,11 +2,10 @@ from datetime import datetime, timezone
 from typing import Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.dependencies import get_db
+from app.dependencies import get_db, get_paper_or_404
 from app.models.paper import Paper
 from app.schemas.ai_features import (
   FindingsResponse,
@@ -22,18 +21,11 @@ router = APIRouter()
 
 @router.post("/papers/{paper_id}/generate-summary", response_model=SummaryResponse)
 async def generate_summary(
-  paper_id: int,
   request: Optional[SummaryRequest] = None,
+  paper: Paper = Depends(get_paper_or_404),
   session: AsyncSession = Depends(get_db),
 ):
   """Generate AI summary for a paper."""
-  query = select(Paper).where(Paper.id == paper_id)
-  result = await session.execute(query)
-  paper = result.scalar_one_or_none()
-
-  if not paper:
-    raise HTTPException(status_code=404, detail="Paper not found")
-
   if not paper.content_text:
     raise HTTPException(status_code=400, detail="Paper has no content to summarize")
 
@@ -44,9 +36,7 @@ async def generate_summary(
       detail="Google API key not configured. Please set GOOGLE_API_KEY environment variable.",
     )
 
-  summary = await ai_summarizer_service.generate_summary(
-    cast(str, paper.title), cast(str, paper.content_text or "")
-  )
+  summary = await ai_summarizer_service.generate_summary(paper)
 
   if not summary:
     raise HTTPException(
@@ -66,15 +56,8 @@ async def generate_summary(
 
 
 @router.get("/papers/{paper_id}/summary", response_model=SummaryResponse)
-async def get_summary(paper_id: int, session: AsyncSession = Depends(get_db)):
+async def get_summary(paper: Paper = Depends(get_paper_or_404)):
   """Get AI summary for a paper."""
-  query = select(Paper).where(Paper.id == paper_id)
-  result = await session.execute(query)
-  paper = result.scalar_one_or_none()
-
-  if not paper:
-    raise HTTPException(status_code=404, detail="Paper not found")
-
   if not paper.ai_summary:
     raise HTTPException(
       status_code=404, detail="Summary not found. Please generate a summary first."
@@ -88,16 +71,11 @@ async def get_summary(paper_id: int, session: AsyncSession = Depends(get_db)):
 
 @router.put("/papers/{paper_id}/summary", response_model=SummaryResponse)
 async def update_summary(
-  paper_id: int, summary: str, session: AsyncSession = Depends(get_db)
+  summary: str,
+  paper: Paper = Depends(get_paper_or_404),
+  session: AsyncSession = Depends(get_db),
 ):
   """Update AI summary for a paper."""
-  query = select(Paper).where(Paper.id == paper_id)
-  result = await session.execute(query)
-  paper = result.scalar_one_or_none()
-
-  if not paper:
-    raise HTTPException(status_code=404, detail="Paper not found")
-
   paper.ai_summary = summary
   await session.commit()
   await session.refresh(paper)
@@ -108,21 +86,15 @@ async def update_summary(
 
 
 @router.post("/papers/{paper_id}/extract-findings", response_model=FindingsResponse)
-async def extract_findings(paper_id: int, session: AsyncSession = Depends(get_db)):
+async def extract_findings(
+  paper: Paper = Depends(get_paper_or_404),
+  session: AsyncSession = Depends(get_db),
+):
   """Extract key findings from a paper."""
-  query = select(Paper).where(Paper.id == paper_id)
-  result = await session.execute(query)
-  paper = result.scalar_one_or_none()
-
-  if not paper:
-    raise HTTPException(status_code=404, detail="Paper not found")
-
   if not paper.content_text:
     raise HTTPException(status_code=400, detail="Paper has no content")
 
-  findings = await ai_summarizer_service.extract_findings(
-    cast(str, paper.title), cast(str, paper.content_text or "")
-  )
+  findings = await ai_summarizer_service.extract_findings(paper)
 
   if findings:
     paper.key_findings = findings
@@ -134,15 +106,8 @@ async def extract_findings(paper_id: int, session: AsyncSession = Depends(get_db
 
 
 @router.get("/papers/{paper_id}/findings", response_model=FindingsResponse)
-async def get_findings(paper_id: int, session: AsyncSession = Depends(get_db)):
+async def get_findings(paper: Paper = Depends(get_paper_or_404)):
   """Get key findings for a paper."""
-  query = select(Paper).where(Paper.id == paper_id)
-  result = await session.execute(query)
-  paper = result.scalar_one_or_none()
-
-  if not paper:
-    raise HTTPException(status_code=404, detail="Paper not found")
-
   # Ensure key_findings is a dict, default to empty dict if None
   findings = (
     paper.key_findings
@@ -155,16 +120,11 @@ async def get_findings(paper_id: int, session: AsyncSession = Depends(get_db)):
 
 @router.put("/papers/{paper_id}/findings", response_model=FindingsResponse)
 async def update_findings(
-  paper_id: int, findings: dict, session: AsyncSession = Depends(get_db)
+  findings: dict,
+  paper: Paper = Depends(get_paper_or_404),
+  session: AsyncSession = Depends(get_db),
 ):
   """Update key findings for a paper."""
-  query = select(Paper).where(Paper.id == paper_id)
-  result = await session.execute(query)
-  paper = result.scalar_one_or_none()
-
-  if not paper:
-    raise HTTPException(status_code=404, detail="Paper not found")
-
   paper.key_findings = findings
   await session.commit()
   await session.refresh(paper)
@@ -176,22 +136,14 @@ async def update_findings(
   "/papers/{paper_id}/generate-reading-guide", response_model=ReadingGuideResponse
 )
 async def generate_reading_guide(
-  paper_id: int, session: AsyncSession = Depends(get_db)
+  paper: Paper = Depends(get_paper_or_404),
+  session: AsyncSession = Depends(get_db),
 ):
   """Generate reading guide for a paper."""
-  query = select(Paper).where(Paper.id == paper_id)
-  result = await session.execute(query)
-  paper = result.scalar_one_or_none()
-
-  if not paper:
-    raise HTTPException(status_code=404, detail="Paper not found")
-
   if not paper.content_text:
     raise HTTPException(status_code=400, detail="Paper has no content")
 
-  guide = await ai_summarizer_service.generate_reading_guide(
-    cast(str, paper.title), cast(str, paper.content_text or "")
-  )
+  guide = await ai_summarizer_service.generate_reading_guide(paper)
 
   if guide:
     paper.reading_guide = guide
@@ -205,15 +157,8 @@ async def generate_reading_guide(
 
 
 @router.get("/papers/{paper_id}/reading-guide", response_model=ReadingGuideResponse)
-async def get_reading_guide(paper_id: int, session: AsyncSession = Depends(get_db)):
+async def get_reading_guide(paper: Paper = Depends(get_paper_or_404)):
   """Get reading guide for a paper."""
-  query = select(Paper).where(Paper.id == paper_id)
-  result = await session.execute(query)
-  paper = result.scalar_one_or_none()
-
-  if not paper:
-    raise HTTPException(status_code=404, detail="Paper not found")
-
   # Ensure reading_guide is a dict, default to empty structure if None
   guide = (
     paper.reading_guide
@@ -226,16 +171,11 @@ async def get_reading_guide(paper_id: int, session: AsyncSession = Depends(get_d
 
 @router.put("/papers/{paper_id}/reading-guide", response_model=ReadingGuideResponse)
 async def update_reading_guide(
-  paper_id: int, guide: dict, session: AsyncSession = Depends(get_db)
+  guide: dict,
+  paper: Paper = Depends(get_paper_or_404),
+  session: AsyncSession = Depends(get_db),
 ):
   """Update reading guide for a paper."""
-  query = select(Paper).where(Paper.id == paper_id)
-  result = await session.execute(query)
-  paper = result.scalar_one_or_none()
-
-  if not paper:
-    raise HTTPException(status_code=404, detail="Paper not found")
-
   paper.reading_guide = guide
   await session.commit()
   await session.refresh(paper)
@@ -244,21 +184,15 @@ async def update_reading_guide(
 
 
 @router.post("/papers/{paper_id}/generate-highlights")
-async def generate_highlights(paper_id: int, session: AsyncSession = Depends(get_db)):
+async def generate_highlights(
+  paper: Paper = Depends(get_paper_or_404),
+  session: AsyncSession = Depends(get_db),
+):
   """Generate auto-highlights for a paper."""
-  query = select(Paper).where(Paper.id == paper_id)
-  result = await session.execute(query)
-  paper = result.scalar_one_or_none()
-
-  if not paper:
-    raise HTTPException(status_code=404, detail="Paper not found")
-
   if not paper.content_text:
     raise HTTPException(status_code=400, detail="Paper has no content")
 
-  annotations = await ai_highlighter_service.generate_highlights(
-    session, paper_id, str(paper.content_text or "")
-  )
+  annotations = await ai_highlighter_service.generate_highlights(session, paper)
 
   for annotation in annotations:
     session.add(annotation)

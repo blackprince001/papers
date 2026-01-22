@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import { type Annotation } from '@/lib/api/annotations';
 import { type UseMutationResult } from '@tanstack/react-query';
 import { Button } from '@/components/Button';
+import { Highlighter } from 'lucide-react';
 
 interface PaperAnnotationsPanelProps {
   paperId: number;
@@ -128,9 +129,13 @@ export function PaperAnnotationsPanel({
             })}
           </div>
         ) : (
-          <p className="text-sm text-anara-light-text-muted">
-            {filterByPage ? `No annotations on page ${currentPage}` : 'No annotations yet. Use the highlight tool to create annotations.'}
-          </p>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <Highlighter className="h-10 w-10 text-gray-300 mb-3" />
+            <p className="text-sm text-gray-500">
+              {filterByPage ? `No annotations on page ${currentPage}` : 'No annotations yet'}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">Select text in the PDF and use the highlight tool to annotate</p>
+          </div>
         );
       })()}
     </div>

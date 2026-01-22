@@ -90,7 +90,7 @@ export function PDFTOC({ items, isOpen, onClose, onItemClick, currentPage }: PDF
           size="sm"
           onClick={onClose}
           className="h-8 w-8 p-0"
-          title="Close"
+          aria-label="Close table of contents"
         >
           <X className="h-4 w-4" />
         </Button>

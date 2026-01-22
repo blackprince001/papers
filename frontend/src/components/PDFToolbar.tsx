@@ -112,7 +112,7 @@ export function PDFToolbar({
           size="sm"
           onClick={handleZoomOut}
           disabled={zoom <= 0.5}
-          title="Zoom Out"
+          aria-label="Zoom out"
           className={`h-8 w-8 p-0 ${buttonClass}`}
         >
           <ZoomOut className="h-4 w-4" />
@@ -125,7 +125,7 @@ export function PDFToolbar({
           size="sm"
           onClick={handleZoomIn}
           disabled={zoom >= 3}
-          title="Zoom In"
+          aria-label="Zoom in"
           className={`h-8 w-8 p-0 ${buttonClass}`}
         >
           <ZoomIn className="h-4 w-4" />
@@ -134,7 +134,7 @@ export function PDFToolbar({
           variant="ghost"
           size="sm"
           onClick={handleZoomReset}
-          title="Reset Zoom"
+          aria-label="Reset zoom"
           className={`h-8 w-8 p-0 ${buttonClass}`}
         >
           <RotateCcw className="h-4 w-4" />
@@ -148,7 +148,7 @@ export function PDFToolbar({
           size="sm"
           onClick={onFirstPage}
           disabled={currentPage <= 1}
-          title="First Page"
+          aria-label="First page"
           className={`h-8 w-8 p-0 ${buttonClass}`}
         >
           <ChevronsLeft className="h-4 w-4" />
@@ -158,7 +158,7 @@ export function PDFToolbar({
           size="sm"
           onClick={onPreviousPage}
           disabled={currentPage <= 1}
-          title="Previous Page"
+          aria-label="Previous page"
           className={`h-8 w-8 p-0 ${buttonClass}`}
         >
           <ChevronLeft className="h-4 w-4" />
@@ -179,7 +179,7 @@ export function PDFToolbar({
           size="sm"
           onClick={onNextPage}
           disabled={currentPage >= (numPages || 1)}
-          title="Next Page"
+          aria-label="Next page"
           className={`h-8 w-8 p-0 ${buttonClass}`}
         >
           <ChevronRight className="h-4 w-4" />
@@ -189,7 +189,7 @@ export function PDFToolbar({
           size="sm"
           onClick={onLastPage}
           disabled={currentPage >= (numPages || 1)}
-          title="Last Page"
+          aria-label="Last page"
           className={`h-8 w-8 p-0 ${buttonClass}`}
         >
           <ChevronsRight className="h-4 w-4" />

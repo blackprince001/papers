@@ -93,9 +93,9 @@ export function AISummary({ paperId }: AISummaryProps) {
               rehypePlugins={[rehypeKatex]}
               components={{
                 p: ({ children }) => <p className="mb-3 last:mb-0 text-gray-700 leading-relaxed">{children}</p>,
-                h1: ({ children }) => <h1 className="text-lg font-bold mb-2 mt-4 first:mt-0 text-gray-900">{children}</h1>,
-                h2: ({ children }) => <h2 className="text-base font-bold mb-2 mt-4 first:mt-0 text-gray-900">{children}</h2>,
-                h3: ({ children }) => <h3 className="text-sm font-bold mb-2 mt-3 first:mt-0 text-gray-900">{children}</h3>,
+                h1: ({ children }) => <h1 className="text-lg font-semibold mb-2 mt-4 first:mt-0 text-gray-900">{children}</h1>,
+                h2: ({ children }) => <h2 className="text-base font-semibold mb-2 mt-4 first:mt-0 text-gray-900">{children}</h2>,
+                h3: ({ children }) => <h3 className="text-sm font-medium mb-2 mt-3 first:mt-0 text-gray-900">{children}</h3>,
                 ul: ({ children }) => <ul className="list-disc list-inside mb-3 space-y-1 text-gray-700">{children}</ul>,
                 ol: ({ children }) => <ol className="list-decimal list-inside mb-3 space-y-1 text-gray-700">{children}</ol>,
                 li: ({ children }) => <li className="text-gray-700">{children}</li>,

@@ -48,7 +48,17 @@ class Paper(Base):
     nullable=False,
     default="not_started",
     server_default="not_started",
+    index=True,  # Added index for filtering by reading status
   )
+  # Processing status for background AI tasks
+  processing_status = Column(
+    Enum("pending", "processing", "completed", "failed", name="processingstatus"),
+    nullable=False,
+    default="pending",
+    server_default="pending",
+    index=True,
+  )
+  processing_error = Column(Text, nullable=True)
   reading_time_minutes = Column(Integer, default=0, nullable=False, server_default="0")
   last_read_page = Column(Integer, nullable=True)
   priority = Column(
@@ -82,8 +92,12 @@ class Paper(Base):
   bookmarks = relationship(
     "Bookmark", back_populates="paper", cascade="all, delete-orphan"
   )
-  merged_from_paper_id = Column(Integer, ForeignKey("papers.id"), nullable=True)
-  is_duplicate_of = Column(Integer, ForeignKey("papers.id"), nullable=True)
+  merged_from_paper_id = Column(
+    Integer, ForeignKey("papers.id", ondelete="SET NULL"), nullable=True
+  )
+  is_duplicate_of = Column(
+    Integer, ForeignKey("papers.id", ondelete="SET NULL"), nullable=True
+  )
   ai_summary = Column(Text, nullable=True)
   summary_generated_at = Column(DateTime(timezone=True), nullable=True)
   key_findings = Column(JSON, nullable=True)

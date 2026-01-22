@@ -130,6 +130,7 @@ export function SavedSearchesPanel({ onLoadSearch, currentQuery, currentFilters 
                 size="icon"
                 onClick={() => deleteMutation.mutate(search.id)}
                 className="ml-2"
+                aria-label="Delete saved search"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
