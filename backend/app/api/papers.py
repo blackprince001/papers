@@ -538,8 +538,7 @@ async def regenerate_paper_metadata(
           sanitized_metadata[key] = sanitize_text(value)
         elif isinstance(value, list):
           sanitized_metadata[key] = [
-            sanitize_text(item) if isinstance(item, str) else item
-            for item in value
+            sanitize_text(item) if isinstance(item, str) else item for item in value
           ]
         else:
           sanitized_metadata[key] = value
@@ -684,8 +683,7 @@ async def regenerate_paper_metadata_bulk(
             sanitized_metadata[key] = sanitize_text(value)
           elif isinstance(value, list):
             sanitized_metadata[key] = [
-              sanitize_text(item) if isinstance(item, str) else item
-              for item in value
+              sanitize_text(item) if isinstance(item, str) else item for item in value
             ]
           else:
             sanitized_metadata[key] = value
