@@ -11,6 +11,7 @@ import IngestPaper from './pages/IngestPaper';
 import ExportPapers from './pages/ExportPapers';
 import Discovery from './pages/Discovery';
 import Recommendations from './pages/Recommendations';
+import DiscoveryArchive from './pages/DiscoveryArchive';
 import Layout from './components/Layout';
 
 import ErrorPage from './pages/ErrorPage';
@@ -68,6 +69,10 @@ export const router = createBrowserRouter([
       {
         path: 'recommendations',
         element: <Recommendations />,
+      },
+      {
+        path: 'discovery-archive',
+        element: <DiscoveryArchive />,
       },
     ],
   },

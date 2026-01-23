@@ -126,46 +126,6 @@ class BatchAddToLibraryResponse(BaseModel):
   errors: List[Dict[str, Any]] = []
 
 
-class ResearchTopicBase(BaseModel):
-  """Base schema for research topics."""
-
-  name: str
-  description: Optional[str] = None
-  keywords: List[str] = []
-
-
-class ResearchTopic(ResearchTopicBase):
-  """Full research topic schema."""
-
-  id: int
-  created_at: datetime
-
-  class Config:
-    from_attributes = True
-
-
-class TopicCluster(BaseModel):
-  """A cluster of papers grouped by topic."""
-
-  topic: ResearchTopic
-  papers: List[DiscoveredPaperPreview]
-  paper_count: int
-
-
-class ClusterSearchResultsRequest(BaseModel):
-  """Request to cluster search results by topic."""
-
-  paper_ids: List[int] = Field(..., description="IDs of discovered papers to cluster")
-  num_clusters: int = Field(default=5, ge=2, le=10, description="Number of clusters")
-
-
-class ClusterSearchResultsResponse(BaseModel):
-  """Response with clustered search results."""
-
-  clusters: List[TopicCluster]
-  unclustered: List[DiscoveredPaperPreview] = []
-
-
 class DiscoverySessionCreate(BaseModel):
   """Request to create a discovery session."""
 
@@ -173,6 +133,13 @@ class DiscoverySessionCreate(BaseModel):
   query: str
   sources: List[str] = []
   filters_json: Dict[str, Any] = {}
+  # AI insights to save with the session
+  query_understanding: Optional[Dict[str, Any]] = None
+  overview: Optional[Dict[str, Any]] = None
+  clustering: Optional[Dict[str, Any]] = None
+  relevance_explanations: Optional[List[Dict[str, Any]]] = None
+  # Papers to save (as previews for quick loading)
+  papers: Optional[List[Dict[str, Any]]] = None
 
 
 class DiscoverySession(BaseModel):
@@ -192,9 +159,13 @@ class DiscoverySession(BaseModel):
 
 
 class DiscoverySessionDetail(DiscoverySession):
-  """Discovery session with papers."""
+  """Discovery session with papers and AI insights."""
 
   papers: List[DiscoveredPaperPreview] = []
+  query_understanding: Optional[Dict[str, Any]] = None
+  overview: Optional[Dict[str, Any]] = None
+  clustering: Optional[Dict[str, Any]] = None
+  relevance_explanations: Optional[List[Dict[str, Any]]] = None
 
 
 class RecommendationRequest(BaseModel):

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'motion/react';
-import { Home, Library, FileText, Folder, ChevronDown, ChevronRight, ChevronLeft, BarChart3, GitBranch, Compass, Sparkles } from 'lucide-react';
+import { Home, Library, FileText, Folder, ChevronDown, ChevronRight, ChevronLeft, BarChart3, GitBranch, Compass, Sparkles, Archive } from 'lucide-react';
 import { groupsApi, type Group } from '@/lib/api/groups';
 import { cn } from '@/lib/utils';
 
@@ -184,6 +184,21 @@ export default function Sidebar({ className, isOpen = true, onToggle }: SidebarP
             <GitBranch size={20} />
           </Link>
         </div>
+        {/* Footer - Discovery Archive */}
+        <div className="mt-auto border-t border-anara-light-border pt-4">
+          <Link
+            to="/discovery-archive"
+            className={cn(
+              "p-2 rounded-sm transition-all duration-200 flex items-center justify-center",
+              isActive('/discovery-archive')
+                ? "bg-gray-100 text-anara-light-text shadow-sm"
+                : "text-anara-light-text-muted hover:bg-gray-200 hover:shadow-sm"
+            )}
+            title="Discovery Archive"
+          >
+            <Archive size={20} />
+          </Link>
+        </div>
       </aside>
     );
   }
@@ -269,6 +284,27 @@ export default function Sidebar({ className, isOpen = true, onToggle }: SidebarP
           ) : (
             <div className="text-xs text-anara-light-text-muted px-3 py-2">No groups yet</div>
           )}
+        </div>
+
+        {/* Horizontal Separator */}
+        <div className="my-4">
+          <hr className="border-anara-light-border" />
+        </div>
+
+        {/* Discovery Archive - Footer */}
+        <div>
+          <Link
+            to="/discovery-archive"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-sm text-sm font-medium transition-all duration-200",
+              isActive('/discovery-archive')
+                ? "bg-gray-100 text-anara-light-text shadow-sm"
+                : "text-anara-light-text-muted hover:bg-gray-200 hover:shadow-sm"
+            )}
+          >
+            <Archive size={18} />
+            <span>Discovery Archive</span>
+          </Link>
         </div>
       </nav>
     </aside>

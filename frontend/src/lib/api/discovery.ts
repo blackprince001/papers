@@ -170,6 +170,41 @@ export interface AISearchResponse {
   relevance_explanations?: RelevanceExplanations;
 }
 
+// Discovery Sessions Types
+
+export interface DiscoverySessionCreate {
+  name?: string;
+  query: string;
+  sources: string[];
+  filters_json: Record<string, unknown>;
+  // AI insights
+  query_understanding?: QueryUnderstanding | null;
+  overview?: SearchOverview | null;
+  clustering?: ClusteringResult | null;
+  relevance_explanations?: PaperRelevanceExplanation[] | null;
+  // Papers to save
+  papers?: DiscoveredPaperPreview[] | null;
+}
+
+export interface DiscoverySession {
+  id: number;
+  name?: string;
+  query: string;
+  sources: string[];
+  filters_json: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  paper_count: number;
+}
+
+export interface DiscoverySessionDetail extends DiscoverySession {
+  papers: DiscoveredPaperPreview[];
+  query_understanding?: QueryUnderstanding | null;
+  overview?: SearchOverview | null;
+  clustering?: ClusteringResult | null;
+  relevance_explanations?: PaperRelevanceExplanation[] | null;
+}
+
 // API functions
 
 export const discoveryApi = {
@@ -244,6 +279,42 @@ export const discoveryApi = {
       limit: number;
     }>('/discovery/cached', {
       params: { source, limit, offset },
+    }),
+
+  // Discovery Sessions
+
+  /**
+   * List all saved discovery sessions
+   */
+  getSessions: (limit: number = 50, offset: number = 0) =>
+    api.get<DiscoverySession[]>('/discovery/sessions', {
+      params: { limit, offset },
+    }),
+
+  /**
+   * Create a new discovery session with papers and AI insights
+   */
+  createSession: (session: DiscoverySessionCreate) =>
+    api.post<DiscoverySession>('/discovery/sessions', session),
+
+  /**
+   * Get a specific discovery session with its papers
+   */
+  getSession: (sessionId: number) =>
+    api.get<DiscoverySessionDetail>(`/discovery/sessions/${sessionId}`),
+
+  /**
+   * Delete a discovery session
+   */
+  deleteSession: (sessionId: number) =>
+    api.delete<{ message: string; id: number }>(`/discovery/sessions/${sessionId}`),
+
+  /**
+   * Update a discovery session (e.g., rename)
+   */
+  updateSession: (sessionId: number, name?: string) =>
+    api.put<DiscoverySession>(`/discovery/sessions/${sessionId}`, undefined, {
+      params: { name },
     }),
 };
 

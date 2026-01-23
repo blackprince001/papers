@@ -39,9 +39,6 @@ export default function Recommendations() {
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-corca-blue-light rounded-full mb-4">
-              <Sparkles className="w-8 h-8 text-green-28" />
-            </div>
             <h1 className="text-3xl sm:text-4xl font-medium text-anara-light-text mb-2">
               Recommended Papers
             </h1>

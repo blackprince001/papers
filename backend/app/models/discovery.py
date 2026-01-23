@@ -19,26 +19,6 @@ from sqlalchemy.orm import relationship
 from app.core.config import settings
 from app.models.base import Base
 
-# Junction table for discovered papers and topics
-discovered_paper_topics = Table(
-  "discovered_paper_topics",
-  Base.metadata,
-  Column(
-    "discovered_paper_id",
-    Integer,
-    ForeignKey("discovered_papers.id", ondelete="CASCADE"),
-    primary_key=True,
-  ),
-  Column(
-    "topic_id",
-    Integer,
-    ForeignKey("research_topics.id", ondelete="CASCADE"),
-    primary_key=True,
-  ),
-  Column("relevance_score", Float, nullable=True),
-)
-
-
 # Junction table for sessions and discovered papers
 discovery_session_papers = Table(
   "discovery_session_papers",
@@ -95,11 +75,6 @@ class DiscoveredPaper(Base):
   )
 
   # Relationships
-  topics = relationship(
-    "ResearchTopic",
-    secondary=discovered_paper_topics,
-    back_populates="papers",
-  )
   sessions = relationship(
     "DiscoverySession",
     secondary=discovery_session_papers,
@@ -113,28 +88,6 @@ class DiscoveredPaper(Base):
   )
 
 
-class ResearchTopic(Base):
-  """AI-generated topic cluster for organizing discovered papers."""
-
-  __tablename__ = "research_topics"
-
-  id = Column(Integer, primary_key=True, index=True)
-  name = Column(String, nullable=False)
-  description = Column(Text, nullable=True)
-  keywords = Column(JSON, default=list)
-  embedding = Column(Vector(settings.EMBEDDING_DIMENSION), nullable=True)
-  created_at = Column(
-    DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-  )
-
-  # Relationships
-  papers = relationship(
-    "DiscoveredPaper",
-    secondary=discovered_paper_topics,
-    back_populates="topics",
-  )
-
-
 class DiscoverySession(Base):
   """Saved discovery search session."""
 
@@ -145,6 +98,13 @@ class DiscoverySession(Base):
   query = Column(String, nullable=False)
   sources = Column(JSON, default=list)  # List of source names used
   filters_json = Column(JSON, default=dict)  # Filters applied
+  # AI insights stored as JSON
+  query_understanding = Column(JSON, nullable=True)
+  overview = Column(JSON, nullable=True)
+  clustering = Column(JSON, nullable=True)
+  relevance_explanations = Column(JSON, nullable=True)
+  # Store papers as JSON for quick loading without joins
+  papers_json = Column(JSON, nullable=True)
   created_at = Column(
     DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
   )

@@ -1,6 +1,7 @@
 import asyncio
 import json
-from typing import AsyncGenerator, List, Optional, cast
+from datetime import datetime
+from typing import Any, AsyncGenerator, List, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -9,7 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logger import get_logger
 from app.dependencies import get_db
-from app.models.discovery import DiscoveredPaper
+from app.models.discovery import (
+  DiscoveredPaper,
+  DiscoverySession,
+  discovery_session_papers,
+)
 from app.models.paper import Paper
 from app.schemas.discovery import (
   AddToLibraryResponse,
@@ -23,6 +28,8 @@ from app.schemas.discovery import (
   DiscoveredPaperPreview,
   DiscoverySearchRequest,
   DiscoverySearchResponse,
+  DiscoverySessionCreate,
+  DiscoverySessionDetail,
   DiscoverySourceInfo,
   DiscoverySourcesResponse,
   PaperCluster,
@@ -33,6 +40,9 @@ from app.schemas.discovery import (
   RelevanceExplanations,
   SearchOverview,
   SourceSearchResult,
+)
+from app.schemas.discovery import (
+  DiscoverySession as DiscoverySessionSchema,
 )
 from app.services.discovery import SearchFilters, discovery_service
 from app.services.discovery.ai_search_service import ai_search_service
@@ -1006,3 +1016,178 @@ async def list_cached_papers(
     "offset": offset,
     "limit": limit,
   }
+
+
+# Discovery Sessions Endpoints
+
+
+@router.get("/sessions", response_model=List[DiscoverySessionSchema])
+async def list_discovery_sessions(
+  limit: int = Query(default=50, le=100),
+  offset: int = Query(default=0, ge=0),
+  session: AsyncSession = Depends(get_db),
+):
+  """List all saved discovery sessions."""
+  # Get sessions ordered by update time
+  stmt = (
+    select(DiscoverySession)
+    .order_by(DiscoverySession.updated_at.desc())
+    .offset(offset)
+    .limit(limit)
+  )
+
+  result = await session.execute(stmt)
+  sessions_list = result.scalars().all()
+
+  return [
+    DiscoverySessionSchema(
+      id=cast(int, s.id),
+      name=cast(str | None, s.name),
+      query=cast(str, s.query),
+      sources=cast(list[str], s.sources) or [],
+      filters_json=cast(dict, s.filters_json) or {},
+      created_at=cast(datetime, s.created_at),
+      updated_at=cast(datetime, s.updated_at),
+      paper_count=len(cast(dict[str, Any], s.papers_json)) if s.papers_json else 0,
+    )
+    for s in sessions_list
+  ]
+
+
+@router.post("/sessions", response_model=DiscoverySessionSchema)
+async def create_discovery_session(
+  request: DiscoverySessionCreate,
+  session: AsyncSession = Depends(get_db),
+):
+  """Save a new discovery session with papers and AI insights."""
+  # Create the session with all data
+  discovery_session = DiscoverySession(
+    name=request.name,
+    query=request.query,
+    sources=request.sources,
+    filters_json=request.filters_json,
+    query_understanding=request.query_understanding,
+    overview=request.overview,
+    clustering=request.clustering,
+    relevance_explanations=request.relevance_explanations,
+    papers_json=request.papers,
+  )
+  session.add(discovery_session)
+  await session.commit()
+  await session.refresh(discovery_session)
+
+  paper_count = len(request.papers) if request.papers else 0
+
+  return DiscoverySessionSchema(
+    id=cast(int, discovery_session.id),
+    name=cast(str | None, discovery_session.name),
+    query=cast(str, discovery_session.query),
+    sources=cast(list[str], discovery_session.sources) or [],
+    filters_json=cast(dict, discovery_session.filters_json) or {},
+    created_at=cast(datetime, discovery_session.created_at),
+    updated_at=cast(datetime, discovery_session.updated_at),
+    paper_count=paper_count,
+  )
+
+
+@router.get("/sessions/{session_id}", response_model=DiscoverySessionDetail)
+async def get_discovery_session(
+  session_id: int,
+  session: AsyncSession = Depends(get_db),
+):
+  """Get a specific discovery session with its papers and AI insights."""
+  # Get the session
+  discovery_session = await session.get(DiscoverySession, session_id)
+  if not discovery_session:
+    raise HTTPException(status_code=404, detail="Discovery session not found")
+
+  # Get papers from stored JSON (faster than joins)
+  papers_json = discovery_session.papers_json or []
+  paper_previews = [
+    DiscoveredPaperPreview(
+      source=p.get("source", ""),
+      external_id=p.get("external_id", ""),
+      title=p.get("title", ""),
+      authors=p.get("authors", []),
+      abstract=p.get("abstract"),
+      year=p.get("year"),
+      doi=p.get("doi"),
+      url=p.get("url"),
+      pdf_url=p.get("pdf_url"),
+      citation_count=p.get("citation_count"),
+      relevance_score=p.get("relevance_score"),
+    )
+    for p in papers_json
+  ]
+
+  return DiscoverySessionDetail(
+    id=cast(int, discovery_session.id),
+    name=cast(str | None, discovery_session.name),
+    query=cast(str, discovery_session.query),
+    sources=cast(list[str], discovery_session.sources) or [],
+    filters_json=cast(dict, discovery_session.filters_json) or {},
+    created_at=cast(datetime, discovery_session.created_at),
+    updated_at=cast(datetime, discovery_session.updated_at),
+    paper_count=len(paper_previews),
+    papers=paper_previews,
+    query_understanding=cast(dict[str, Any], discovery_session.query_understanding),
+    overview=cast(dict[str, Any], discovery_session.overview),
+    clustering=cast(dict[str, Any], discovery_session.clustering),
+    relevance_explanations=cast(
+      list[dict[str, Any]], discovery_session.relevance_explanations
+    ),
+  )
+
+
+@router.delete("/sessions/{session_id}")
+async def delete_discovery_session(
+  session_id: int,
+  session: AsyncSession = Depends(get_db),
+):
+  """Delete a discovery session."""
+  discovery_session = await session.get(DiscoverySession, session_id)
+  if not discovery_session:
+    raise HTTPException(status_code=404, detail="Discovery session not found")
+
+  await session.delete(discovery_session)
+  await session.commit()
+
+  return {"message": "Discovery session deleted", "id": session_id}
+
+
+@router.put("/sessions/{session_id}", response_model=DiscoverySessionSchema)
+async def update_discovery_session(
+  session_id: int,
+  name: Optional[str] = Query(default=None),
+  session: AsyncSession = Depends(get_db),
+):
+  """Update a discovery session (e.g., rename it)."""
+  discovery_session = await session.get(DiscoverySession, session_id)
+  if not discovery_session:
+    raise HTTPException(status_code=404, detail="Discovery session not found")
+
+  if name is not None:
+    discovery_session.name = name
+
+  await session.commit()
+  await session.refresh(discovery_session)
+
+  # Get paper count
+  from sqlalchemy import func
+
+  stmt = select(func.count(discovery_session_papers.c.discovered_paper_id)).where(
+    discovery_session_papers.c.session_id == session_id
+  )
+  result = await session.execute(stmt)
+  paper_count = result.scalar() or 0
+
+  return DiscoverySessionSchema(
+    id=cast(int, discovery_session.id),
+    name=cast(str | None, discovery_session.name),
+    query=cast(str, discovery_session.query),
+    sources=cast(list[str], discovery_session.sources) or [],
+    filters_json=cast(dict, discovery_session.filters_json) or {},
+    created_at=cast(datetime, discovery_session.created_at),
+    updated_at=cast(datetime, discovery_session.updated_at),
+    paper_count=paper_count,
+  )

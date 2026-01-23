@@ -143,6 +143,31 @@ Guidelines:
 """
 
 
+RECOMMENDATIONS_OVERVIEW_PROMPT = """Analyze these personalized paper recommendations for a researcher.
+
+The user's library focuses on certain research areas, and these papers were recommended as relevant to their interests.
+
+Papers recommended ({paper_count} total):
+{papers_summary}
+
+Return a JSON object with:
+{{
+  "summary": "2-3 paragraph summary explaining what these recommendations reveal about the user's research area and how these papers can help advance their work",
+  "research_themes": ["theme1", "theme2", ...],
+  "reading_suggestions": ["suggestion1", "suggestion2", ...],
+  "connections": ["connection1", "connection2", ...],
+  "emerging_areas": ["area1", "area2", ...]
+}}
+
+Guidelines:
+- summary: Synthesize what these papers offer collectively, focusing on value to the researcher
+- research_themes: Major themes across recommendations (3-5)
+- reading_suggestions: Practical advice on which papers to prioritize and why
+- connections: How these papers connect to common research themes
+- emerging_areas: New or trending research directions represented in recommendations
+"""
+
+
 RELEVANCE_EXPLANATION_PROMPT = """Explain why these papers are relevant to the search query.
 
 Query: {query}
