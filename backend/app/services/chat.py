@@ -476,13 +476,13 @@ class ChatService(BaseGoogleAIService):
     await db_session.refresh(assistant_msg)
     return assistant_msg
 
-  def _call_genai_api(
+  def _call_genai_api_sync(
     self,
     client: genai.Client,
     prompt: str,
     content_parts: list[types.Part] | None = None,
   ) -> Any:
-    """Call the GenAI API with grounding and optional file content.
+    """Synchronous GenAI API call with grounding and optional file content.
 
     Args:
         client: The GenAI client
@@ -502,6 +502,20 @@ class ChatService(BaseGoogleAIService):
       model=settings.GENAI_MODEL,
       contents=contents,
       config=config,
+    )
+
+  async def _call_genai_api(
+    self,
+    client: genai.Client,
+    prompt: str,
+    content_parts: list[types.Part] | None = None,
+  ) -> Any:
+    """Call the GenAI API without blocking the event loop.
+
+    Uses asyncio.to_thread() to run the blocking API call in a thread pool.
+    """
+    return await asyncio.to_thread(
+      self._call_genai_api_sync, client, prompt, content_parts
     )
 
   async def stream_message(
@@ -548,7 +562,7 @@ class ChatService(BaseGoogleAIService):
     full_prompt = f"{context}\n\n## User Question:\n{user_message}"
 
     try:
-      response = self._call_genai_api(client, full_prompt, content_parts)
+      response = await self._call_genai_api(client, full_prompt, content_parts)
       full_content = add_citations(response)
 
       chunk_size = 50
@@ -613,7 +627,7 @@ class ChatService(BaseGoogleAIService):
 
     for attempt in range(max_retries):
       try:
-        response = self._call_genai_api(client, full_prompt, content_parts)
+        response = await self._call_genai_api(client, full_prompt, content_parts)
         text_with_citations = add_citations(response)
 
         return await self._save_assistant_message(
@@ -805,7 +819,7 @@ class ChatService(BaseGoogleAIService):
     full_prompt = f"{context}\n\n## User Question (in thread):\n{user_message}"
 
     try:
-      response = self._call_genai_api(client, full_prompt, paper_content_parts)
+      response = await self._call_genai_api(client, full_prompt, paper_content_parts)
       full_content = add_citations(response)
 
       chunk_size = 50
@@ -892,7 +906,7 @@ class ChatService(BaseGoogleAIService):
     full_prompt = f"{context}\n\n## User Question (in thread):\n{user_message}"
 
     try:
-      response = self._call_genai_api(client, full_prompt, paper_content_parts)
+      response = await self._call_genai_api(client, full_prompt, paper_content_parts)
       full_content = add_citations(response)
 
       assistant_msg = await self._save_thread_message(

@@ -55,6 +55,23 @@ services:
       - traefik.enable=false
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: nexus-redis-prod
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+    labels:
+      - traefik.enable=false
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
@@ -71,13 +88,17 @@ services:
       - DEBUG=false
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
       - EMBEDDING_MODEL=all-MiniLM-L6-v2
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - app-network
     volumes:
-      - ./data/storage:/app/storage
+      - storage_data:/app/storage
     labels:
       - traefik.enable=true
       # Main application router
@@ -91,6 +112,37 @@ services:
       - traefik.http.services.nexus-backend-service.loadbalancer.healthcheck.path=/health
       - traefik.http.services.nexus-backend-service.loadbalancer.healthcheck.interval=10s
       - traefik.http.services.nexus-backend-service.loadbalancer.healthcheck.timeout=3s
+    restart: unless-stopped
+
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nexus-celery-worker-prod
+    command: uv run celery -A app.celery_app worker -l info -Q ai,processing,dead_letter -c 4
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=nexus
+      - DB_PORT=5432
+      - STORAGE_PATH=/app/storage/papers
+      - DEBUG=false
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - EMBEDDING_MODEL=all-MiniLM-L6-v2
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network
+    volumes:
+      - storage_data:/app/storage
+    labels:
+      - traefik.enable=false
     restart: unless-stopped
 
   frontend:
@@ -125,4 +177,6 @@ networks:
 
 volumes:
   postgres_data:
+  redis_data:
+  storage_data:
   letsencrypt:

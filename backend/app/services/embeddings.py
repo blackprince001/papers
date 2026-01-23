@@ -71,7 +71,10 @@ class EmbeddingService:
   async def generate_embedding_async(
     self, text: str, task_type: str = TASK_TYPE_DOCUMENT
   ) -> list[float]:
-    return self.generate_embedding(text, task_type)
+    """Generate embedding without blocking the event loop."""
+    import asyncio
+
+    return await asyncio.to_thread(self.generate_embedding, text, task_type)
 
   def generate_query_embedding(self, text: str) -> list[float]:
     return self.generate_embedding(text, task_type=TASK_TYPE_QUERY)

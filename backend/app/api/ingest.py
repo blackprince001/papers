@@ -4,7 +4,6 @@ from typing import List, Optional, cast
 
 from fastapi import (
   APIRouter,
-  BackgroundTasks,
   Body,
   Depends,
   File,
@@ -20,10 +19,10 @@ from app.core.database import AsyncSessionLocal
 from app.dependencies import get_db
 from app.models.paper import Paper as PaperModel
 from app.schemas.paper import Paper, PaperBatchCreate, PaperCreate, PaperUploadResponse
-from app.services.citation_extractor import citation_extractor
 from app.services.duplicate_detection import duplicate_detection_service
-from app.services.ingestion import ingestion_service
+from app.services.ingestion import DuplicatePaperError, ingestion_service
 from app.services.url_parser import url_parser
+from app.tasks.paper_processing import process_paper_full
 
 router = APIRouter()
 
@@ -37,100 +36,33 @@ def _escape_like_pattern(value: str) -> str:
   return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-async def process_paper_background_task(paper_id: int, file_path: str):
-  """Background task to process a paper: extract citations and generate AI content.
+def _dispatch_paper_processing(paper_id: int, file_path: str) -> str | None:
+  """Dispatch Celery task for paper processing. Returns task_id if dispatched.
 
-  This task runs after paper ingestion and performs:
-  1. Citation extraction from PDF
-  2. AI summary generation
-  3. Key findings extraction
-  4. Reading guide generation
+  If Redis/Celery is unavailable, logs a warning and returns None.
+  Paper ingestion will still succeed, just without AI processing.
   """
   import logging
-  from datetime import datetime, timezone
-  from pathlib import Path
-
-  from app.services.ai_summarizer import ai_summarizer_service
 
   logger = logging.getLogger(__name__)
 
   try:
-    async with AsyncSessionLocal() as session:
-      # Verify paper still exists
-      paper_query = select(PaperModel).where(PaperModel.id == paper_id)
-      paper_result = await session.execute(paper_query)
-      paper = paper_result.scalar_one_or_none()
-
-      if not paper:
-        logger.warning(f"Paper {paper_id} not found, skipping background processing")
-        return
-
-      # 1. Extract citations from PDF
-      try:
-        path_obj = Path(file_path)
-        if path_obj.exists():
-          pdf_content = path_obj.read_bytes()
-          await citation_extractor.extract_and_store_citations(
-            session, paper_id, pdf_content
-          )
-          logger.info(f"Paper {paper_id}: Citations extracted")
-        else:
-          logger.warning(f"Paper {paper_id}: PDF not found at {file_path}")
-      except Exception as e:
-        logger.error(f"Paper {paper_id}: Citation extraction failed: {e}")
-
-      # 2. Generate AI summary
-      if not paper.ai_summary:
-        try:
-          summary = await ai_summarizer_service.generate_summary(paper)
-          if summary:
-            paper.ai_summary = summary
-            paper.summary_generated_at = datetime.now(timezone.utc)
-            logger.info(f"Paper {paper_id}: Summary generated")
-        except Exception as e:
-          logger.error(f"Paper {paper_id}: Summary generation failed: {e}")
-
-      # 3. Extract key findings
-      if not paper.key_findings:
-        try:
-          findings = await ai_summarizer_service.extract_findings(paper)
-          if findings:
-            paper.key_findings = findings
-            paper.findings_extracted_at = datetime.now(timezone.utc)
-            logger.info(f"Paper {paper_id}: Key findings extracted")
-        except Exception as e:
-          logger.error(f"Paper {paper_id}: Findings extraction failed: {e}")
-
-      # 4. Generate reading guide
-      if not paper.reading_guide:
-        try:
-          guide = await ai_summarizer_service.generate_reading_guide(paper)
-          if guide:
-            paper.reading_guide = guide
-            paper.guide_generated_at = datetime.now(timezone.utc)
-            logger.info(f"Paper {paper_id}: Reading guide generated")
-        except Exception as e:
-          logger.error(f"Paper {paper_id}: Reading guide generation failed: {e}")
-
-      # Commit all changes
-      await session.commit()
-      logger.info(f"Paper {paper_id}: Background processing complete")
-
+    result = process_paper_full.delay(paper_id, file_path)
+    logger.info(f"Dispatched paper processing task {result.id} for paper {paper_id}")
+    return result.id
   except Exception as e:
-    logger.error(f"Paper {paper_id}: Background processing failed: {e}")
-    import traceback
-
-    traceback.print_exc()
-
-
-# Alias for backward compatibility
-extract_citations_background_task = process_paper_background_task
+    # If Celery/Redis is not available, log warning but don't fail ingestion
+    logger.warning(
+      f"Could not dispatch background processing for paper {paper_id}: {e}. "
+      "Paper was saved but AI processing will not run. "
+      "Check Redis/Celery worker status."
+    )
+    return None
 
 
 @router.post("/ingest", response_model=Paper, status_code=201)
 async def ingest_paper_endpoint(
   paper_in: PaperCreate,
-  background_tasks: BackgroundTasks,
   check_duplicates: bool = True,
   session: AsyncSession = Depends(get_db),
 ):
@@ -188,17 +120,22 @@ async def ingest_paper_endpoint(
     _ = list(paper.groups) if hasattr(paper, "groups") else []
     _ = list(paper.tags) if hasattr(paper, "tags") else []
 
-    # Add background task for full AI processing
+    # Dispatch Celery task for full AI processing
     paper_response = Paper.model_validate(paper)
     if paper.file_path:
-      background_tasks.add_task(
-        process_paper_background_task,
-        cast(int, paper.id),
-        cast(str, paper.file_path),
+      task_id = _dispatch_paper_processing(
+        cast(int, paper.id), cast(str, paper.file_path)
       )
-      paper_response.background_processing_message = "Processing in background: extracting citations, generating summary, key findings, and reading guide."
+      if task_id:
+        paper_response.task_id = task_id
+        paper_response.background_processing_message = "Processing in background: extracting citations, generating summary, key findings, and reading guide."
 
     return paper_response
+  except DuplicatePaperError as e:
+    if e.existing_paper:
+      # Return the existing paper with a 200 status instead of error
+      return Paper.model_validate(e.existing_paper)
+    raise HTTPException(status_code=409, detail=str(e)) from e
   except ValueError as e:
     raise HTTPException(status_code=400, detail=str(e)) from e
   except Exception as e:
@@ -215,7 +152,6 @@ MAX_FILES = 10
 async def upload_files_endpoint(
   files: List[UploadFile] = File(...),
   group_ids: Optional[str] = Form(None),
-  background_tasks: BackgroundTasks = BackgroundTasks(),
   session: AsyncSession = Depends(get_db),
 ):
   if len(files) > MAX_FILES:
@@ -314,6 +250,19 @@ async def upload_files_endpoint(
         # Store paper_id and file_path for background citation extraction
         # We'll add it to background tasks after all files are processed
         return cast(int, paper.id), cast(str, paper.file_path), None
+      except DuplicatePaperError as e:
+        await async_session.rollback()
+        if e.existing_paper:
+          return (
+            cast(int, e.existing_paper.id),
+            cast(str, e.existing_paper.file_path),
+            None,
+          )
+        return (
+          None,
+          None,
+          {"filename": file.filename or "unknown", "error": f"Duplicate paper: {e}"},
+        )
       except Exception as e:
         await async_session.rollback()
         return (None, None, {"filename": file.filename or "unknown", "error": str(e)})
@@ -330,7 +279,7 @@ async def upload_files_endpoint(
       *[process_file(file) for file in valid_files], return_exceptions=True
     )
 
-    citation_extraction_count = 0
+    celery_task_count = 0
     for result in results:
       if isinstance(result, Exception):
         errors.append({"filename": "unknown", "error": str(result)})
@@ -338,12 +287,11 @@ async def upload_files_endpoint(
         paper_id, file_path, error = result
         if paper_id:
           paper_ids.append(paper_id)
-          # Add background task for citation extraction
+          # Dispatch Celery task for processing
           if file_path:
-            citation_extraction_count += 1
-            background_tasks.add_task(
-              process_paper_background_task, paper_id, file_path
-            )
+            task_id = _dispatch_paper_processing(paper_id, file_path)
+            if task_id:
+              celery_task_count += 1
         elif error:
           errors.append(error)
 
@@ -351,13 +299,13 @@ async def upload_files_endpoint(
     message = None
     if len(paper_ids) > 0:
       if len(paper_ids) == 1:
-        if citation_extraction_count > 0:
+        if celery_task_count > 0:
           message = "Paper uploaded successfully. AI processing started (citations, summary, findings, reading guide)."
         else:
           message = "Paper uploaded successfully."
       else:
-        if citation_extraction_count > 0:
-          message = f"{len(paper_ids)} papers uploaded. AI processing started for {citation_extraction_count} paper(s) (citations, summary, findings, reading guide)."
+        if celery_task_count > 0:
+          message = f"{len(paper_ids)} papers uploaded. AI processing started for {celery_task_count} paper(s) (citations, summary, findings, reading guide)."
         else:
           message = f"{len(paper_ids)} papers uploaded successfully."
 
@@ -367,7 +315,6 @@ async def upload_files_endpoint(
 async def _ingest_single_url(
   url: str,
   group_ids: Optional[List[int]],
-  background_tasks: BackgroundTasks,
 ) -> tuple[Optional[int], Optional[str], Optional[dict]]:
   """Helper to ingest a single URL. Returns (paper_id, file_path, error_dict)."""
   try:
@@ -396,6 +343,15 @@ async def _ingest_single_url(
         _ = list(paper.tags) if hasattr(paper, "tags") else []
 
         return cast(int, paper.id), cast(str, paper.file_path), None
+      except DuplicatePaperError as e:
+        await session.rollback()
+        if e.existing_paper:
+          return (
+            cast(int, e.existing_paper.id),
+            cast(str, e.existing_paper.file_path),
+            None,
+          )
+        return (None, None, {"url": url, "error": f"Duplicate paper: {e}"})
       except Exception as e:
         await session.rollback()
         return (None, None, {"url": url, "error": str(e)})
@@ -406,7 +362,6 @@ async def _ingest_single_url(
 @router.post("/ingest/batch", response_model=PaperUploadResponse, status_code=201)
 async def ingest_batch_endpoint(
   batch: PaperBatchCreate,
-  background_tasks: BackgroundTasks,
   session: AsyncSession = Depends(get_db),
 ):
   """Ingest multiple papers from a list of URLs.
@@ -426,14 +381,11 @@ async def ingest_batch_endpoint(
 
   # Process URLs in parallel
   results = await asyncio.gather(
-    *[
-      _ingest_single_url(str(url), batch.group_ids, background_tasks)
-      for url in batch.urls
-    ],
+    *[_ingest_single_url(str(url), batch.group_ids) for url in batch.urls],
     return_exceptions=True,
   )
 
-  citation_extraction_count = 0
+  celery_task_count = 0
   for result in results:
     if isinstance(result, Exception):
       errors.append({"url": "unknown", "error": str(result)})
@@ -442,8 +394,9 @@ async def ingest_batch_endpoint(
       if paper_id:
         paper_ids.append(paper_id)
         if file_path:
-          citation_extraction_count += 1
-          background_tasks.add_task(process_paper_background_task, paper_id, file_path)
+          task_id = _dispatch_paper_processing(paper_id, file_path)
+          if task_id:
+            celery_task_count += 1
       elif error:
         errors.append(error)
 
@@ -455,8 +408,8 @@ async def ingest_batch_endpoint(
       message = "1 paper ingested successfully."
     else:
       message = f"{count} papers ingested successfully."
-    if citation_extraction_count > 0:
-      message += f" AI processing started for {citation_extraction_count} paper(s) (citations, summary, findings, reading guide)."
+    if celery_task_count > 0:
+      message += f" AI processing started for {celery_task_count} paper(s) (citations, summary, findings, reading guide)."
 
   return PaperUploadResponse(paper_ids=paper_ids, errors=errors, message=message)
 
@@ -465,7 +418,6 @@ async def ingest_batch_endpoint(
 async def ingest_urls_from_text_endpoint(
   text: str = Body(..., media_type="text/plain"),
   group_ids: Optional[List[int]] = None,
-  background_tasks: BackgroundTasks = BackgroundTasks(),
   session: AsyncSession = Depends(get_db),
 ):
   """Ingest papers from pasted text containing URLs.
@@ -493,11 +445,11 @@ async def ingest_urls_from_text_endpoint(
 
   # Process URLs in parallel
   results = await asyncio.gather(
-    *[_ingest_single_url(url, group_ids, background_tasks) for url in urls],
+    *[_ingest_single_url(url, group_ids) for url in urls],
     return_exceptions=True,
   )
 
-  citation_extraction_count = 0
+  celery_task_count = 0
   for result in results:
     if isinstance(result, Exception):
       errors.append({"url": "unknown", "error": str(result)})
@@ -506,8 +458,9 @@ async def ingest_urls_from_text_endpoint(
       if paper_id:
         paper_ids.append(paper_id)
         if file_path:
-          citation_extraction_count += 1
-          background_tasks.add_task(process_paper_background_task, paper_id, file_path)
+          task_id = _dispatch_paper_processing(paper_id, file_path)
+          if task_id:
+            celery_task_count += 1
       elif error:
         errors.append(error)
 
@@ -519,7 +472,7 @@ async def ingest_urls_from_text_endpoint(
       message = "1 paper ingested successfully."
     else:
       message = f"{count} papers ingested successfully."
-    if citation_extraction_count > 0:
-      message += f" AI processing started for {citation_extraction_count} paper(s) (citations, summary, findings, reading guide)."
+    if celery_task_count > 0:
+      message += f" AI processing started for {celery_task_count} paper(s) (citations, summary, findings, reading guide)."
 
   return PaperUploadResponse(paper_ids=paper_ids, errors=errors, message=message)

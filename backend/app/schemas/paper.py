@@ -86,6 +86,9 @@ class Paper(PaperBase):
   created_at: datetime
   updated_at: datetime
   background_processing_message: Optional[str] = None
+  task_id: Optional[str] = None  # Celery task ID for tracking background processing
+  processing_status: str = "pending"  # pending, processing, completed, failed
+  processing_error: Optional[str] = None
 
   class Config:
     from_attributes = True

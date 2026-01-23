@@ -2,9 +2,11 @@ import { type Paper } from '@/lib/api/papers';
 import { type UseMutationResult, type QueryClient } from '@tanstack/react-query';
 import { ReadingStatusBadge } from '@/components/ReadingStatusBadge';
 import { PriorityBadge } from '@/components/PriorityBadge';
+import { ProcessingStatusBadge } from '@/components/ProcessingStatusBadge';
 import { ReadingProgressBar } from '@/components/ReadingProgressBar';
 import { BookmarkList } from '@/components/BookmarkList';
 import { BookmarkButton } from '@/components/BookmarkButton';
+import { AlertCircle, CheckCircle2, Loader2, Clock } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -30,8 +32,52 @@ export function PaperProgressPanel({
   updatePriorityMutation,
   queryClient,
 }: PaperProgressPanelProps) {
+  const getProcessingIcon = (status: string | undefined) => {
+    switch (status) {
+      case 'pending':
+        return <Clock className="w-4 h-4 text-yellow-600" />;
+      case 'processing':
+        return <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />;
+      case 'completed':
+        return <CheckCircle2 className="w-4 h-4 text-green-600" />;
+      case 'failed':
+        return <AlertCircle className="w-4 h-4 text-red-600" />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="space-y-6 text-left">
+      {/* AI Processing Status */}
+      {paper?.processing_status && (
+        <div>
+          <h3 className="text-sm font-semibold text-anara-light-text mb-4">AI Processing</h3>
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-50">
+            {getProcessingIcon(paper.processing_status)}
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700 capitalize">
+                  {paper.processing_status === 'completed' ? 'Complete' : paper.processing_status}
+                </span>
+                {paper.processing_status !== 'completed' && (
+                  <ProcessingStatusBadge status={paper.processing_status} />
+                )}
+              </div>
+              {paper.processing_error && (
+                <p className="text-xs text-red-600 mt-1">{paper.processing_error}</p>
+              )}
+              {paper.processing_status === 'processing' && (
+                <p className="text-xs text-gray-500 mt-1">Generating summaries, findings, and reading guide...</p>
+              )}
+              {paper.processing_status === 'pending' && (
+                <p className="text-xs text-gray-500 mt-1">Waiting for AI processing to start...</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div>
         <h3 className="text-sm font-semibold text-anara-light-text mb-4">Reading Status</h3>
         <div className="space-y-4">

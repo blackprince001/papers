@@ -3,6 +3,7 @@ from typing import Any
 
 import httpx
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logger import get_logger
@@ -12,6 +13,14 @@ from app.services.embeddings import embedding_service
 from app.services.pdf_parser import pdf_parser
 from app.services.storage import storage_service
 from app.services.url_parser import url_parser
+
+
+class DuplicatePaperError(Exception):
+  """Raised when attempting to ingest a paper that already exists."""
+
+  def __init__(self, message: str, existing_paper: Paper | None = None):
+    super().__init__(message)
+    self.existing_paper = existing_paper
 
 logger = get_logger(__name__)
 
@@ -197,7 +206,20 @@ class IngestionService:
     await self.assign_groups(db_session, paper, group_ids)
 
     db_session.add(paper)
-    await db_session.flush()
+    try:
+      await db_session.flush()
+    except IntegrityError as e:
+      await db_session.rollback()
+      # Check if it's a duplicate DOI error
+      if doi and "doi" in str(e).lower():
+        existing = await self.check_existing_paper(db_session, doi)
+        if existing:
+          raise DuplicatePaperError(
+            f"A paper with DOI '{doi}' already exists", existing_paper=existing
+          ) from e
+      raise DuplicatePaperError(
+        f"A paper with this identifier already exists: {e}"
+      ) from e
     return paper
 
   async def ingest_paper_from_file(
@@ -239,7 +261,20 @@ class IngestionService:
     await self.assign_groups(db_session, paper, group_ids)
 
     db_session.add(paper)
-    await db_session.flush()
+    try:
+      await db_session.flush()
+    except IntegrityError as e:
+      await db_session.rollback()
+      # Check if it's a duplicate DOI error
+      if doi and "doi" in str(e).lower():
+        existing = await self.check_existing_paper(db_session, doi)
+        if existing:
+          raise DuplicatePaperError(
+            f"A paper with DOI '{doi}' already exists", existing_paper=existing
+          ) from e
+      raise DuplicatePaperError(
+        f"A paper with this identifier already exists: {e}"
+      ) from e
     return paper
 
 

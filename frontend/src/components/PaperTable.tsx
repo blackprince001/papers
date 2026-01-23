@@ -11,6 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/Button';
+import { ProcessingStatusBadge } from '@/components/ProcessingStatusBadge';
 import type { Paper } from '@/lib/api/papers';
 
 interface PaperTableProps {
@@ -121,6 +122,9 @@ export function PaperTable({ papers, onSort, onDelete, inSelectionMode, selected
                     >
                       {paper.title}
                     </Link>
+                  )}
+                  {paper.processing_status && paper.processing_status !== 'completed' && (
+                    <ProcessingStatusBadge status={paper.processing_status} className="ml-2 flex-shrink-0" />
                   )}
                 </div>
               </TableCell>

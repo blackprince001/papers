@@ -31,6 +31,29 @@ class Settings(BaseSettings):
   DB_PASSWORD: str = ""
   DB_NAME: str = ""
 
+  # Redis configuration
+  REDIS_HOST: str = "localhost"
+  REDIS_PORT: int = 6379
+  REDIS_DB: int = 0
+  REDIS_PASSWORD: str = ""
+
+  @property
+  def REDIS_URL(self) -> str:
+    """Construct Redis URL from components."""
+    if self.REDIS_PASSWORD:
+      return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+    return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+
+  @property
+  def CELERY_BROKER_URL(self) -> str:
+    """Celery broker URL (Redis)."""
+    return self.REDIS_URL
+
+  @property
+  def CELERY_RESULT_BACKEND(self) -> str:
+    """Celery result backend URL (Redis)."""
+    return self.REDIS_URL
+
   model_config = SettingsConfigDict(
     env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
   )

@@ -15,6 +15,7 @@ export default function Discovery() {
   const [yearFrom, setYearFrom] = useState<number | undefined>();
   const [yearTo, setYearTo] = useState<number | undefined>();
   const [minCitations, setMinCitations] = useState<number | undefined>();
+  const [resultsLimit, setResultsLimit] = useState<number>(20);
   const [useAI, setUseAI] = useState(true);
   const [viewMode, setViewMode] = useState<'clustered' | 'list'>('clustered');
 
@@ -48,7 +49,7 @@ export default function Discovery() {
           year_to: yearTo,
           min_citations: minCitations,
         },
-        limit: 20,
+        limit: resultsLimit,
         include_overview: useAI,
         include_clustering: useAI,
         include_relevance: useAI,
@@ -66,7 +67,7 @@ export default function Discovery() {
         year_to: yearTo,
         min_citations: minCitations,
       },
-      limit: 20,
+      limit: resultsLimit,
       include_overview: useAI,
       include_clustering: useAI,
       include_relevance: useAI,
@@ -156,7 +157,7 @@ export default function Discovery() {
 
             {/* Filters */}
             {showFilters && (
-              <div className="mt-4 pt-4 border-t border-green-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="mt-4 pt-4 border-t border-green-6 grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-green-34 mb-1">
                     Year From
@@ -192,6 +193,23 @@ export default function Discovery() {
                     placeholder="e.g., 10"
                     className="w-full px-3 py-2 bg-grayscale-8 border border-green-6 rounded-sm text-sm text-anara-light-text focus:outline-none focus:border-green-28"
                   />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-green-34 mb-1">
+                    Results per Source
+                  </label>
+                  <select
+                    value={resultsLimit}
+                    onChange={(e) => setResultsLimit(parseInt(e.target.value))}
+                    className="w-full px-3 py-2 bg-grayscale-8 border border-green-6 rounded-sm text-sm text-anara-light-text focus:outline-none focus:border-green-28"
+                  >
+                    <option value={10}>10 results</option>
+                    <option value={20}>20 results</option>
+                    <option value={30}>30 results</option>
+                    <option value={50}>50 results</option>
+                    <option value={75}>75 results</option>
+                    <option value={100}>100 results</option>
+                  </select>
                 </div>
               </div>
             )}

@@ -18,6 +18,7 @@ from app.api.relationships import router as relationships_router
 from app.api.search import router as search_router
 from app.api.statistics import router as statistics_router
 from app.api.tags import router as tags_router
+from app.api.tasks import router as tasks_router
 from app.core.config import settings
 from app.core.database import init_db
 from app.core.logger import configure_logging, get_logger
@@ -57,6 +58,7 @@ app.include_router(duplicates_router, prefix="/api/v1")
 app.include_router(relationships_router, prefix="/api/v1")
 app.include_router(ai_features_router, prefix="/api/v1")
 app.include_router(discovery_router, prefix="/api/v1/discovery", tags=["discovery"])
+app.include_router(tasks_router, prefix="/api/v1/tasks", tags=["tasks"])
 
 app.mount("/storage", StaticFiles(directory=str(storage_path)), name="storage")
 
@@ -68,4 +70,37 @@ def read_root():
 
 @app.get("/health")
 async def health_check():
-  return {"status": "healthy"}
+  """Health check including Redis and Celery status."""
+  import redis
+
+  health = {"status": "healthy", "components": {"celery": "", "redis": ""}}
+
+  # Check Redis
+  try:
+    r = redis.Redis(
+      host=settings.REDIS_HOST,
+      port=settings.REDIS_PORT,
+      db=settings.REDIS_DB,
+    )
+    r.ping()
+    health["components"]["redis"] = "healthy"
+  except Exception as e:
+    health["components"]["redis"] = f"unhealthy: {str(e)}"
+    health["status"] = "degraded"
+
+  # Check Celery workers
+  try:
+    from app.celery_app import celery_app
+
+    inspector = celery_app.control.inspect()
+    stats = inspector.stats()
+    if stats:
+      health["components"]["celery"] = f"healthy ({len(stats)} workers)"
+    else:
+      health["components"]["celery"] = "no workers available"
+      health["status"] = "degraded"
+  except Exception as e:
+    health["components"]["celery"] = f"unhealthy: {str(e)}"
+    health["status"] = "degraded"
+
+  return health

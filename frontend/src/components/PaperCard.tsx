@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { Trash2 } from 'lucide-react';
 import { ReadingStatusBadge } from './ReadingStatusBadge';
 import { PriorityBadge } from './PriorityBadge';
+import { ProcessingStatusBadge } from './ProcessingStatusBadge';
 import { Button } from './Button';
 import { useMemo } from 'react';
 
@@ -94,6 +95,9 @@ export function PaperCard({ paper, onDelete, index = 0 }: PaperCardProps) {
       <div className="p-4 flex-1 flex flex-col">
         {/* Tags/Badges Row */}
         <div className="flex flex-wrap gap-1.5 mb-3">
+          {paper.processing_status && paper.processing_status !== 'completed' && (
+            <ProcessingStatusBadge status={paper.processing_status} />
+          )}
           {paper.reading_status && <ReadingStatusBadge status={paper.reading_status} />}
           {paper.priority && paper.priority !== 'low' && <PriorityBadge priority={paper.priority} />}
           {paper.doi && (

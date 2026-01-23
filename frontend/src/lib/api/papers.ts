@@ -31,6 +31,9 @@ export interface Paper {
   created_at: string;
   updated_at: string;
   background_processing_message?: string;
+  task_id?: string;
+  processing_status?: 'pending' | 'processing' | 'completed' | 'failed';
+  processing_error?: string;
 }
 
 export interface PaperCreate {
