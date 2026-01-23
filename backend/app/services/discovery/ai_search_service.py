@@ -17,6 +17,7 @@ class QueryUnderstandingResponse(BaseModel):
   """Expected structure from query understanding AI call."""
 
   interpreted_query: str
+  boolean_query: str = Field(default="")
   key_concepts: List[str] = Field(default_factory=list)
   search_terms: List[str] = Field(default_factory=list)
   domain_hints: List[str] = Field(default_factory=list)
@@ -64,13 +65,15 @@ class RelevanceResponse(BaseModel):
   explanations: List[RelevanceExplanationItem] = Field(default_factory=list)
 
 
-QUERY_UNDERSTANDING_PROMPT = """Analyze this research query and extract search intent:
+QUERY_UNDERSTANDING_PROMPT = """Analyze this research query and extract search intent.
+CRITICAL: Generate a 'boolean_query' optimized for academic search engines (arXiv, etc.).
 
 Query: {query}
 
 Return a JSON object with:
 {{
   "interpreted_query": "Clear interpretation of what the user is looking for",
+  "boolean_query": "Boolean logic query (AND, OR, parentheses) e.g., '(\"deep learning\" OR \"neural networks\") AND optimization'",
   "key_concepts": ["concept1", "concept2", ...],
   "search_terms": ["term1", "term2", ...],
   "domain_hints": ["field1", "field2", ...],
@@ -79,6 +82,7 @@ Return a JSON object with:
 
 Guidelines:
 - interpreted_query: Rephrase in clear academic terms
+- boolean_query: MUST use standard boolean operators (AND, OR) and quotes for phrases. This will be used directly for search.
 - key_concepts: Core ideas/topics (3-5)
 - search_terms: Specific terms for database search (3-7)
 - domain_hints: Research fields/domains

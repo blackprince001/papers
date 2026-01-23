@@ -19,6 +19,7 @@ class Settings(BaseSettings):
   EMBEDDING_MODEL: str = "gemini-embedding-001"
   EMBEDDING_DIMENSION: int = 768
   GOOGLE_API_KEY: str = ""
+  SERPAPI_KEY: str = ""
   GENAI_MODEL: str = "gemini-3-flash-preview"
   DEBUG: bool = False
   PORT: int = 8000

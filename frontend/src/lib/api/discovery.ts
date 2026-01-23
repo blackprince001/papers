@@ -110,6 +110,7 @@ export interface RecommendationResponse {
 
 export interface QueryUnderstanding {
   interpreted_query: string;
+  boolean_query?: string;
   key_concepts: string[];
   search_terms: string[];
   domain_hints: string[];

@@ -87,7 +87,7 @@ services:
       - STORAGE_PATH=/app/storage/papers
       - DEBUG=false
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
-      - EMBEDDING_MODEL=all-MiniLM-L6-v2
+      - SERPAPI_KEY=${SERPAPI_KEY:-}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     depends_on:
@@ -129,7 +129,7 @@ services:
       - STORAGE_PATH=/app/storage/papers
       - DEBUG=false
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
-      - EMBEDDING_MODEL=all-MiniLM-L6-v2
+      - SERPAPI_KEY=${SERPAPI_KEY:-}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     depends_on:

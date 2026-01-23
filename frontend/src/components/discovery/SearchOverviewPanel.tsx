@@ -26,6 +26,13 @@ export function SearchOverviewPanel({
               <p className="text-green-34 text-sm mt-1">
                 {queryUnderstanding.interpreted_query}
               </p>
+              {queryUnderstanding.boolean_query && (
+                <div className="mt-2 pt-2 border-t border-green-6/50">
+                  <span className="text-xs font-mono text-green-28 bg-green-4/50 px-2 py-1 rounded">
+                    Query: {queryUnderstanding.boolean_query}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           {queryUnderstanding.key_concepts.length > 0 && (

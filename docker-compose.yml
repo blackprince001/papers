@@ -83,6 +83,7 @@ services:
       - STORAGE_PATH=/app/storage/papers
       - DEBUG=true
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - SERPAPI_KEY=${SERPAPI_KEY:-}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     volumes:
@@ -123,6 +124,7 @@ services:
       - STORAGE_PATH=/app/storage/papers
       - DEBUG=true
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - SERPAPI_KEY=${SERPAPI_KEY:-}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     volumes:

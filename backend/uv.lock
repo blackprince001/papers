@@ -100,6 +100,7 @@ dependencies = [
     { name = "celery", extra = ["redis"] },
     { name = "fastapi", extra = ["standard"] },
     { name = "google-genai" },
+    { name = "google-search-results" },
     { name = "httpx" },
     { name = "pgvector" },
     { name = "psycopg2-binary" },
@@ -126,6 +127,7 @@ requires-dist = [
     { name = "celery", extras = ["redis"], specifier = ">=5.4.0" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.128.0" },
     { name = "google-genai", specifier = ">=0.2.0" },
+    { name = "google-search-results", specifier = ">=2.4.2" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "pgvector", specifier = ">=0.4.2" },
     { name = "psycopg2-binary", specifier = ">=2.9.11" },
@@ -475,6 +477,15 @@ sdist = { url = "https://files.pythonhosted.org/packages/2b/b4/8251c2d2576224a4b
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d6/02/858bdae08e2184b6afe0b18bc3113318522c9cf326a5a1698055edd31f88/google_genai-1.57.0-py3-none-any.whl", hash = "sha256:d63c7a89a1f549c4d14032f41a0cdb4b6fe3f565e2eee6b5e0907a0aeceabefd", size = 713323, upload-time = "2026-01-07T20:38:18.051Z" },
 ]
+
+[[package]]
+name = "google-search-results"
+version = "2.4.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/77/30/b3a6f6a2e00f8153549c2fa345c58ae1ce8e5f3153c2fe0484d444c3abcb/google_search_results-2.4.2.tar.gz", hash = "sha256:603a30ecae2af8e600b22635757a6df275dad4b934f975e67878ccd640b78245", size = 18818, upload-time = "2023-03-10T11:13:09.953Z" }
 
 [[package]]
 name = "greenlet"

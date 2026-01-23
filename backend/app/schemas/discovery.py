@@ -268,6 +268,7 @@ class QueryUnderstanding(BaseModel):
   """AI-generated query understanding."""
 
   interpreted_query: str = Field(..., description="Clear interpretation of the query")
+  boolean_query: Optional[str] = Field(None, description="Optimized boolean query")
   key_concepts: List[str] = Field(default=[], description="Core concepts/topics")
   search_terms: List[str] = Field(default=[], description="Specific search terms")
   domain_hints: List[str] = Field(default=[], description="Research fields/domains")
@@ -295,7 +296,9 @@ class PaperCluster(BaseModel):
   name: str = Field(..., description="Cluster name")
   description: str = Field(default="", description="Cluster description")
   keywords: List[str] = Field(default=[], description="Cluster keywords")
-  paper_indices: List[int] = Field(default=[], description="Indices of papers in cluster")
+  paper_indices: List[int] = Field(
+    default=[], description="Indices of papers in cluster"
+  )
 
 
 class ClusteringResult(BaseModel):

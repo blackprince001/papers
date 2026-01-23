@@ -353,21 +353,45 @@ async def ai_search_stream(
           min_citations=request.filters.min_citations,
         )
 
-      # Stage 2: Start AI query understanding in background
+      # Stage 2: Understand query (blocking for better search results)
       yield _sse_event(
         "status",
         {
           "stage": "understanding",
-          "message": "Understanding your query...",
+          "message": "Analyzing query to improve search...",
           "progress": 5,
         },
       )
-      query_task = asyncio.create_task(
-        ai_search_service.understand_query(request.query)
-      )
+
+      query_understanding = None
+      search_query = request.query
+
+      try:
+        query_understanding = await ai_search_service.understand_query(request.query)
+
+        if query_understanding:
+          # Use the optimized boolean query if available
+          if query_understanding.get("boolean_query"):
+            search_query = query_understanding["boolean_query"]
+
+          yield _sse_event(
+            "query_understanding",
+            {
+              "interpreted_query": query_understanding.get(
+                "interpreted_query", request.query
+              ),
+              "boolean_query": query_understanding.get("boolean_query"),
+              "key_concepts": query_understanding.get("key_concepts", []),
+              "search_terms": query_understanding.get("search_terms", []),
+              "domain_hints": query_understanding.get("domain_hints", []),
+              "query_type": query_understanding.get("query_type", "exploratory"),
+            },
+          )
+      except Exception as e:
+        logger.warning(f"Query understanding failed: {e}")
 
       # Stage 3: Search each source
-      sources = request.sources or ["arxiv", "semantic_scholar"]
+      sources = request.sources
       all_papers: List[dict] = []
       source_results: List[SourceSearchResult] = []
 
@@ -389,7 +413,7 @@ async def ai_search_stream(
             discovery_service.search_source(
               session=session,
               source=source_name,
-              query=request.query,
+              query=search_query,  # Use optimized query
               filters=filters,
               limit=request.limit,
             ),
@@ -449,33 +473,17 @@ async def ai_search_stream(
             {"source": source_name, "papers": [], "error": str(e)},
           )
 
-      # Stage 4: Get query understanding result
+      # Stage 4: Analysis complete (already done in Stage 2)
       yield _sse_event(
         "status",
         {
           "stage": "analyzing",
-          "message": "Analyzing query...",
+          "message": "Analysis complete...",
           "progress": 45,
         },
       )
 
-      try:
-        query_understanding = await asyncio.wait_for(query_task, timeout=15.0)
-        if query_understanding:
-          yield _sse_event(
-            "query_understanding",
-            {
-              "interpreted_query": query_understanding.get(
-                "interpreted_query", request.query
-              ),
-              "key_concepts": query_understanding.get("key_concepts", []),
-              "search_terms": query_understanding.get("search_terms", []),
-              "domain_hints": query_understanding.get("domain_hints", []),
-              "query_type": query_understanding.get("query_type", "exploratory"),
-            },
-          )
-      except (asyncio.TimeoutError, Exception) as e:
-        logger.warning(f"Query understanding failed: {e}")
+      # (Query understanding was already emitted in Stage 2)
 
       # Stage 5: AI enhancements (parallel)
       if all_papers and (
