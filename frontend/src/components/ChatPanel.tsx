@@ -5,7 +5,7 @@ import { MentionAutocomplete, type MentionItem } from './MentionAutocomplete';
 import { MarkdownMessage } from './MarkdownMessage';
 import { Button } from './Button';
 import { format } from 'date-fns';
-import { Send, Trash2, FileText, BookOpen, StickyNote, Loader2, AtSign, Maximize2, Minimize2, Sparkles, Plus, MoreVertical, Edit2, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Send, Trash2, FileText, BookOpen, StickyNote, Loader2, AtSign, Maximize2, Minimize2, Sparkles, Plus, MoreVertical, Edit2, X, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { defaultPrompts } from '@/lib/constants/defaultPrompts';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -32,6 +32,7 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
   const [isSuggestedPromptsExpanded, setIsSuggestedPromptsExpanded] = useState(false);
   const [pendingUserMessage, setPendingUserMessage] = useState<{ content: string; references: ChatReferences } | null>(null);
   const [expandedThreadId, setExpandedThreadId] = useState<number | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -482,7 +483,43 @@ export function ChatPanel({ paperId, onClose }: ChatPanelProps) {
     }
 
     // For assistant messages, render markdown
-    return <MarkdownMessage content={msg.content} />;
+    return (
+      <div className="relative group/message">
+        <MarkdownMessage content={msg.content} />
+        <div className="absolute -bottom-6 right-0 opacity-0 group-hover/message:opacity-100 transition-opacity flex items-center gap-1 bg-grayscale-8 border border-green-6 p-1 rounded-md shadow-sm z-10">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 hover:bg-green-4"
+            onClick={() => {
+              navigator.clipboard.writeText(msg.content);
+              setCopiedId(`${msg.id}-md`);
+              setTimeout(() => setCopiedId(null), 2000);
+            }}
+            title="Copy as Markdown"
+          >
+            {copiedId === `${msg.id}-md` ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3 text-green-28" />}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 hover:bg-green-4"
+            onClick={() => {
+              // Simple text strip for now, or just copy raw if stripping is too complex without libs
+              // For now we just copy raw content as text too, but distinct button implies intent.
+              // Ideally we would strip markdown chars.
+              const text = msg.content.replace(/[#*`_~$$$$]()\[\]]/g, '');
+              navigator.clipboard.writeText(text);
+              setCopiedId(`${msg.id}-txt`);
+              setTimeout(() => setCopiedId(null), 2000);
+            }}
+            title="Copy as Text"
+          >
+            {copiedId === `${msg.id}-txt` ? <Check className="h-3 w-3 text-green-600" /> : <FileText className="h-3 w-3 text-green-28" />}
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   // Note: We no longer distinguish between sidebar and standalone contexts - they should behave identically

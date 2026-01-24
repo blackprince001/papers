@@ -1,7 +1,13 @@
 
-import { CheckSquare } from 'lucide-react';
+import { CheckSquare, X } from 'lucide-react';
 import { Button } from './Button';
 import type { Paper } from '@/lib/api/papers';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface PaperMultiSelectProps {
   papers: Paper[];
@@ -32,36 +38,66 @@ export function PaperMultiSelect({
   if (!isSelectionMode)
   {
     return (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => onToggleSelectionMode(true)}
-        className="flex items-center gap-2"
-      >
-        <CheckSquare className="h-4 w-4" />
-        Select Papers
-      </Button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onToggleSelectionMode(true)}
+              className="h-8 w-8 p-0"
+            >
+              <CheckSquare className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Select Papers</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     );
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between mb-4">
-        <div className="text-sm font-medium">
-          {selectedIds.length} of {papers.length} selected
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={selectAll}>
-            {selectedIds.length === papers.length ? 'Deselect All' : 'Select All'}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => {
-            onToggleSelectionMode(false);
-            onSelectionChange([]);
-          }}>
-            Cancel
-          </Button>
-        </div>
+    <div className="flex items-center gap-2">
+      <div className="text-sm font-medium mr-2">
+        {selectedIds.length} selected
       </div>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="sm" onClick={selectAll} className="h-8 w-8 p-0">
+              {selectedIds.length === papers.length ? (
+                <CheckSquare className="h-4 w-4 text-blue-600" />
+              ) : (
+                <div className="h-4 w-4 border-2 border-current rounded-sm" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{selectedIds.length === papers.length ? 'Deselect All' : 'Select All'}</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                onToggleSelectionMode(false);
+                onSelectionChange([]);
+              }}
+              className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Cancel Selection</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   );
 }

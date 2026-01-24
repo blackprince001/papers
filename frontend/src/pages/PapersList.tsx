@@ -14,8 +14,14 @@ import type { PaperListFilters } from '@/lib/api/papers';
 import { usePagination } from '@/hooks/use-pagination';
 import { toastInfo, toastSuccess, toastError } from '@/lib/utils/toast';
 import { useConfirmDialog } from '@/components/ConfirmDialog';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Download } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { PaperCardSkeleton } from '@/components/Skeletons';
 import {
   Pagination,
@@ -279,59 +285,88 @@ export default function PapersList() {
                   }}
                 />
                 {selectedPaperIds.length > 0 && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center gap-2"
-                      onClick={() => navigate('/export', {
-                        state: {
-                          paperIds: selectedPaperIds,
-                          returnPath: '/',
-                          context: 'Home'
-                        }
-                      })}
-                    >
-                      Export <span className="hidden sm:inline">{selectedPaperIds.length}</span>
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="flex items-center gap-2"
-                      onClick={handleDeleteSelected}
-                      disabled={deletePapersMutation.isPending}
-                    >
-                      <Trash2 size={16} className={deletePapersMutation.isPending ? 'animate-spin' : ''} />
-                      {deletePapersMutation.isPending ? 'Deleting...' : <>Delete <span className="hidden sm:inline">{selectedPaperIds.length}</span></>}
-                    </Button>
-                  </>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => navigate('/export', {
+                            state: {
+                              paperIds: selectedPaperIds,
+                              returnPath: '/',
+                              context: 'Home'
+                            }
+                          })}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Export {selectedPaperIds.length} selected</p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={handleDeleteSelected}
+                          disabled={deletePapersMutation.isPending}
+                        >
+                          <Trash2 size={16} className={deletePapersMutation.isPending ? 'animate-spin' : ''} />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Delete {selectedPaperIds.length} selected</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
-                <Button
-                  onClick={handleRegenerateMetadata}
-                  disabled={regenerateMetadataMutation.isPending}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw size={16} className={regenerateMetadataMutation.isPending ? 'animate-spin' : ''} />
-                  {regenerateMetadataMutation.isPending
-                    ? 'Regenerating...'
-                    : <>Regenerate <span className="hidden sm:inline">Metadata ({data.papers.filter(p => p.file_path).length})</span></>}
-                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={handleRegenerateMetadata}
+                        disabled={regenerateMetadataMutation.isPending}
+                        variant="outline"
+                        className="h-8 w-8 p-0"
+                      >
+                        <RefreshCw size={16} className={regenerateMetadataMutation.isPending ? 'animate-spin' : ''} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Regenerate Metadata ({data.papers.filter(p => p.file_path).length})</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 {selectedPaperIds.length === 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                    onClick={() => navigate('/export', {
-                      state: {
-                        paperIds: data.papers.map(p => p.id),
-                        returnPath: '/',
-                        context: 'Home'
-                      }
-                    })}
-                  >
-                    Export <span className="hidden sm:inline">All</span>
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => navigate('/export', {
+                            state: {
+                              paperIds: data.papers.map(p => p.id),
+                              returnPath: '/',
+                              context: 'Home'
+                            }
+                          })}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Export All</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
               </div>
             </div>
