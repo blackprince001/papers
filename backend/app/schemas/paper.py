@@ -105,3 +105,16 @@ class PaperUploadResponse(BaseModel):
   paper_ids: List[int]
   errors: List[Dict[str, Any]] = []
   message: Optional[str] = None
+
+
+class BulkRegenerateRequest(BaseModel):
+  """Request to regenerate metadata for multiple papers."""
+
+  paper_ids: List[int]
+
+
+class BulkRegenerateResponse(BaseModel):
+  """Response from bulk metadata regeneration."""
+
+  successful: List[int]
+  failed: List[Dict[str, Any]]

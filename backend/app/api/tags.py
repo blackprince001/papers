@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+"""Tags API endpoints."""
+
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.crud import create_tag, delete_tag, get_tag_or_404, list_tags, update_tag
 from app.dependencies import get_db
-from app.models.tag import Tag
 from app.schemas.tag import Tag as TagSchema
 from app.schemas.tag import TagCreate, TagListResponse, TagUpdate
 
@@ -11,30 +12,14 @@ router = APIRouter()
 
 
 @router.get("/tags", response_model=TagListResponse)
-async def list_tags(
+async def list_tags_endpoint(
   page: int = Query(1, ge=1),
   page_size: int = Query(100, ge=1, le=1000),
   search: str | None = None,
   session: AsyncSession = Depends(get_db),
 ):
-  query = select(Tag)
-
-  if search:
-    query = query.where(Tag.name.ilike(f"%{search}%"))
-
-  count_query = select(func.count()).select_from(Tag)
-  if search:
-    count_query = count_query.where(Tag.name.ilike(f"%{search}%"))
-
-  total_result = await session.execute(count_query)
-  total = total_result.scalar()
-
-  offset = (page - 1) * page_size
-  query = query.order_by(Tag.name.asc()).offset(offset).limit(page_size)
-
-  result = await session.execute(query)
-  tags = result.scalars().all()
-
+  """List all tags with pagination."""
+  tags, total = await list_tags(session, page=page, page_size=page_size, search=search)
   return TagListResponse(
     tags=[TagSchema.model_validate(t) for t in tags],
     total=total,
@@ -42,68 +27,35 @@ async def list_tags(
 
 
 @router.post("/tags", response_model=TagSchema, status_code=201)
-async def create_tag(tag_in: TagCreate, session: AsyncSession = Depends(get_db)):
-  # Check if tag with same name already exists
-  existing = await session.execute(select(Tag).where(Tag.name == tag_in.name))
-  if existing.scalar_one_or_none():
-    raise HTTPException(status_code=400, detail="Tag with this name already exists")
-
-  tag = Tag(name=tag_in.name)
-  session.add(tag)
-  await session.commit()
-  await session.refresh(tag)
-
+async def create_tag_endpoint(
+  tag_in: TagCreate, session: AsyncSession = Depends(get_db)
+):
+  """Create a new tag."""
+  tag = await create_tag(session, tag_in.name)
   return TagSchema.model_validate(tag)
 
 
 @router.get("/tags/{tag_id}", response_model=TagSchema)
-async def get_tag(tag_id: int, session: AsyncSession = Depends(get_db)):
-  query = select(Tag).where(Tag.id == tag_id)
-  result = await session.execute(query)
-  tag = result.scalar_one_or_none()
-
-  if not tag:
-    raise HTTPException(status_code=404, detail="Tag not found")
-
+async def get_tag_endpoint(tag_id: int, session: AsyncSession = Depends(get_db)):
+  """Get a tag by ID."""
+  tag = await get_tag_or_404(session, tag_id)
   return TagSchema.model_validate(tag)
 
 
 @router.patch("/tags/{tag_id}", response_model=TagSchema)
-async def update_tag(
+async def update_tag_endpoint(
   tag_id: int, tag_update: TagUpdate, session: AsyncSession = Depends(get_db)
 ):
-  query = select(Tag).where(Tag.id == tag_id)
-  result = await session.execute(query)
-  tag = result.scalar_one_or_none()
-
-  if not tag:
-    raise HTTPException(status_code=404, detail="Tag not found")
-
+  """Update a tag."""
   if tag_update.name is not None:
-    # Check if another tag with this name exists
-    existing = await session.execute(
-      select(Tag).where(Tag.name == tag_update.name, Tag.id != tag_id)
-    )
-    if existing.scalar_one_or_none():
-      raise HTTPException(status_code=400, detail="Tag with this name already exists")
-    tag.name = tag_update.name
-
-  await session.commit()
-  await session.refresh(tag)
-
+    tag = await update_tag(session, tag_id, tag_update.name)
+  else:
+    tag = await get_tag_or_404(session, tag_id)
   return TagSchema.model_validate(tag)
 
 
 @router.delete("/tags/{tag_id}", status_code=204)
-async def delete_tag(tag_id: int, session: AsyncSession = Depends(get_db)):
-  query = select(Tag).where(Tag.id == tag_id)
-  result = await session.execute(query)
-  tag = result.scalar_one_or_none()
-
-  if not tag:
-    raise HTTPException(status_code=404, detail="Tag not found")
-
-  await session.delete(tag)
-  await session.commit()
-
+async def delete_tag_endpoint(tag_id: int, session: AsyncSession = Depends(get_db)):
+  """Delete a tag."""
+  await delete_tag(session, tag_id)
   return None

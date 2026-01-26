@@ -1,13 +1,16 @@
+"""Relationships API endpoints."""
+
 from typing import cast
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.api.crud import get_paper_or_404
 from app.dependencies import get_db
-from app.models.paper import Paper
 from app.models.paper_citation import PaperCitation
+from app.schemas.paper import Paper as PaperSchema
 from app.services.graph_service import graph_service
 from app.services.semantic_scholar import semantic_scholar_service
 
@@ -22,6 +25,7 @@ async def get_citation_graph(
   session: AsyncSession = Depends(get_db),
 ):
   """Get citation graph for a paper with bidirectional connections."""
+  await get_paper_or_404(session, paper_id)  # Validate paper exists
   return await graph_service.build_citation_graph(
     session, paper_id, bidirectional, max_hops
   )
@@ -30,15 +34,8 @@ async def get_citation_graph(
 @router.get("/papers/{paper_id}/citations-list")
 async def get_citations_list(paper_id: int, session: AsyncSession = Depends(get_db)):
   """Get list of citations for a paper with full details."""
-  # Verify paper exists
-  paper_query = select(Paper).where(Paper.id == paper_id)
-  paper_result = await session.execute(paper_query)
-  paper = paper_result.scalar_one_or_none()
+  await get_paper_or_404(session, paper_id)  # Validate paper exists
 
-  if not paper:
-    raise HTTPException(status_code=404, detail="Paper not found")
-
-  # Get citations with eager loading of cited_paper
   citations_query = (
     select(PaperCitation)
     .options(selectinload(PaperCitation.cited_paper))
@@ -48,7 +45,6 @@ async def get_citations_list(paper_id: int, session: AsyncSession = Depends(get_
   result = await session.execute(citations_query)
   citations = result.scalars().all()
 
-  # Format response with cited paper details if internal
   citations_data = []
   for citation in citations:
     citation_dict = {
@@ -61,10 +57,7 @@ async def get_citations_list(paper_id: int, session: AsyncSession = Depends(get_
       "created_at": citation.created_at.isoformat() if citation.created_at else None,
     }
 
-    # Add cited paper details if it's an internal citation
     if citation.cited_paper_id and citation.cited_paper:
-      from app.schemas.paper import Paper as PaperSchema
-
       citation_dict["cited_paper"] = PaperSchema.model_validate(
         citation.cited_paper
       ).model_dump()
@@ -81,17 +74,7 @@ async def get_citations(
   session: AsyncSession = Depends(get_db),
 ):
   """Get papers that cite this paper."""
-  # Use Semantic Scholar API
-  from sqlalchemy import select
-
-  from app.models.paper import Paper
-
-  query = select(Paper).where(Paper.id == paper_id)
-  result = await session.execute(query)
-  paper = result.scalar_one_or_none()
-
-  if not paper:
-    return {"citations": []}
+  paper = await get_paper_or_404(session, paper_id)
 
   identifier = semantic_scholar_service._get_identifier(
     doi=cast(str, paper.doi), arxiv=None
@@ -115,16 +98,7 @@ async def get_cited_by(
   session: AsyncSession = Depends(get_db),
 ):
   """Get papers cited by this paper."""
-  from sqlalchemy import select
-
-  from app.models.paper import Paper
-
-  query = select(Paper).where(Paper.id == paper_id)
-  result = await session.execute(query)
-  paper = result.scalar_one_or_none()
-
-  if not paper:
-    return {"references": []}
+  paper = await get_paper_or_404(session, paper_id)
 
   identifier = semantic_scholar_service._get_identifier(
     doi=cast(str, paper.doi), arxiv=None
@@ -154,4 +128,5 @@ async def get_semantic_graph(
   session: AsyncSession = Depends(get_db),
 ):
   """Get semantic similarity graph."""
+  await get_paper_or_404(session, paper_id)  # Validate paper exists
   return await graph_service.build_semantic_graph(session, paper_id, limit)

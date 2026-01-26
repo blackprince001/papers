@@ -1,205 +1,189 @@
-from datetime import datetime, timezone
+"""AI Features API endpoints."""
+
+from datetime import datetime
 from typing import Optional, cast
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.crud import get_paper_or_404
 from app.core.config import settings
-from app.dependencies import get_db, get_paper_or_404
-from app.models.paper import Paper
+from app.dependencies import get_db
 from app.schemas.ai_features import (
   FindingsResponse,
   ReadingGuideResponse,
   SummaryRequest,
   SummaryResponse,
 )
-from app.services.ai_highlighter import ai_highlighter_service
-from app.services.ai_summarizer import ai_summarizer_service
+from app.tasks.ai_tasks import (
+  extract_findings_task,
+  generate_highlights_task,
+  generate_reading_guide_task,
+  generate_summary_task,
+)
 
 router = APIRouter()
 
 
 @router.post("/papers/{paper_id}/generate-summary", response_model=SummaryResponse)
 async def generate_summary(
+  paper_id: int,
   request: Optional[SummaryRequest] = None,
-  paper: Paper = Depends(get_paper_or_404),
   session: AsyncSession = Depends(get_db),
 ):
-  """Generate AI summary for a paper."""
-  if not paper.content_text:
-    raise HTTPException(status_code=400, detail="Paper has no content to summarize")
+  """Trigger AI summary generation task."""
+  await get_paper_or_404(session, paper_id)
 
-  # Check if API key is configured
   if not settings.GOOGLE_API_KEY:
     raise HTTPException(
       status_code=400,
-      detail="Google API key not configured. Please set GOOGLE_API_KEY environment variable.",
+      detail="Google API key not configured.",
     )
 
-  summary = await ai_summarizer_service.generate_summary(paper)
+  # Trigger task
+  generate_summary_task.delay(paper_id)
 
-  if not summary:
-    raise HTTPException(
-      status_code=500,
-      detail="Failed to generate summary. Please check your Google API key configuration and ensure it is valid. If you've changed your API key, please restart the backend server.",
+  return SummaryResponse(summary=None, generated_at=None, status="pending")
+
+
+@router.get("/papers/{paper_id}/summary", response_model=SummaryResponse)
+async def get_summary(paper_id: int, session: AsyncSession = Depends(get_db)):
+  """Get AI summary for a paper."""
+  paper = await get_paper_or_404(session, paper_id)
+
+  if not paper.ai_summary:
+    # If no summary, it might be pending or not requested
+    return SummaryResponse(
+      summary=None,
+      generated_at=None,
+      status="not_found",  # or check if task is running if we tracked it
     )
+
+  return SummaryResponse(
+    summary=cast(str, paper.ai_summary),
+    generated_at=cast(datetime | None, paper.summary_generated_at),
+    status="completed",
+  )
+
+
+@router.put("/papers/{paper_id}/summary", response_model=SummaryResponse)
+async def update_summary(
+  paper_id: int,
+  summary: str = Body(..., embed=True),
+  session: AsyncSession = Depends(get_db),
+):
+  """Update AI summary manually."""
+  paper = await get_paper_or_404(session, paper_id)
 
   paper.ai_summary = summary
-  paper.summary_generated_at = datetime.now(timezone.utc)
   await session.commit()
   await session.refresh(paper)
 
   return SummaryResponse(
     summary=summary,
     generated_at=cast(datetime | None, paper.summary_generated_at),
-  )
-
-
-@router.get("/papers/{paper_id}/summary", response_model=SummaryResponse)
-async def get_summary(paper: Paper = Depends(get_paper_or_404)):
-  """Get AI summary for a paper."""
-  if not paper.ai_summary:
-    raise HTTPException(
-      status_code=404, detail="Summary not found. Please generate a summary first."
-    )
-
-  return SummaryResponse(
-    summary=cast(str, paper.ai_summary),
-    generated_at=cast(datetime | None, paper.summary_generated_at),
-  )
-
-
-@router.put("/papers/{paper_id}/summary", response_model=SummaryResponse)
-async def update_summary(
-  summary: str,
-  paper: Paper = Depends(get_paper_or_404),
-  session: AsyncSession = Depends(get_db),
-):
-  """Update AI summary for a paper."""
-  paper.ai_summary = summary
-  await session.commit()
-  await session.refresh(paper)
-
-  return SummaryResponse(
-    summary=summary, generated_at=cast(datetime | None, paper.summary_generated_at)
+    status="completed",
   )
 
 
 @router.post("/papers/{paper_id}/extract-findings", response_model=FindingsResponse)
 async def extract_findings(
-  paper: Paper = Depends(get_paper_or_404),
+  paper_id: int,
   session: AsyncSession = Depends(get_db),
 ):
-  """Extract key findings from a paper."""
-  if not paper.content_text:
-    raise HTTPException(status_code=400, detail="Paper has no content")
+  """Trigger extraction of key findings."""
+  await get_paper_or_404(session, paper_id)
 
-  findings = await ai_summarizer_service.extract_findings(paper)
+  extract_findings_task.delay(paper_id)
 
-  if findings:
-    paper.key_findings = findings
-    paper.findings_extracted_at = datetime.now(timezone.utc)
-    await session.commit()
-    await session.refresh(paper)
-
-  return FindingsResponse(findings=findings or {})
+  return FindingsResponse(findings=None, status="pending")
 
 
 @router.get("/papers/{paper_id}/findings", response_model=FindingsResponse)
-async def get_findings(paper: Paper = Depends(get_paper_or_404)):
+async def get_findings(paper_id: int, session: AsyncSession = Depends(get_db)):
   """Get key findings for a paper."""
-  # Ensure key_findings is a dict, default to empty dict if None
+  paper = await get_paper_or_404(session, paper_id)
+
   findings = (
     paper.key_findings
     if paper.key_findings is not None and isinstance(paper.key_findings, dict)
     else {}
   )
 
-  return FindingsResponse(findings=findings)
+  return FindingsResponse(
+    findings=findings, status="completed" if findings else "not_found"
+  )
 
 
 @router.put("/papers/{paper_id}/findings", response_model=FindingsResponse)
 async def update_findings(
-  findings: dict,
-  paper: Paper = Depends(get_paper_or_404),
+  paper_id: int,
+  findings: dict = Body(..., embed=True),
   session: AsyncSession = Depends(get_db),
 ):
-  """Update key findings for a paper."""
+  """Update key findings manually."""
+  paper = await get_paper_or_404(session, paper_id)
+
   paper.key_findings = findings
   await session.commit()
   await session.refresh(paper)
 
-  return FindingsResponse(findings=findings)
+  return FindingsResponse(findings=findings, status="completed")
 
 
 @router.post(
   "/papers/{paper_id}/generate-reading-guide", response_model=ReadingGuideResponse
 )
 async def generate_reading_guide(
-  paper: Paper = Depends(get_paper_or_404),
+  paper_id: int,
   session: AsyncSession = Depends(get_db),
 ):
-  """Generate reading guide for a paper."""
-  if not paper.content_text:
-    raise HTTPException(status_code=400, detail="Paper has no content")
+  """Trigger reading guide generation."""
+  await get_paper_or_404(session, paper_id)
 
-  guide = await ai_summarizer_service.generate_reading_guide(paper)
+  generate_reading_guide_task.delay(paper_id)
 
-  if guide:
-    paper.reading_guide = guide
-    paper.guide_generated_at = datetime.now(timezone.utc)
-    await session.commit()
-    await session.refresh(paper)
-
-  return ReadingGuideResponse(
-    guide=guide or {"pre_reading": [], "during_reading": [], "post_reading": []}
-  )
+  return ReadingGuideResponse(guide=None, status="pending")
 
 
 @router.get("/papers/{paper_id}/reading-guide", response_model=ReadingGuideResponse)
-async def get_reading_guide(paper: Paper = Depends(get_paper_or_404)):
+async def get_reading_guide(paper_id: int, session: AsyncSession = Depends(get_db)):
   """Get reading guide for a paper."""
-  # Ensure reading_guide is a dict, default to empty structure if None
+  paper = await get_paper_or_404(session, paper_id)
+
   guide = (
     paper.reading_guide
     if paper.reading_guide is not None and isinstance(paper.reading_guide, dict)
-    else {"pre_reading": [], "during_reading": [], "post_reading": []}
+    else {}
   )
 
-  return ReadingGuideResponse(guide=guide)
+  return ReadingGuideResponse(guide=guide, status="completed" if guide else "not_found")
 
 
 @router.put("/papers/{paper_id}/reading-guide", response_model=ReadingGuideResponse)
 async def update_reading_guide(
-  guide: dict,
-  paper: Paper = Depends(get_paper_or_404),
+  paper_id: int,
+  guide: dict = Body(..., embed=True),
   session: AsyncSession = Depends(get_db),
 ):
-  """Update reading guide for a paper."""
+  """Update reading guide manually."""
+  paper = await get_paper_or_404(session, paper_id)
+
   paper.reading_guide = guide
   await session.commit()
   await session.refresh(paper)
 
-  return ReadingGuideResponse(guide=guide)
+  return ReadingGuideResponse(guide=guide, status="completed")
 
 
 @router.post("/papers/{paper_id}/generate-highlights")
 async def generate_highlights(
-  paper: Paper = Depends(get_paper_or_404),
+  paper_id: int,
   session: AsyncSession = Depends(get_db),
 ):
-  """Generate auto-highlights for a paper."""
-  if not paper.content_text:
-    raise HTTPException(status_code=400, detail="Paper has no content")
+  """Trigger auto-highlights generation."""
+  await get_paper_or_404(session, paper_id)
 
-  annotations = await ai_highlighter_service.generate_highlights(session, paper)
+  generate_highlights_task.delay(paper_id)
 
-  for annotation in annotations:
-    session.add(annotation)
-
-  await session.commit()
-
-  return {
-    "message": f"Generated {len(annotations)} highlights",
-    "count": len(annotations),
-  }
+  return {"message": "Highlights generation started in background", "status": "pending"}

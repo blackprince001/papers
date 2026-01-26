@@ -5,21 +5,24 @@ from pydantic import BaseModel
 
 
 class SummaryRequest(BaseModel):
-  pass  # Can add parameters later
+  pass
 
 
 class SummaryResponse(BaseModel):
-  summary: str
+  summary: Optional[str] = None
   generated_at: Optional[datetime] = None
+  status: str = "completed"  # pending, processing, completed, failed
 
 
 class FindingsResponse(BaseModel):
-  findings: Dict  # JSON structure with key_findings, conclusions, etc.
+  findings: Optional[Dict] = None
+  status: str = "completed"
 
 
 class ReadingGuideResponse(BaseModel):
-  guide: Dict  # JSON structure with pre_reading, during_reading, post_reading
+  guide: Optional[Dict] = None
+  status: str = "completed"
 
 
 class HighlightRequest(BaseModel):
-  pass  # Can add parameters later
+  pass

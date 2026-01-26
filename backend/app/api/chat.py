@@ -1,16 +1,23 @@
+"""Chat API endpoints."""
+
 import json
-from typing import List, Optional
+from typing import List, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
+from app.api.crud import (
+  delete_chat_session,
+  ensure_loaded,
+  get_chat_session_or_404,
+  get_paper_or_404,
+  list_chat_sessions_for_paper,
+)
 from app.core.logger import get_logger
 from app.dependencies import get_db
 from app.models.chat import ChatMessage, ChatSession
-from app.models.paper import Paper
 from app.schemas.chat import (
   ChatMessage as ChatMessageSchema,
 )
@@ -38,12 +45,8 @@ async def send_chat_message(
   chat_request: ChatRequest,
   session: AsyncSession = Depends(get_db),
 ):
-  paper_query = select(Paper).where(Paper.id == paper_id)
-  paper_result = await session.execute(paper_query)
-  paper = paper_result.scalar_one_or_none()
-
-  if not paper:
-    raise HTTPException(status_code=404, detail="Paper not found")
+  """Send a message to chat about a paper."""
+  await get_paper_or_404(session, paper_id)
 
   try:
     assistant_message = await chat_service.send_message(
@@ -54,24 +57,10 @@ async def send_chat_message(
       session_id=chat_request.session_id,
     )
 
-    # Re-fetch session to ensure we have latest state if needed,
-    # or just use the one from the proper logic
     session_id = assistant_message.session_id if assistant_message else None
-    session_query = (
-      select(ChatSession)
-      .options(selectinload(ChatSession.messages))
-      .where(ChatSession.id == session_id)
+    chat_session = await get_chat_session_or_404(
+      session, cast(int, session_id), with_messages=True
     )
-    session_result = await session.execute(session_query)
-    chat_session = session_result.scalar_one_or_none()
-
-    if not chat_session:
-      raise HTTPException(
-        status_code=500, detail="Chat session not found after message creation"
-      )
-
-    # Ensure messages are loaded by accessing them while session is active
-    _ = list(chat_session.messages) if hasattr(chat_session, "messages") else []
 
     return ChatResponse(
       message=ChatMessageSchema.model_validate(assistant_message),
@@ -90,16 +79,8 @@ async def get_chat_history(
   paper_id: int,
   session: AsyncSession = Depends(get_db),
 ):
-  """
-  Get the latest chat session for a paper.
-  Returns None if no session exists (does not create one).
-  """
-  paper_query = select(Paper).where(Paper.id == paper_id)
-  paper_result = await session.execute(paper_query)
-  paper = paper_result.scalar_one_or_none()
-
-  if not paper:
-    raise HTTPException(status_code=404, detail="Paper not found")
+  """Get the latest chat session for a paper."""
+  await get_paper_or_404(session, paper_id)
 
   chat_session = await chat_service.get_latest_session(
     db_session=session, paper_id=paper_id
@@ -108,20 +89,9 @@ async def get_chat_history(
   if not chat_session:
     return None
 
-  session_query = (
-    select(ChatSession)
-    .options(selectinload(ChatSession.messages))
-    .where(ChatSession.id == chat_session.id)
+  chat_session = await get_chat_session_or_404(
+    session, cast(int, chat_session.id), with_messages=True
   )
-  session_result = await session.execute(session_query)
-  chat_session = session_result.scalar_one_or_none()
-
-  if not chat_session:
-    return None
-
-  # Ensure messages are loaded by accessing them while session is active
-  _ = list(chat_session.messages) if hasattr(chat_session, "messages") else []
-
   return ChatSessionSchema.model_validate(chat_session)
 
 
@@ -131,12 +101,8 @@ async def stream_chat_message(
   chat_request: ChatRequest,
   session: AsyncSession = Depends(get_db),
 ):
-  paper_query = select(Paper).where(Paper.id == paper_id)
-  paper_result = await session.execute(paper_query)
-  paper = paper_result.scalar_one_or_none()
-
-  if not paper:
-    raise HTTPException(status_code=404, detail="Paper not found")
+  """Stream a chat message response."""
+  await get_paper_or_404(session, paper_id)
 
   async def generate_stream():
     try:
@@ -169,18 +135,8 @@ async def clear_chat_history(
   paper_id: int,
   session: AsyncSession = Depends(get_db),
 ):
-  """
-  DEPRECATED: Clears ALL chat sessions for a paper.
-  Kept for backward compatibility, or should we just clear the *current* latest?
-  Let's clear ALL for now to match previous behavior,
-  but maybe it should be removed in favor of per-session delete.
-  """
-  paper_query = select(Paper).where(Paper.id == paper_id)
-  paper_result = await session.execute(paper_query)
-  paper = paper_result.scalar_one_or_none()
-
-  if not paper:
-    raise HTTPException(status_code=404, detail="Paper not found")
+  """Clear all chat sessions for a paper."""
+  await get_paper_or_404(session, paper_id)
 
   session_query = select(ChatSession).where(ChatSession.paper_id == paper_id)
   session_result = await session.execute(session_query)
@@ -192,11 +148,6 @@ async def clear_chat_history(
   await session.commit()
   return None
 
-# --- Session Management Endpoints ---
-
-
-# --- Thread Endpoints ---
-
 
 @router.get("/messages/{message_id}/thread", response_model=List[ChatMessageSchema])
 async def get_thread_messages(
@@ -204,7 +155,6 @@ async def get_thread_messages(
   session: AsyncSession = Depends(get_db),
 ):
   """Get all replies in a thread."""
-  # Verify parent message exists
   parent_message = await chat_service.get_message_by_id(session, message_id)
   if not parent_message:
     raise HTTPException(status_code=404, detail="Message not found")
@@ -251,7 +201,6 @@ async def stream_thread_message(
   session: AsyncSession = Depends(get_db),
 ):
   """Stream AI response in a thread."""
-  # Verify parent message exists
   parent_message = await chat_service.get_message_by_id(session, message_id)
   if not parent_message:
     raise HTTPException(status_code=404, detail="Message not found")
@@ -281,39 +230,22 @@ async def stream_thread_message(
   )
 
 
-
 @router.post("/papers/{paper_id}/sessions", response_model=ChatSessionSchema)
 async def create_new_session(
   paper_id: int,
   session_data: ChatSessionCreate,
   session: AsyncSession = Depends(get_db),
 ):
-  paper_query = select(Paper).where(Paper.id == paper_id)
-  paper_result = await session.execute(paper_query)
-  paper = paper_result.scalar_one_or_none()
-
-  if not paper:
-    raise HTTPException(status_code=404, detail="Paper not found")
+  """Create a new chat session for a paper."""
+  await get_paper_or_404(session, paper_id)
 
   chat_session = await chat_service.create_session(
     db_session=session, paper_id=paper_id, name=session_data.name
   )
 
-  # Re-fetch with messages loaded
-  session_query = (
-    select(ChatSession)
-    .options(selectinload(ChatSession.messages))
-    .where(ChatSession.id == chat_session.id)
+  chat_session = await get_chat_session_or_404(
+    session, cast(int, chat_session.id), with_messages=True
   )
-  session_result = await session.execute(session_query)
-  chat_session = session_result.scalar_one_or_none()
-
-  if not chat_session:
-    raise HTTPException(status_code=500, detail="Failed to load chat session")
-
-  # Ensure messages are loaded by accessing them while session is active
-  _ = list(chat_session.messages) if hasattr(chat_session, "messages") else []
-
   return ChatSessionSchema.model_validate(chat_session)
 
 
@@ -322,26 +254,8 @@ async def list_sessions(
   paper_id: int,
   session: AsyncSession = Depends(get_db),
 ):
-  paper_query = select(Paper).where(Paper.id == paper_id)
-  paper_result = await session.execute(paper_query)
-  paper = paper_result.scalar_one_or_none()
-
-  if not paper:
-    raise HTTPException(status_code=404, detail="Paper not found")
-
-  query = (
-    select(ChatSession)
-    .options(selectinload(ChatSession.messages))
-    .where(ChatSession.paper_id == paper_id)
-    .order_by(ChatSession.updated_at.desc())
-  )
-  result = await session.execute(query)
-  sessions = result.scalars().all()
-
-  # Ensure messages are loaded by accessing them while session is active
-  for s in sessions:
-    _ = list(s.messages) if hasattr(s, "messages") else []
-
+  """List all chat sessions for a paper."""
+  sessions = await list_chat_sessions_for_paper(session, paper_id)
   return [ChatSessionSchema.model_validate(s) for s in sessions]
 
 
@@ -350,20 +264,8 @@ async def get_session(
   session_id: int,
   session: AsyncSession = Depends(get_db),
 ):
-  query = (
-    select(ChatSession)
-    .options(selectinload(ChatSession.messages))
-    .where(ChatSession.id == session_id)
-  )
-  result = await session.execute(query)
-  chat_session = result.scalar_one_or_none()
-
-  if not chat_session:
-    raise HTTPException(status_code=404, detail="Session not found")
-
-  # Ensure messages are loaded by accessing them while session is active
-  _ = list(chat_session.messages) if hasattr(chat_session, "messages") else []
-
+  """Get a single chat session by ID."""
+  chat_session = await get_chat_session_or_404(session, session_id, with_messages=True)
   return ChatSessionSchema.model_validate(chat_session)
 
 
@@ -373,24 +275,14 @@ async def update_session(
   session_update: ChatSessionUpdate,
   session: AsyncSession = Depends(get_db),
 ):
-  query = (
-    select(ChatSession)
-    .options(selectinload(ChatSession.messages))
-    .where(ChatSession.id == session_id)
-  )
-  result = await session.execute(query)
-  chat_session = result.scalar_one_or_none()
-
-  if not chat_session:
-    raise HTTPException(status_code=404, detail="Session not found")
+  """Update a chat session."""
+  chat_session = await get_chat_session_or_404(session, session_id, with_messages=True)
 
   chat_session.name = session_update.name
   await session.commit()
   await session.refresh(chat_session, ["messages"])
 
-  # Ensure messages are loaded by accessing them while session is active
-  _ = list(chat_session.messages) if hasattr(chat_session, "messages") else []
-
+  ensure_loaded(chat_session, "messages")
   return ChatSessionSchema.model_validate(chat_session)
 
 
@@ -399,21 +291,11 @@ async def delete_session(
   session_id: int,
   session: AsyncSession = Depends(get_db),
 ):
-  """
-  Delete a chat session and all its messages.
-  Messages are automatically deleted via database CASCADE constraint.
-  """
-  query = select(ChatSession).where(ChatSession.id == session_id)
-  result = await session.execute(query)
-  chat_session = result.scalar_one_or_none()
-
-  if not chat_session:
-    logger.warning(f"Attempted to delete non-existent session {session_id}")
-    raise HTTPException(status_code=404, detail="Session not found")
+  """Delete a chat session and all its messages."""
+  chat_session = await get_chat_session_or_404(session, session_id)
 
   logger.info(f"Deleting chat session {session_id} for paper {chat_session.paper_id}")
-  await session.delete(chat_session)
-  await session.commit()
+  await delete_chat_session(session, session_id)
   return None
 
 
@@ -423,15 +305,8 @@ async def clear_session_messages(
   session: AsyncSession = Depends(get_db),
 ):
   """Clear all messages from a chat session."""
-  # Verify session exists
-  session_query = select(ChatSession).where(ChatSession.id == session_id)
-  session_result = await session.execute(session_query)
-  chat_session = session_result.scalar_one_or_none()
+  await get_chat_session_or_404(session, session_id)
 
-  if not chat_session:
-    raise HTTPException(status_code=404, detail="Session not found")
-
-  # Delete all messages for this session
   messages_query = select(ChatMessage).where(ChatMessage.session_id == session_id)
   messages_result = await session.execute(messages_query)
   messages = messages_result.scalars().all()

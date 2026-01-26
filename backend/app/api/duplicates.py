@@ -1,13 +1,13 @@
+"""Duplicates API endpoints."""
+
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
+from app.api.crud import get_paper_or_404
 from app.dependencies import get_db
 from app.models.duplicate_log import DuplicateDetectionLog
-from app.models.paper import Paper
 from app.schemas.duplicate import DuplicateMatch, MergePreview, MergeRequest
 from app.schemas.paper import Paper as PaperSchema
 from app.services.duplicate_detection import duplicate_detection_service
@@ -22,6 +22,8 @@ async def find_duplicates(
   session: AsyncSession = Depends(get_db),
 ):
   """Find duplicates for a paper."""
+  await get_paper_or_404(session, paper_id)  # Validate paper exists
+
   duplicates = await duplicate_detection_service.find_duplicates(
     session, paper_id, threshold
   )
@@ -46,28 +48,14 @@ async def merge_papers(request: MergeRequest, session: AsyncSession = Depends(ge
   log_entry = DuplicateDetectionLog(
     paper_id=request.primary_paper_id,
     duplicate_paper_id=request.duplicate_paper_id,
-    confidence_score=1.0,  # Merged
+    confidence_score=1.0,
     detection_method="manual",
     merged=True,
   )
   session.add(log_entry)
   await session.commit()
 
-  query = (
-    select(Paper)
-    .options(
-      selectinload(Paper.annotations),
-      selectinload(Paper.groups),
-      selectinload(Paper.tags),
-    )
-    .where(Paper.id == request.primary_paper_id)
-  )
-  result = await session.execute(query)
-  paper = result.scalar_one_or_none()
-
-  if not paper:
-    raise HTTPException(status_code=404, detail="Paper not found")
-
+  paper = await get_paper_or_404(session, request.primary_paper_id, with_relations=True)
   return PaperSchema.model_validate(paper)
 
 
@@ -78,33 +66,10 @@ async def get_merge_preview(
   session: AsyncSession = Depends(get_db),
 ):
   """Get preview of merge operation."""
-  primary_query = (
-    select(Paper)
-    .options(
-      selectinload(Paper.annotations),
-      selectinload(Paper.groups),
-      selectinload(Paper.tags),
-    )
-    .where(Paper.id == primary_paper_id)
+  primary_paper = await get_paper_or_404(session, primary_paper_id, with_relations=True)
+  duplicate_paper = await get_paper_or_404(
+    session, duplicate_paper_id, with_relations=True
   )
-  duplicate_query = (
-    select(Paper)
-    .options(
-      selectinload(Paper.annotations),
-      selectinload(Paper.groups),
-      selectinload(Paper.tags),
-    )
-    .where(Paper.id == duplicate_paper_id)
-  )
-
-  primary_result = await session.execute(primary_query)
-  duplicate_result = await session.execute(duplicate_query)
-
-  primary_paper = primary_result.scalar_one_or_none()
-  duplicate_paper = duplicate_result.scalar_one_or_none()
-
-  if not primary_paper or not duplicate_paper:
-    raise HTTPException(status_code=404, detail="One or both papers not found")
 
   return MergePreview(
     primary_paper=PaperSchema.model_validate(primary_paper),

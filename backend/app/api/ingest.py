@@ -13,7 +13,6 @@ from fastapi import (
 )
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.core.database import AsyncSessionLocal
 from app.dependencies import get_db
@@ -98,7 +97,6 @@ async def ingest_paper_endpoint(
               potential_duplicates.append(
                 {"paper_id": sim_paper.id, "confidence": similarity, "method": "title"}
               )
-
     paper = await ingestion_service.ingest_paper(
       db_session=session,
       url=str(paper_in.url),
@@ -106,19 +104,6 @@ async def ingest_paper_endpoint(
       doi=paper_in.doi,
       group_ids=paper_in.group_ids,
     )
-
-    # Re-fetch paper with all relationships eagerly loaded
-    query = (
-      select(PaperModel)
-      .options(selectinload(PaperModel.groups), selectinload(PaperModel.tags))
-      .where(PaperModel.id == paper.id)
-    )
-    result = await session.execute(query)
-    paper = result.scalar_one()
-
-    # Ensure relationships are loaded by accessing them while session is active
-    _ = list(paper.groups) if hasattr(paper, "groups") else []
-    _ = list(paper.tags) if hasattr(paper, "tags") else []
 
     # Dispatch Celery task for full AI processing
     paper_response = Paper.model_validate(paper)
@@ -133,7 +118,6 @@ async def ingest_paper_endpoint(
     return paper_response
   except DuplicatePaperError as e:
     if e.existing_paper:
-      # Return the existing paper with a 200 status instead of error
       return Paper.model_validate(e.existing_paper)
     raise HTTPException(status_code=409, detail=str(e)) from e
   except ValueError as e:
@@ -234,21 +218,6 @@ async def upload_files_endpoint(
         )
         await async_session.commit()
 
-        # Re-fetch paper with all relationships eagerly loaded
-        query = (
-          select(PaperModel)
-          .options(selectinload(PaperModel.groups), selectinload(PaperModel.tags))
-          .where(PaperModel.id == paper.id)
-        )
-        result = await async_session.execute(query)
-        paper = result.scalar_one()
-
-        # Ensure relationships are loaded
-        _ = list(paper.groups) if hasattr(paper, "groups") else []
-        _ = list(paper.tags) if hasattr(paper, "tags") else []
-
-        # Store paper_id and file_path for background citation extraction
-        # We'll add it to background tasks after all files are processed
         return cast(int, paper.id), cast(str, paper.file_path), None
       except DuplicatePaperError as e:
         await async_session.rollback()
@@ -329,19 +298,6 @@ async def _ingest_single_url(
         )
         await session.commit()
 
-        # Re-fetch paper with relationships
-        query = (
-          select(PaperModel)
-          .options(selectinload(PaperModel.groups), selectinload(PaperModel.tags))
-          .where(PaperModel.id == paper.id)
-        )
-        result = await session.execute(query)
-        paper = result.scalar_one()
-
-        # Ensure relationships are loaded
-        _ = list(paper.groups) if hasattr(paper, "groups") else []
-        _ = list(paper.tags) if hasattr(paper, "tags") else []
-
         return cast(int, paper.id), cast(str, paper.file_path), None
       except DuplicatePaperError as e:
         await session.rollback()
@@ -389,6 +345,7 @@ async def ingest_batch_endpoint(
   for result in results:
     if isinstance(result, Exception):
       errors.append({"url": "unknown", "error": str(result)})
+
     elif isinstance(result, tuple):
       paper_id, file_path, error = result
       if paper_id:

@@ -66,6 +66,7 @@ celery_app.conf.update(
     "app.tasks.ai_tasks.*": {"queue": "ai"},
     "app.tasks.search_tasks.*": {"queue": "ai"},
     "app.tasks.paper_processing.*": {"queue": "processing"},
+    "app.tasks.ingestion_tasks.*": {"queue": "processing"},
   },
   # Rate limiting for AI queue
   task_annotations={
