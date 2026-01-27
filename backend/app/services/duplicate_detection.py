@@ -3,6 +3,7 @@ from typing import List, Tuple, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.paper import Paper
 
@@ -36,7 +37,7 @@ class DuplicateDetectionService:
     self, session: AsyncSession, paper_id: int, threshold: float = 0.8
   ) -> List[Tuple[Paper, float, str]]:
     """Find potential duplicates for a paper."""
-    query = select(Paper).where(Paper.id == paper_id)
+    query = select(Paper).where(Paper.id == paper_id).options(selectinload(Paper.tags))
     result = await session.execute(query)
     paper = result.scalar_one_or_none()
 
@@ -44,7 +45,9 @@ class DuplicateDetectionService:
       return []
 
     # Get all other papers
-    all_papers_query = select(Paper).where(Paper.id != paper_id)
+    all_papers_query = (
+      select(Paper).where(Paper.id != paper_id).options(selectinload(Paper.tags))
+    )
     all_papers_result = await session.execute(all_papers_query)
     all_papers = all_papers_result.scalars().all()
 
