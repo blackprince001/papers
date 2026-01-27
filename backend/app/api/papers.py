@@ -385,7 +385,9 @@ async def regenerate_paper_metadata_bulk(
 
   for paper_id in request.paper_ids:
     try:
-      query = select(Paper).where(Paper.id == paper_id)
+      query = (
+        select(Paper).where(Paper.id == paper_id).options(selectinload(Paper.tags))
+      )
       result = await session.execute(query)
       paper = result.scalar_one_or_none()
 

@@ -75,7 +75,7 @@ async def export_citations(
   if not request.paper_ids:
     raise HTTPException(status_code=400, detail="No paper IDs provided")
 
-  query = select(Paper).where(Paper.id.in_(request.paper_ids))
+  query = select(Paper).where(Paper.id.in_(request.paper_ids)).options(selectinload(Paper.tags))
   result = await session.execute(query)
   papers = result.scalars().all()
 
@@ -111,7 +111,7 @@ async def generate_bibliography(
   if not paper_ids:
     raise HTTPException(status_code=400, detail="No paper IDs provided")
 
-  query = select(Paper).where(Paper.id.in_(paper_ids))
+  query = select(Paper).where(Paper.id.in_(paper_ids)).options(selectinload(Paper.tags))
   result = await session.execute(query)
   papers = result.scalars().all()
 

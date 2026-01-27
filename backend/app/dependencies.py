@@ -26,9 +26,11 @@ async def get_paper_or_404(
     async def get_paper(paper: Paper = Depends(get_paper_or_404)):
         return paper
   """
+  from sqlalchemy.orm import selectinload
+
   from app.models.paper import Paper
 
-  query = select(Paper).where(Paper.id == paper_id)
+  query = select(Paper).where(Paper.id == paper_id).options(selectinload(Paper.tags))
   result = await session.execute(query)
   paper = result.scalar_one_or_none()
 

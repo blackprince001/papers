@@ -13,6 +13,7 @@ from fastapi import (
 )
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.database import AsyncSessionLocal
 from app.dependencies import get_db
@@ -72,7 +73,9 @@ async def ingest_paper_endpoint(
       # Check for DOI match first (highest confidence)
       if paper_in.doi:
         existing_doi = await session.execute(
-          select(PaperModel).where(PaperModel.doi == paper_in.doi)
+          select(PaperModel)
+          .where(PaperModel.doi == paper_in.doi)
+          .options(selectinload(PaperModel.tags))
         )
         existing = existing_doi.scalar_one_or_none()
         if existing:
@@ -91,7 +94,7 @@ async def ingest_paper_endpoint(
           # Calculate similarity scores
           for sim_paper in similar[:5]:  # Limit to top 5
             similarity = duplicate_detection_service.calculate_title_similarity(
-              paper_in.title, sim_paper.title or ""
+              paper_in.title, cast(str, sim_paper.title) or ""
             )
             if similarity >= 0.8:
               potential_duplicates.append(

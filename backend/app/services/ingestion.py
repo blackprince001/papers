@@ -5,6 +5,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.logger import get_logger
 from app.models.group import Group
@@ -115,7 +116,9 @@ class IngestionService:
   ) -> Paper | None:
     if not doi:
       return None
-    result = await db_session.execute(select(Paper).where(Paper.doi == doi))
+    result = await db_session.execute(
+      select(Paper).where(Paper.doi == doi).options(selectinload(Paper.tags))
+    )
     return result.scalar_one_or_none()
 
   async def generate_embedding(self, title: str, content: str) -> list[float]:
@@ -208,6 +211,8 @@ class IngestionService:
     db_session.add(paper)
     try:
       await db_session.flush()
+      # Refresh to load relationships (tags, groups) for serialization
+      await db_session.refresh(paper, ["tags", "groups"])
     except IntegrityError as e:
       await db_session.rollback()
       # Check if it's a duplicate DOI error
@@ -263,6 +268,8 @@ class IngestionService:
     db_session.add(paper)
     try:
       await db_session.flush()
+      # Refresh to load relationships (tags, groups) for serialization
+      await db_session.refresh(paper, ["tags", "groups"])
     except IntegrityError as e:
       await db_session.rollback()
       # Check if it's a duplicate DOI error
