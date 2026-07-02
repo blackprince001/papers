@@ -3,10 +3,11 @@
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, ValidationError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logger import get_logger
-from app.services.ai.base_ai_service import BaseAIService
-from app.services.ai.providers.base import AIProvider
+from app.services.ai.helpers import get_provider_for_user
+from app.services.ai.providers.base import AIProvider, GenerateConfig
 from app.services.discovery.base_provider import ExternalPaperResult
 from app.utils.json_extractor import extract_json_from_text
 
@@ -181,8 +182,32 @@ Guidelines:
 """
 
 
-class AISearchService(BaseAIService):
+class AISearchService:
   """Service for AI-powered search enhancements."""
+
+  async def _get_provider(
+    self,
+    db_session: AsyncSession | None = None,
+    user_id: int | None = None,
+    preferred_provider_id: int | None = None,
+  ) -> AIProvider | None:
+    return await get_provider_for_user(db_session, user_id, preferred_provider_id)
+
+  def _build_config(
+    self,
+    provider: AIProvider,
+    system_instruction: str | None = None,
+    temperature: float = 0.7,
+    max_output_tokens: int | None = None,
+    response_format: dict[str, Any] | None = None,
+  ) -> GenerateConfig:
+    return GenerateConfig(
+      model=provider.config.model or "",
+      system_instruction=system_instruction,
+      temperature=temperature,
+      max_output_tokens=max_output_tokens,
+      response_format=response_format,
+    )
 
   async def _generate_with_validation(
     self,
@@ -536,7 +561,6 @@ class AISearchService(BaseAIService):
 
     papers_data = []
     for i, paper in enumerate(papers):
-      authors = ", ".join(paper.authors[:5]) if paper.authors else "Unknown"
       abstract = paper.abstract or ""
       if len(abstract) > 2000:
         abstract = abstract[:2000] + "..."

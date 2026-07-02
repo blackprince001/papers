@@ -39,7 +39,8 @@ from app.services.ai.agent.provider_resolver import (
   ResolvedProvider,
   resolve_providers,
 )
-from app.services.ai.base_ai_service import BaseAIService
+from app.services.ai.helpers import get_provider_for_user
+from app.services.ai.providers.base import AIProvider, GenerateConfig
 from app.services.content_provider import content_provider
 from app.services.reference_resolver import resolve_manifest
 
@@ -71,8 +72,32 @@ def _get_runner():
     return None
 
 
-class ChatService(BaseAIService):
+class ChatService:
   """Service for chat functionality with research papers."""
+
+  async def _get_provider(
+    self,
+    db_session: AsyncSession | None = None,
+    user_id: int | None = None,
+    preferred_provider_id: int | None = None,
+  ) -> AIProvider | None:
+    return await get_provider_for_user(db_session, user_id, preferred_provider_id)
+
+  def _build_config(
+    self,
+    provider: AIProvider,
+    system_instruction: str | None = None,
+    temperature: float = 0.7,
+    max_output_tokens: int | None = None,
+    response_format: dict[str, Any] | None = None,
+  ) -> GenerateConfig:
+    return GenerateConfig(
+      model=provider.config.model or "",
+      system_instruction=system_instruction,
+      temperature=temperature,
+      max_output_tokens=max_output_tokens,
+      response_format=response_format,
+    )
 
   def parse_mentions(self, text: str) -> dict[str, list[int]]:
     """Parse @mentions from message text."""

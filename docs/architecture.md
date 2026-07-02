@@ -131,9 +131,11 @@ The **only** server-side key is `GOOGLE_API_KEY`, used strictly for
 uses per-user `UserAISettings` + `UserAIProvider` rows: provider type,
 **Fernet-encrypted** API key, optional `base_url`, `model`. `AIProviderRegistry`
 registers `gemini`, `openai`, `openai-compatible`, `deepseek`, `anthropic`.
-There is no env-key fallback for generation. The openai-agents SDK is
-**optional** — code falls back to legacy `provider.generate()` when absent. See
-the [BYO AI providers decision](/decisions/byo-ai-providers.md) and the
+There is no env-key fallback for generation. Interactive chat uses the
+openai-agents SDK (`MultiProviderBuilder` + `Runner.run_streamed()`);
+Celery tasks and non-chat AI features use the legacy `AIProvider` ABC's
+`provider.generate()` path directly. See the
+[BYO AI providers decision](/decisions/byo-ai-providers.md) and the
 [optional agents SDK decision](/decisions/optional-agents-sdk.md).
 
 # Citations

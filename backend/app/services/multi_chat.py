@@ -36,7 +36,6 @@ from app.services.ai.agent.provider_resolver import (
   ResolvedProvider,
   resolve_providers,
 )
-from app.services.ai.base_ai_service import BaseAIService
 from app.services.reference_resolver import resolve_manifest
 
 logger = get_logger(__name__)
@@ -66,7 +65,7 @@ def _get_runner():
     return None
 
 
-class MultiChatService(BaseAIService):
+class MultiChatService:
   """Service for chat functionality with multiple research papers."""
 
   async def create_session(

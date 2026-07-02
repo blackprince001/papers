@@ -6,7 +6,7 @@ in a single file.
 
 # Concepts
 
-* [AI providers & registry](ai-providers.md) - provider abstraction (`BaseAIService`, `AIProvider` ABC, registry), Gemini/OpenAI/Anthropic/DeepSeek/OpenAI-compatible.
+* [AI providers](ai-providers.md) - `AIProvider` ABC + implementations (Gemini/OpenAI/Anthropic/DeepSeek/OpenAI-compatible), provider factory.
 * [AI agent orchestration](ai-agent.md) - openai-agents SDK: `MultiProviderBuilder`, function tools, stream adapter, BYO context, optional SDK fallback.
 * [Discovery providers](discovery-providers.md) - academic source providers (arXiv, Semantic Scholar, OpenAlex, Google Scholar via SerpAPI) + multi-source search orchestration.
 * [Services catalog](services-catalog.md) - every other service (ingestion, citations, search, storage, embeddings, email, export, figures, layout, etc.).
