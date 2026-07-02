@@ -1,5 +1,9 @@
 # Bundle Update Log
 
+## 2026-07-02
+* **Update**: Consolidated CRUD — moved `user_ai_provider.py` and `user_ai_settings.py` from top-level `crud/` into `api/crud/`, updated all imports, deleted `backend/app/crud/`. Affected [crud](/backend/crud.md), [backend index](/backend/index.md). ADR at [consolidated-crud](/decisions/consolidated-crud.md).
+* **Update**: Sunset legacy AI abstractions — deleted `BaseAIService` (shim) and `BaseGoogleAIService` (deprecated shim); removed `AIProviderRegistry` singleton (replaced with flat dict in `provider_factory.py`); inlined `_get_provider`/`_build_config` into `ChatService` and `AISearchService`; `MultiChatService` no longer inherits from anything. Affected [ai-providers](/backend/services/ai-providers.md), [architecture](/architecture.md). ADR at [sunset-legacy-ai-provider-path](/decisions/sunset-legacy-ai-provider-path.md).
+
 ## 2026-07-01
 * **Update**: Added repo-root `LICENSE` — PolyForm Noncommercial 1.0.0, owner blackprince001 (reformation "additional" §4). Also removed `DEEP_RESEARCH_DAILY_CAP` from `Settings`, `.env.example`, and both compose files — the revised deep-research approach won't use a daily cap; only `ENABLE_DEEP_RESEARCH` remains. Affected [config](/backend/config.md), [env-config](/infra/env-config.md), [deep-research](/features/deep-research.md).
 * **Reformation batch 1**: `init_db()` no longer runs `create_all` outside DEBUG ([ADR](/decisions/migrations-own-schema.md)); global HTTP error envelope `{code, message, detail}` via `app/core/error_handlers.py` + `ApiError.code` on the frontend ([ADR](/decisions/http-error-envelope.md)); new `AI_KEY_ENCRYPTION_KEY` with MultiFernet legacy fallback ([ADR](/decisions/separate-encryption-key.md)). Affected [database](/backend/database.md), [security](/backend/security.md), [config](/backend/config.md), [entry-point](/backend/entry-point.md), [api-layer](/frontend/api-layer.md).

@@ -159,9 +159,9 @@ def ai_enhance_task(
   include_relevance: bool,
   user_id: int | None = None,
 ) -> None:
+  from app.services.ai.helpers import get_provider_for_user_sync
   from app.services.discovery.ai_search_service import ai_search_service
   from app.services.discovery.base_provider import ExternalPaperResult
-  from app.services.ai.helpers import get_provider_for_user_sync
 
   r = _get_redis()
 

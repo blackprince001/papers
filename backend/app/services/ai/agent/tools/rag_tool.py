@@ -11,7 +11,8 @@ from __future__ import annotations
 try:
   from agents import function_tool
 except ImportError:
-  function_tool = lambda f: f  # type: ignore[assignment]
+  def function_tool(f):
+    return f  # type: ignore[assignment]
 
 from app.core.logger import get_logger
 from app.services.ai.agent.context import get_byo_context

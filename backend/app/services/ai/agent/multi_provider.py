@@ -41,7 +41,8 @@ except ImportError:
   MultiProvider = object  # type: ignore[misc,assignment]
   MultiProviderMap = object  # type: ignore[misc,assignment]
   OpenAIProvider = object  # type: ignore[misc,assignment]
-  set_tracing_disabled = lambda _: None  # type: ignore[assignment]
+  def set_tracing_disabled(_):
+    return None  # type: ignore[assignment]
   AsyncOpenAI = object  # type: ignore[misc,assignment]
   _HAS_AGENTS_SDK = False
 

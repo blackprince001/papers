@@ -9,7 +9,8 @@ from __future__ import annotations
 try:
   from agents import function_tool
 except ImportError:
-  function_tool = lambda f: f  # type: ignore[assignment]
+  def function_tool(f):
+    return f  # type: ignore[assignment]
 
 from app.core.logger import get_logger
 from app.services.ai.agent.context import get_byo_context
@@ -116,9 +117,9 @@ async def get_chat_sessions(paper_id: int) -> str:
 
   try:
     from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
 
     from app.models.chat import ChatSession
-    from sqlalchemy.orm import selectinload
 
     result = await db.execute(
       select(ChatSession)

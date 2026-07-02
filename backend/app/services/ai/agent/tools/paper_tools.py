@@ -11,7 +11,8 @@ from __future__ import annotations
 try:
   from agents import function_tool
 except ImportError:
-  function_tool = lambda f: f  # type: ignore[assignment]
+  def function_tool(f):
+    return f  # type: ignore[assignment]
 
 from app.core.logger import get_logger
 from app.services.ai.agent.context import get_byo_context
@@ -46,9 +47,9 @@ async def get_paper_content(paper_ids: list[int]) -> str:
 
   try:
     from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
 
     from app.models.paper import Paper
-    from sqlalchemy.orm import selectinload
 
     result = await db.execute(
       select(Paper)
@@ -109,7 +110,6 @@ async def get_paper_metadata(paper_id: int) -> str:
   """
   ctx = get_byo_context()
   db = ctx.extra.get("db_session")
-  user_id = ctx.user_id
 
   if not db:
     return "Error: No database session available."
@@ -235,9 +235,9 @@ async def get_annotations(
 
   try:
     from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
 
     from app.models.annotation import Annotation
-    from sqlalchemy.orm import selectinload
 
     query = (
       select(Annotation)
@@ -301,9 +301,9 @@ async def get_notes(paper_id: int, note_ids: list[int] | None = None) -> str:
 
   try:
     from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
 
     from app.models.annotation import Annotation
-    from sqlalchemy.orm import selectinload
 
     query = (
       select(Annotation)

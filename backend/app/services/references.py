@@ -1,6 +1,5 @@
 import re
 from datetime import datetime
-from typing import Optional
 
 from app.models.paper import Paper
 
@@ -52,7 +51,6 @@ def _escape_bibtex(text: str) -> str:
     "İ": "\\.{I}",
     "Ş": "\\c{S}",
     "ş": "\\c{s}",
-    "ı": "\\i{}",
     "–": "--",
     "—": "---",
   }
