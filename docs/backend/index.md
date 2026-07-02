@@ -16,7 +16,7 @@ Python 3.13, dependency management via `uv` (`backend/pyproject.toml`). Lint =
 * [Database layer](database.md) - async + sync engines, `get_session`, `stream_db_session`, `init_db`.
 * [Security](security.md) - JWT, passwords, Google ID-token, Fernet at-rest key encryption.
 * [Models & schemas](models.md) - SQLAlchemy 2.x ORM catalog + Pydantic v2 DTO mapping.
-* [CRUD layer](crud.md) - where create/update/delete logic lives (`api/crud/` + top-level `crud/`).
+* [CRUD layer](crud.md) - consolidated CRUD helpers in `api/crud/`.
 * [API routers](api/) - 21 FastAPI routers grouped by domain.
 * [Services](services/) - business logic + external integrations (AI, discovery, citations, email, storage).
 * [Celery tasks](tasks.md) - background tasks across `processing`, `ai`, `discovery` queues + DLQ.

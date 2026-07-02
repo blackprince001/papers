@@ -1,36 +1,40 @@
 ---
 type: Module
 title: CRUD Layer
-description: Where create/update/delete logic lives — the api/crud/ reusable helpers (with scoping) and the top-level crud/ modules for user AI config.
+description: Consolidated reusable CRUD helpers in api/crud/, covering all domain entities including user AI configuration.
 resource: backend/app/api/crud
 tags: [backend, crud, data-access]
-timestamp: 2026-06-28T00:00:00Z
+timestamp: 2026-07-01
 ---
 
-Papers splits CRUD logic across **two** locations. Read this before adding a
-new data-access helper — it is easy to put one in the wrong place.
+All CRUD logic lives in a single package: `backend/app/api/crud/`.
 
-# `api/crud/` — shared helpers used by route handlers
+# `api/crud/` — the one CRUD location
 
-Reusable async functions consumed directly by the 21 route modules:
+Reusable async functions consumed by route handlers and services:
 `get_*_or_404`, `list_*`, `create_*`, etc. Centralizes **permission scoping**
 via `app.services.access` (`apply_visible_papers_filter`,
-`visible_groups_clause`). Covers papers, annotations, bookmarks, groups,
-tags, chat sessions, saved searches, user paper state, sharing.
+`visible_groups_clause`).
 
-# `crud/` (top-level) — user AI configuration only
+| File | Entity |
+|---|---|
+| `paper.py` | Paper, UserPaperState |
+| `annotation.py` | Annotation |
+| `bookmark.py` | Bookmark |
+| `group.py` | Group |
+| `tag.py` | Tag |
+| `chat_session.py` | ChatSession |
+| `multi_chat_session.py` | MultiChatSession |
+| `saved_search.py` | SavedSearch |
+| `user_paper_state.py` | UserPaperState |
+| `user_ai_provider.py` | UserAIProvider |
+| `user_ai_settings.py` | UserAISettings |
+| `enrichment.py` | Presentation helpers |
+| `utils.py` | Generic utilities |
 
-Currently covers only the per-user AI configuration entities:
+# History
 
-| File | Entity | Key functions |
-|---|---|---|
-| `crud/user_ai_provider.py` | `UserAIProvider` | `list_*`, `get_*`, `get_default_provider`, `create_*`, `update_*`, `set_default_provider` (clears other defaults), `delete_*` |
-| `crud/user_ai_settings.py` | `UserAISettings` | `get_*`, `create_*`, `update_*`, `delete_*` |
-
-# Why the split
-
-The top-level `crud/` package was introduced for the BYO AI config feature
-(the most recently added domain). All earlier entities still live in
-`api/crud/`. When adding new domain CRUD, prefer mirroring the existing
-location for that domain. See the access helpers in
-[services](/backend/services/index.md).
+The top-level `backend/app/crud/` package was introduced for the BYO AI config
+feature and later consolidated into `api/crud/` during the 2026-07 reformation
+to eliminate the split. See the
+[consolidated CRUD ADR](/decisions/consolidated-crud.md).

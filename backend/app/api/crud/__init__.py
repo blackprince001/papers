@@ -75,6 +75,25 @@ from app.api.crud.tag import (
   update_tag,
 )
 
+# UserAIProvider
+from app.api.crud.user_ai_provider import (
+  create_user_ai_provider,
+  delete_user_ai_provider,
+  get_default_provider,
+  get_user_ai_provider,
+  list_user_ai_providers,
+  set_default_provider,
+  update_user_ai_provider,
+)
+
+# UserAISettings
+from app.api.crud.user_ai_settings import (
+  create_user_ai_settings,
+  delete_user_ai_settings,
+  get_user_ai_settings,
+  update_user_ai_settings,
+)
+
 # UserPaperState
 from app.api.crud.user_paper_state import (
   batch_get_states,
@@ -136,4 +155,17 @@ __all__ = [
   # UserPaperState
   "get_or_create_state",
   "batch_get_states",
+  # UserAIProvider
+  "list_user_ai_providers",
+  "get_user_ai_provider",
+  "get_default_provider",
+  "create_user_ai_provider",
+  "update_user_ai_provider",
+  "set_default_provider",
+  "delete_user_ai_provider",
+  # UserAISettings
+  "get_user_ai_settings",
+  "create_user_ai_settings",
+  "update_user_ai_settings",
+  "delete_user_ai_settings",
 ]

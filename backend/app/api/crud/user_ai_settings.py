@@ -1,9 +1,10 @@
 """CRUD operations for user AI provider settings."""
 
-from app.models.user_ai_settings import UserAISettings
-from app.schemas.user_ai_settings import UserAISettingsCreate, UserAISettingsUpdate
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.user_ai_settings import UserAISettings
+from app.schemas.user_ai_settings import UserAISettingsCreate, UserAISettingsUpdate
 
 
 async def get_user_ai_settings(
@@ -40,9 +41,9 @@ async def create_user_ai_settings(
   if data.api_key:
     settings.set_api_key(data.api_key)
   if data.base_url:
-    settings.base_url = data.base_url
+    settings.base_url = data.base_url  # type: ignore[assignment]
   if data.model:
-    settings.model = data.model
+    settings.model = data.model  # type: ignore[assignment]
 
   db_session.add(settings)
   await db_session.commit()

@@ -1,12 +1,13 @@
 """CRUD operations for user AI provider records (multi-provider BYO)."""
 
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.user_ai_provider import UserAIProvider
 from app.schemas.user_ai_provider import (
   UserAIProviderCreate,
   UserAIProviderUpdate,
 )
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def list_user_ai_providers(
@@ -88,7 +89,7 @@ async def create_user_ai_provider(
   db_session.add(provider)
   await db_session.flush()
   if make_default:
-    await _clear_other_defaults(db_session, user_id, keep_id=provider.id)
+    await _clear_other_defaults(db_session, user_id, keep_id=provider.id)  # type: ignore[arg-type]
 
   await db_session.commit()
   await db_session.refresh(provider)
@@ -120,7 +121,7 @@ async def update_user_ai_provider(
     setattr(provider, field, value)
 
   if becoming_default:
-    await _clear_other_defaults(db_session, user_id, keep_id=provider.id)
+    await _clear_other_defaults(db_session, user_id, keep_id=provider.id)  # type: ignore[arg-type]
 
   await db_session.commit()
   await db_session.refresh(provider)
@@ -134,8 +135,8 @@ async def set_default_provider(
   provider = await get_user_ai_provider(db_session, user_id, provider_id)
   if not provider:
     return None
-  provider.is_default = True
-  await _clear_other_defaults(db_session, user_id, keep_id=provider.id)
+  provider.is_default = True  # type: ignore[assignment]
+  await _clear_other_defaults(db_session, user_id, keep_id=provider.id)  # type: ignore[arg-type]
   await db_session.commit()
   await db_session.refresh(provider)
   return provider
@@ -149,14 +150,14 @@ async def delete_user_ai_provider(
   if not provider:
     return False
 
-  was_default = provider.is_default
+  was_default = bool(provider.is_default)
   await db_session.delete(provider)
   await db_session.flush()
 
   if was_default:
     replacement = await get_default_provider(db_session, user_id)
     if replacement is not None:
-      replacement.is_default = True
+      replacement.is_default = True  # type: ignore[assignment]
 
   await db_session.commit()
   return True

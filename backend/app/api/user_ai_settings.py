@@ -8,7 +8,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.crud.user_ai_settings import (
+from app.api.crud.user_ai_settings import (
   create_user_ai_settings,
   delete_user_ai_settings,
   get_user_ai_settings,
@@ -24,8 +24,8 @@ from app.schemas.user_ai_settings import (
   UserAISettingsResponse,
   UserAISettingsUpdate,
 )
+from app.services.ai.provider_factory import create_provider, list_provider_types
 from app.services.ai.providers.base import GenerateConfig, ProviderConfig
-from app.services.ai.providers.registry import ai_provider_registry
 
 router = APIRouter()
 
@@ -104,7 +104,7 @@ async def get_my_ai_settings(
   db_session: AsyncSession = Depends(get_db),
 ):
   """Get the current user's AI provider settings."""
-  settings = await get_user_ai_settings(db_session, user.id)
+  settings = await get_user_ai_settings(db_session, user.id)  # type: ignore[arg-type]
   if not settings:
     return None
   return UserAISettingsResponse.model_validate(settings)
@@ -120,19 +120,19 @@ async def set_my_ai_settings(
   db_session: AsyncSession = Depends(get_db),
 ):
   """Create or fully replace the current user's AI settings."""
-  existing = await get_user_ai_settings(db_session, user.id)
+  existing = await get_user_ai_settings(db_session, user.id)  # type: ignore[arg-type]
   if existing:
     # Update existing with full replacement semantics
-    existing.provider = data.provider
+    existing.provider = data.provider  # type: ignore[assignment]
     if data.api_key:
       existing.set_api_key(data.api_key)
-    existing.base_url = data.base_url
-    existing.model = data.model
+    existing.base_url = data.base_url  # type: ignore[assignment]
+    existing.model = data.model  # type: ignore[assignment]
     await db_session.commit()
     await db_session.refresh(existing)
     return UserAISettingsResponse.model_validate(existing)
 
-  settings = await create_user_ai_settings(db_session, user.id, data)
+  settings = await create_user_ai_settings(db_session, user.id, data)  # type: ignore[arg-type]
   return UserAISettingsResponse.model_validate(settings)
 
 
@@ -146,7 +146,7 @@ async def update_my_ai_settings(
   db_session: AsyncSession = Depends(get_db),
 ):
   """Partially update the current user's AI settings."""
-  settings = await update_user_ai_settings(db_session, user.id, data)
+  settings = await update_user_ai_settings(db_session, user.id, data)  # type: ignore[arg-type]
   if not settings:
     raise HTTPException(status_code=404, detail="AI settings not found")
   return UserAISettingsResponse.model_validate(settings)
@@ -158,7 +158,7 @@ async def delete_my_ai_settings(
   db_session: AsyncSession = Depends(get_db),
 ):
   """Delete the current user's AI settings."""
-  deleted = await delete_user_ai_settings(db_session, user.id)
+  deleted = await delete_user_ai_settings(db_session, user.id)  # type: ignore[arg-type]
   if not deleted:
     raise HTTPException(status_code=404, detail="AI settings not found")
   return None
@@ -170,7 +170,7 @@ async def delete_my_ai_settings(
 )
 async def list_available_providers():
   """List all registered AI provider types."""
-  return [ProviderTypeInfo(**info) for info in ai_provider_registry.list_types()]
+  return [ProviderTypeInfo(**info) for info in list_provider_types()]
 
 
 @router.get(
@@ -201,7 +201,7 @@ async def test_ai_provider(
     base_url=data.base_url,
     model=model,
   )
-  instance = ai_provider_registry.create(data.provider, config)
+  instance = create_provider(data.provider, config)
   if instance is None:
     return ProviderTestResponse(
       success=False,

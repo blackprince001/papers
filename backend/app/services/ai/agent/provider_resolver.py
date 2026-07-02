@@ -70,11 +70,11 @@ async def resolve_providers(
     return (route.provider_type, route.default_model, route.base_url)
 
   try:
-    from app.crud.user_ai_provider import (
+    from app.api.crud.user_ai_provider import (
       get_user_ai_provider,
       list_user_ai_providers,
     )
-    from app.crud.user_ai_settings import get_user_ai_settings
+    from app.api.crud.user_ai_settings import get_user_ai_settings
 
     # 1) The pinned provider (chat session or explicit request override).
     if preferred_provider_id is not None:

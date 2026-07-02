@@ -2,8 +2,8 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.crud.user_ai_settings import get_user_ai_settings
 from app.core.logger import get_logger
-from app.crud.user_ai_settings import get_user_ai_settings
 from app.services.ai.provider_factory import (
   create_provider_from_config,
   create_provider_from_settings,
@@ -55,15 +55,15 @@ def get_provider_for_user_sync(
         .all()
       )
       configured = sorted(
-        (r for r in rows if r.is_configured), key=lambda r: (-r.is_default, -r.id)
+        (r for r in rows if r.is_configured), key=lambda r: (-r.is_default, -r.id)  # type: ignore[arg-type,operator]
       )
       if configured:
         row = configured[0]
         provider = create_provider_from_config(
-          provider_type=row.provider or "openai-compatible",
+          provider_type=row.provider or "openai-compatible",  # type: ignore[arg-type]
           api_key=row.get_api_key(),
-          base_url=row.base_url,
-          model=row.model,
+          base_url=row.base_url,  # type: ignore[arg-type]
+          model=row.model,  # type: ignore[arg-type]
         )
         if provider:
           return provider
@@ -152,7 +152,7 @@ async def _provider_from_saved(
 ) -> AIProvider | None:
   """Build an AIProvider from the user's saved ``user_ai_providers``."""
   try:
-    from app.crud.user_ai_provider import (
+    from app.api.crud.user_ai_provider import (
       get_default_provider,
       get_user_ai_provider,
     )
@@ -160,7 +160,7 @@ async def _provider_from_saved(
     row = None
     if preferred_provider_id is not None:
       row = await get_user_ai_provider(db_session, user_id, preferred_provider_id)
-      if row is not None and not (row.is_active and row.is_configured):
+      if row is not None and not (row.is_active and row.is_configured):  # type: ignore[operator]
         row = None
     if row is None:
       row = await get_default_provider(db_session, user_id)
@@ -168,10 +168,10 @@ async def _provider_from_saved(
       return None
 
     return create_provider_from_config(
-      provider_type=row.provider or "openai-compatible",
+      provider_type=row.provider or "openai-compatible",  # type: ignore[arg-type]
       api_key=row.get_api_key(),
-      base_url=row.base_url,
-      model=row.model,
+      base_url=row.base_url,  # type: ignore[arg-type]
+      model=row.model,  # type: ignore[arg-type]
     )
   except Exception as e:
     logger.error("Error loading user AI providers", user_id=user_id, error=str(e))
