@@ -20,6 +20,7 @@ from app.schemas.paper import Paper as PaperSchema
 from app.schemas.search import (
   SavedSearchCreate,
   SavedSearchResponse,
+  SearchCapabilities,
   SearchRequest,
   SearchResponse,
   SearchResult,
@@ -94,6 +95,16 @@ async def _fetch_share_info(
 router = APIRouter()
 
 
+@router.get("/search/capabilities", response_model=SearchCapabilities)
+async def search_capabilities(user: CurrentUser):
+  """Report whether semantic search is functional on this server."""
+  available = embedding_service.is_available()
+  return SearchCapabilities(
+    semantic_available=available,
+    reason=None if available else "No server embedding key configured",
+  )
+
+
 @router.post("/search", response_model=SearchResponse)
 async def semantic_search(
   search_request: SearchRequest,
@@ -102,6 +113,17 @@ async def semantic_search(
 ):
   if not search_request.query or not search_request.query.strip():
     raise HTTPException(status_code=400, detail="Query cannot be empty")
+
+  if not embedding_service.is_available():
+    # No server embedding key — a zero query vector would return garbage
+    # rankings. Return empty results with an explicit degradation signal so
+    # the UI can tell the user and fall back to full-text search.
+    return SearchResponse(
+      results=[],
+      query=search_request.query,
+      total=0,
+      semantic_available=False,
+    )
 
   query_embedding = await embedding_service.generate_query_embedding(
     search_request.query

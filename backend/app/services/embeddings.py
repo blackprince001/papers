@@ -54,6 +54,10 @@ class EmbeddingService:
   def set_provider(self, provider: AIProvider) -> None:
     self._provider = provider
 
+  def is_available(self) -> bool:
+    """Whether embeddings can actually be generated (vs silent zero vectors)."""
+    return self._provider is not None or bool(settings.GOOGLE_API_KEY)
+
   def _get_zero_embedding(self) -> list[float]:
     return [0.0] * settings.EMBEDDING_DIMENSION
 

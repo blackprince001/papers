@@ -34,6 +34,13 @@ class SearchResponse(BaseModel):
   results: List[SearchResult]
   query: str
   total: int
+  # False when the server has no embedding key — semantic mode is degraded.
+  semantic_available: bool = True
+
+
+class SearchCapabilities(BaseModel):
+  semantic_available: bool
+  reason: Optional[str] = None
 
 
 class SavedSearchCreate(BaseModel):

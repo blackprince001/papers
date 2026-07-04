@@ -170,6 +170,7 @@ async def search_papers(query: str, limit: int = 10) -> str:
 
   try:
     from sqlalchemy import or_, select
+    from sqlalchemy.orm import selectinload
 
     from app.models.paper import Paper
 
@@ -416,6 +417,7 @@ async def get_paper_layout(paper_id: int) -> str:
     from collections import Counter
 
     from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
 
     from app.models.paper import Paper
 
