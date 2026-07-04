@@ -103,7 +103,6 @@ const CORE_NAV = [
 
 const DISCOVER_NAV = [
   { href: '/discovery', icon: Compass, label: 'Discovery' },
-  { href: '/author', icon: Users, label: 'Authors' },
   { href: '/huggingface-papers', icon: Newspaper, label: 'HF Papers' },
   { href: '/recommendations', icon: Sparkles, label: 'For You' },
 ];
@@ -111,6 +110,7 @@ const DISCOVER_NAV = [
 const TOOLS_NAV = [
   { href: '/annotations', icon: FileText, label: 'Annotations' },
   { href: '/citations', icon: GitBranch, label: 'Citations' },
+  { href: '/author', icon: Users, label: 'Authors' },
 ];
 
 function NavItem({
