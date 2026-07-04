@@ -60,27 +60,45 @@ async function extractError(response: Response): Promise<ExtractedError> {
   }
 }
 
-// Tracks whether a refresh is already in flight to avoid concurrent refresh loops
-let isRefreshing = false;
+type RefreshResult =
+  | { outcome: 'success'; token: string }
+  // The refresh endpoint definitively rejected the cookie — the session is dead.
+  | { outcome: 'auth_failed' }
+  // Network error or 5xx — the backend hiccuped; the session may still be valid.
+  | { outcome: 'transient' };
 
-async function attemptSilentRefresh(): Promise<string | null> {
-  if (isRefreshing) return null;
-  isRefreshing = true;
-  try {
-    const baseUrl = API_BASE_URL.replace(/\/$/, '');
-    const res = await fetch(`${baseUrl}/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.access_token ?? null;
-  } catch {
-    return null;
-  } finally {
-    isRefreshing = false;
-  }
+// Concurrent 401s share the same in-flight refresh instead of each failing fast.
+let refreshInFlight: Promise<RefreshResult> | null = null;
+
+function attemptSilentRefresh(): Promise<RefreshResult> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async (): Promise<RefreshResult> => {
+    try {
+      const baseUrl = API_BASE_URL.replace(/\/$/, '');
+      const res = await fetch(`${baseUrl}/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.access_token
+          ? { outcome: 'success', token: data.access_token }
+          : { outcome: 'auth_failed' };
+      }
+      // Only a definitive rejection kills the session; 5xx/429 are backend trouble.
+      return res.status === 401 || res.status === 403
+        ? { outcome: 'auth_failed' }
+        : { outcome: 'transient' };
+    } catch {
+      return { outcome: 'transient' };
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+  return refreshInFlight;
 }
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // Endpoints that should never trigger silent-refresh / login-redirect on 401.
 // These are the auth endpoints themselves — bootstrap refresh MUST be allowed to
@@ -150,15 +168,22 @@ export async function fetchApi<T>(
       }
 
       // Attempt silent refresh once
-      const newToken = await attemptSilentRefresh();
-      if (newToken) {
-        const captured = newToken;
+      const refresh = await attemptSilentRefresh();
+      if (refresh.outcome === 'success') {
+        const captured = refresh.token;
         setTokenGetter(() => captured);
         return fetchApi<T>(endpoint, options, true);
       }
 
-      // Refresh failed — let AuthContext handle the redirect via ProtectedRoute
-      throw new ApiError(401, 'Session expired');
+      if (refresh.outcome === 'transient') {
+        // Backend hiccup, not a dead session — retry the original request once
+        // with a short backoff instead of tearing down auth state.
+        await sleep(1000);
+        return fetchApi<T>(endpoint, options, true);
+      }
+
+      // Refresh definitively rejected — let AuthContext handle the redirect
+      throw new ApiError(401, 'Session expired', undefined, 'SESSION_EXPIRED');
     }
 
     if (!response.ok) {

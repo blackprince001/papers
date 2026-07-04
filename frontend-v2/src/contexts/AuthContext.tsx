@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { authApi, type User, type ProfileUpdate } from '@/lib/api/authApi';
-import { setTokenGetter } from '@/lib/api/client';
+import { setTokenGetter, ApiError } from '@/lib/api/client';
 
 const STORAGE_KEY = 'auth_session';
 
@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     scheduleRefresh(expiresIn);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function scheduleRefresh(expiresIn: number) {
+  function scheduleRefresh(expiresIn: number, attempt = 0) {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     const delay = Math.max((expiresIn - 60) * 1000, 0);
     refreshTimerRef.current = setTimeout(async () => {
@@ -77,8 +77,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setTokenGetter(() => res.access_token);
         const user = await authApi.getMe();
         setAuth(res.access_token, user, res.expires_in);
-      } catch {
-        clearAuth();
+      } catch (err) {
+        // Only a definitive rejection kills the session. Network errors and
+        // 5xx get retried with backoff — the refresh cookie may still be good.
+        const isAuthFailure = err instanceof ApiError && (err.status === 401 || err.status === 403);
+        if (isAuthFailure || attempt >= 3) {
+          clearAuth();
+        } else {
+          const backoff = Math.min(5 * 2 ** attempt, 30); // 5s, 10s, 20s
+          scheduleRefresh(backoff + 60, attempt + 1);
+        }
       }
     }, delay);
   }
