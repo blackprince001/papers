@@ -32,7 +32,11 @@ class OpenAICompatibleProvider(AIProvider):
   def __init__(self, config: ProviderConfig) -> None:
     super().__init__(config)
     base_url = config.base_url or self.default_base_url
-    self._client = AsyncOpenAI(api_key=config.api_key, base_url=base_url)
+    self._client = AsyncOpenAI(
+      api_key=config.api_key,
+      base_url=base_url,
+      timeout=config.timeout_seconds,
+    )
 
   @property
   def name(self) -> str:

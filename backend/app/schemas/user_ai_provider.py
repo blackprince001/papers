@@ -19,6 +19,9 @@ class UserAIProviderCreate(BaseModel):
     default=None, description="Base URL for OpenAI-compatible providers"
   )
   model: str = Field(default="", description="Model name for chat/generation")
+  timeout_seconds: int | None = Field(
+    default=None, description="HTTP request timeout in seconds (default 120)"
+  )
   is_default: bool = Field(
     default=False, description="Make this the user's default provider"
   )
@@ -32,6 +35,7 @@ class UserAIProviderUpdate(BaseModel):
   api_key: str | None = None
   base_url: str | None = None
   model: str | None = None
+  timeout_seconds: int | None = None
   is_default: bool | None = None
   is_active: bool | None = None
 
@@ -46,6 +50,7 @@ class UserAIProviderResponse(BaseModel):
   has_api_key: bool
   base_url: str | None = None
   model: str
+  timeout_seconds: int | None = None
   is_default: bool
   is_active: bool
   created_at: datetime

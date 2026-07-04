@@ -11,6 +11,7 @@ class ProviderConfig:
   model: str = ""
   embedding_model: str = ""
   embedding_dimension: int = 768
+  timeout_seconds: int = 120
 
 
 @dataclass

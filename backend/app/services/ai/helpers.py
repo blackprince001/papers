@@ -64,6 +64,7 @@ def get_provider_for_user_sync(
           api_key=row.get_api_key(),
           base_url=row.base_url,  # type: ignore[arg-type]
           model=row.model,  # type: ignore[arg-type]
+          timeout_seconds=row.timeout_seconds or 120,  # type: ignore[arg-type]
         )
         if provider:
           return provider
@@ -172,6 +173,7 @@ async def _provider_from_saved(
       api_key=row.get_api_key(),
       base_url=row.base_url,  # type: ignore[arg-type]
       model=row.model,  # type: ignore[arg-type]
+      timeout_seconds=row.timeout_seconds or 120,  # type: ignore[arg-type]
     )
   except Exception as e:
     logger.error("Error loading user AI providers", user_id=user_id, error=str(e))

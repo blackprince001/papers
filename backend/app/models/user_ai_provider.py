@@ -41,6 +41,7 @@ class UserAIProvider(Base):
   _api_key_encrypted = Column("api_key", Text, nullable=True)
   base_url = Column(String(500), nullable=True)
   model = Column(String(100), nullable=False, default="", server_default="")
+  timeout_seconds = Column(Integer, nullable=True, default=120, server_default="120")
   is_default = Column(Boolean, nullable=False, default=False, server_default="false")
   is_active = Column(Boolean, nullable=False, default=True, server_default="true")
   created_at = Column(

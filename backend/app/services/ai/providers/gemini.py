@@ -29,7 +29,10 @@ class GeminiProvider(AIProvider):
 
   def __init__(self, config: ProviderConfig) -> None:
     super().__init__(config)
-    self._client = genai.Client(api_key=config.api_key)
+    self._client = genai.Client(
+      api_key=config.api_key,
+      http_options={"timeout": config.timeout_seconds * 1000},
+    )
     self._model = config.model or "gemini-3-flash-preview"
 
   @property

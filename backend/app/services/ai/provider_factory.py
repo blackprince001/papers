@@ -76,6 +76,7 @@ def create_provider_from_settings(
     api_key=ai_settings.get_api_key(),
     base_url=ai_settings.base_url,  # type: ignore[arg-type]
     model=ai_settings.model,  # type: ignore[arg-type]
+    timeout_seconds=getattr(ai_settings, "timeout_seconds", None) or 120,
   )
 
   provider = create_provider(config.provider, config)
@@ -92,6 +93,7 @@ def create_provider_from_config(
   api_key: str,
   base_url: str | None = None,
   model: str | None = None,
+  timeout_seconds: int | None = None,
 ) -> AIProvider | None:
   """Create an AI provider instance from explicit configuration values.
 
@@ -104,5 +106,6 @@ def create_provider_from_config(
     api_key=api_key,
     base_url=base_url,
     model=model or "",
+    timeout_seconds=timeout_seconds or 120,
   )
   return create_provider(provider_type, config)

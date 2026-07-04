@@ -64,6 +64,7 @@ async def resolve_providers(
       api_key=row.get_api_key(),
       base_url=row.base_url,
       default_model=row.model,
+      timeout_seconds=row.timeout_seconds or 120,
     )
 
   def _dedup_key(route: ProviderRouteConfig) -> tuple[str, str, str | None]:
@@ -110,6 +111,7 @@ async def resolve_providers(
         api_key=settings_row.get_api_key(),
         base_url=settings_row.base_url,
         default_model=settings_row.model,
+        timeout_seconds=getattr(settings_row, "timeout_seconds", None) or 120,
       )
       if _dedup_key(route) not in seen_keys:
         seen_keys.add(_dedup_key(route))

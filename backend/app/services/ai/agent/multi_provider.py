@@ -27,6 +27,7 @@ class ProviderRouteConfig:
   model_prefix: str = ""
   default_model: str = ""
   is_active: bool = True
+  timeout_seconds: int = 120
 
 
 # OpenAI Agents SDK — optional dependency
@@ -116,7 +117,9 @@ class MultiProviderBuilder:
       "model_prefix", f"{config.provider_type}/"
     )
 
-    client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+    client = AsyncOpenAI(
+      api_key=api_key, base_url=base_url, timeout=config.timeout_seconds
+    )
 
     self._providers.append(
       BuiltProvider(

@@ -81,6 +81,7 @@ async def create_user_ai_provider(
     provider=data.provider,
     base_url=data.base_url,
     model=data.model,
+    timeout_seconds=data.timeout_seconds,
     is_default=make_default,
   )
   if data.api_key:
