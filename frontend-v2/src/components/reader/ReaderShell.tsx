@@ -16,6 +16,7 @@ import {
 } from "@/components/shadcn/pdf-viewer";
 import { canAnnotate } from "@/lib/utils/permissions";
 import { toastError, toastSuccess } from "@/lib/utils/toast";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
 import { useReader } from "@/contexts/ReaderContext";
@@ -88,15 +89,24 @@ export function ReaderShell({
   const [zen, setZen] = useState(false);
   const ZEN_ZOOM = 1.5;
   const preZenZoomRef = useRef<number | null>(null);
+  const preZenSidebarOpenRef = useRef<boolean | null>(null);
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer) return;
     if (zen) {
       preZenZoomRef.current = viewer.getZoom();
       viewer.setZoom(Math.max(viewer.getZoom(), ZEN_ZOOM));
-    } else if (preZenZoomRef.current !== null) {
-      viewer.setZoom(preZenZoomRef.current);
-      preZenZoomRef.current = null;
+      preZenSidebarOpenRef.current = viewer.getThumbnailSidebarOpen();
+      viewer.setThumbnailSidebarOpen(false);
+    } else {
+      if (preZenZoomRef.current !== null) {
+        viewer.setZoom(preZenZoomRef.current);
+        preZenZoomRef.current = null;
+      }
+      if (preZenSidebarOpenRef.current !== null) {
+        viewer.setThumbnailSidebarOpen(preZenSidebarOpenRef.current);
+        preZenSidebarOpenRef.current = null;
+      }
     }
   }, [zen]);
   useEffect(() => {
@@ -376,7 +386,7 @@ export function ReaderShell({
 
       const sideGutter = (containerWidth - renderedWidth) / 2;
       const marginMode =
-        sideGutter >= MARGIN_CARD_MIN_WIDTH + MARGIN_CARD_GAP * 2;
+        !zen && sideGutter >= MARGIN_CARD_MIN_WIDTH + MARGIN_CARD_GAP * 2;
       const cardWidth = Math.min(
         MARGIN_CARD_MAX_WIDTH,
         Math.max(
@@ -523,7 +533,7 @@ export function ReaderShell({
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [byPage, activeAnnotationId, paper, isDark, containerWidth],
+    [byPage, activeAnnotationId, paper, isDark, containerWidth, zen],
   );
 
   /* ── render ─────────────────────────────────────────────────────────── */
@@ -588,8 +598,8 @@ export function ReaderShell({
           />
         </div>
       ) : (
-        <div className="flex h-full items-center justify-center">
-          <div className="size-10 animate-spin rounded-full border-4 border-(--border) border-t-(--sky-blue)" />
+        <div className="flex h-full items-center justify-center p-8">
+          <Skeleton className="h-full w-full max-w-3xl rounded-2xl" />
         </div>
       )}
 

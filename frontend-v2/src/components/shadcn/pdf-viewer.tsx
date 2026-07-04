@@ -75,6 +75,9 @@ export type PDFViewerHandle = {
   // PAPERS-FORK: let callers drive zoom (e.g. zen reading mode).
   setZoom: (zoom: number) => void
   getZoom: () => number
+  // PAPERS-FORK: let callers collapse the thumbnail/outline sidebar (e.g. zen reading mode).
+  setThumbnailSidebarOpen: (open: boolean) => void
+  getThumbnailSidebarOpen: () => boolean
 }
 
 export type PDFViewerScrollDirection = "forward" | "backward" | "none"
@@ -1445,6 +1448,8 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
           setZoom(Math.max(min, Math.min(max, next)))
         },
         getZoom: () => zoom,
+        setThumbnailSidebarOpen: (open: boolean) => setSidebarOpen(open),
+        getThumbnailSidebarOpen: () => sidebarOpen,
       }),
       [
         getPageMetrics,
@@ -1452,6 +1457,7 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
         pageVirtualizer,
         renderedPageNumbers,
         zoom,
+        sidebarOpen,
       ]
     )
 
