@@ -25,10 +25,11 @@ A module-level `tokenGetter` callback (`client.ts:24`) is injected by
 paths that bypass the client (used by `papers.ts:340` ingest-from-text and
 `papers.ts:240` upload-with-progress).
 
-# Silent refresh & 401 handling (`client.ts:50-79`, `:131-148`)
+# Silent refresh & 401 handling (`client.ts`)
 
-- `attemptSilentRefresh()` POSTs `/auth/refresh` with credentials (`client.ts:53-70`); guarded by an `isRefreshing` flag to prevent concurrent loops.
-- On a 401 (first attempt only), the client tries a silent refresh and replays the original request once with the new token (`client.ts:139-144`).
+- `attemptSilentRefresh()` POSTs `/auth/refresh` with credentials and returns a typed `RefreshResult`: `success` (new token), `auth_failed` (refresh answered 401/403 — session is dead), or `transient` (network error or 5xx — backend hiccup). Concurrent 401s share one in-flight refresh promise.
+- On a 401 (first attempt only): `success` → replay the original request once with the new token; `transient` → wait 1s and retry the original request once (session is NOT torn down); `auth_failed` → throw `ApiError(401, 'Session expired', code 'SESSION_EXPIRED')`.
+- `AuthContext.scheduleRefresh` likewise only calls `clearAuth()` on a definitive `ApiError` 401/403 (or after 3 transient retries with 5s/10s/20s backoff).
 - Auth-bootstrap endpoints (`/auth/refresh`, `/auth/me`, `/auth/logout`, `/auth/google`, `/auth/admin/login`) are excluded from refresh/redirect logic (`client.ts:75-79`) to avoid login-page redirect loops.
 - Custom `ApiError` carries `status` + `data` + `code` — the stable
   machine-readable code from the backend's

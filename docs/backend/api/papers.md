@@ -25,7 +25,8 @@ up via the `get_paper_or_404` dependency (eager-loads `tags`) — see
 | Method | Path | Line | Notes |
 |---|---|---|---|
 | GET | `/papers` | `:178` | `PaperListResponse` |
-| GET | `/papers/{paper_id}` | `:338` | |
+| GET | `/papers/recent` | | server-side recents: papers ordered by `UserPaperState.last_opened_at` (touched on every paper open); registered before `{paper_id}` |
+| GET | `/papers/{paper_id}` | `:338` | increments `viewed_count` and touches `last_opened_at` |
 | GET | `/papers/{paper_id}/file` | `:348` | PDF blob |
 | GET | `/papers/{paper_id}/layout` | `:367` | per-page text/figure layout |
 | GET | `/papers/{paper_id}/figures/{index}/thumbnail` | `:395` | figure PNG for vision analysis |

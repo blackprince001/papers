@@ -25,7 +25,7 @@ no imports in `src/`). Four contexts:
 |---|---|---|
 | `AuthContext` | `contexts/AuthContext.tsx:53` | `user`, `accessToken`, `isAuthenticated`, `isAdmin`, `isLoading`; actions `loginWithGoogle`, `loginAsAdmin`, `logout`, `updateProfile` — see [auth-flow.md](auth-flow.md) |
 | `ThemeContext` | `lib/theme.tsx:15` | `theme: 'light'\|'dark'`, `toggle` |
-| `TabContext` | `contexts/TabContext.tsx:40` | open-paper tabs, persisted to `localStorage` key `nexus-tabs` (max 10 tabs, saves last 5) (`TabContext.tsx:27-53`) |
+| `TabContext` | `contexts/TabContext.tsx:40` | open-paper tabs, persisted to `localStorage` key `nexus-tabs` (max 10 tabs, saves last 5) (`TabContext.tsx:27-53`); each `Tab` also carries `panelTab` — which right-side panel (Details/Insights/Chat/...) was last shown for that paper, read/written by `Layout.tsx` so switching tabs doesn't reset the panel |
 | `ReaderContext` | `contexts/ReaderContext.tsx:19` | bridge for annotation scroll/focus + `activeAnnotationId` between side panel and PDF overlay |
 | `ChatControllerContext` | `contexts/ChatControllerContext.tsx:9` | scoped per-paper chat controller (instantiated in `Layout.tsx:225`) |
 
@@ -37,5 +37,9 @@ no imports in `src/`). Four contexts:
 
 # Toasts
 
-`sonner` via `components/AppToaster.tsx:16` + thin wrappers in
-`lib/utils/toast.ts`.
+`sonner` via `components/AppToaster.tsx:8` + thin wrappers in
+`lib/utils/toast.ts`. Positioned top-right, compact sizing, no close
+buttons, spring animations. Custom `toastInsufficientBalance` +
+`toastProcessingFailed` helpers fire automatically when the processing
+pipeline finishes with quota/balance errors (`hooks/use-processing-progress.ts:100`).
+See the [processing hook source](../../frontend-v2/src/hooks/use-processing-progress.ts).

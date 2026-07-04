@@ -15,7 +15,8 @@ Note: discovery has its own router — see [discovery.md](discovery.md).
 
 | Method | Path | Line | Notes |
 |---|---|---|---|
-| POST | `/search` | `:97` | route by mode |
+| GET | `/search/capabilities` | | `{semantic_available, reason}` — false when no server embedding key |
+| POST | `/search` | | semantic (pgvector); returns `semantic_available: false` + empty results when embeddings are unavailable instead of zero-vector garbage |
 | POST | `/search/fulltext` | `:195` | fulltext search |
 | POST | `/search/annotations` | `:229` | annotation search |
 | GET | `/saved-searches` | `:257` | |
