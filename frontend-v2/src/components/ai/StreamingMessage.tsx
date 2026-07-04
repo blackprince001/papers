@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import type { ChatStreamState, ToolCallEvent, ToolResultEvent } from '@/hooks/use-chat-stream';
 
 export interface StreamingMessageProps {
-  state: ChatStreamState & { displayedContent: string };
+  state: ChatStreamState & { displayedContent: string; autoRetryAt?: number | null };
   isStreaming: boolean;
   onRetry?: () => void;
   onDismiss?: () => void;
@@ -16,18 +16,26 @@ export interface StreamingMessageProps {
   className?: string;
 }
 
+// Tool functions (paper_tools.py) catch their own exceptions and return an
+// "Error: ..." string as a normal result rather than raising — so a failed
+// call never surfaces as a distinct SDK event, only as a result that reads
+// like an error. Detect that here rather than treating every finished call
+// as 'complete'.
+const TOOL_ERROR_PATTERN = /^error\b/i;
+
 function getToolStatus(
   toolName: string,
   toolCalls: ToolCallEvent[],
   toolResults: ToolResultEvent[],
-): 'pending' | 'running' | 'complete' | 'error' {
+): 'running' | 'complete' | 'error' {
   const callCount = toolCalls.filter((t) => t.tool === toolName).length;
-  const resultCount = toolResults.filter((t) => t.tool === toolName).length;
+  const matchingResults = toolResults.filter((t) => t.tool === toolName);
 
-  if (resultCount >= callCount) {
-    return resultCount > 0 ? 'complete' : 'pending';
-  }
-  return 'running';
+  if (matchingResults.length < callCount) return 'running';
+
+  const last = matchingResults[matchingResults.length - 1];
+  if (last && TOOL_ERROR_PATTERN.test(last.result.trim())) return 'error';
+  return 'complete';
 }
 
 export function StreamingMessage({
@@ -54,7 +62,7 @@ export function StreamingMessage({
   }
 
   return (
-    <div className={cn('relative w-full px-3 py-2.5 rounded-xl bg-transparent', className)}>
+    <div className={cn('relative w-full px-4 py-4 rounded-xl bg-transparent', className)}>
       <MessageAuthor role="assistant" />
 
       {/* Agent reasoning (thoughts) */}
@@ -62,7 +70,7 @@ export function StreamingMessage({
 
       {/* Tool calls */}
       {toolCallNames.length > 0 && (
-        <div className="my-1 space-y-0.5">
+        <div className="my-1.5 rounded-lg border border-(--border) bg-(--muted)/20 px-2.5 py-2 space-y-0.5">
           {toolCallNames.map((toolName) => {
             const resultEvent = [...state.toolResults].reverse().find((t: ToolResultEvent) => t.tool === toolName);
             const status = getToolStatus(toolName, state.toolCalls, state.toolResults);
@@ -114,6 +122,7 @@ export function StreamingMessage({
             message={state.error.message}
             code={state.error.code}
             recoverable={state.error.recoverable}
+            retryingAt={state.autoRetryAt}
             onRetry={onRetry}
             onDismiss={onDismiss}
             onSettings={onSettings}

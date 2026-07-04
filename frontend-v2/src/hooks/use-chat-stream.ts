@@ -84,7 +84,14 @@ export interface UseChatStreamReturn extends ChatStreamState {
   isActive: boolean;
   /** The user message that was sent (preserved for retry). */
   pendingUserMessage: string | null;
+  /** Epoch ms of the scheduled automatic retry after a rate-limit error, or null. */
+  autoRetryAt: number | null;
 }
+
+// Transient rate limits are retried automatically with backoff before asking
+// the user to click Retry.
+const RATE_LIMIT_AUTO_RETRIES = 2;
+const RATE_LIMIT_BACKOFF_MS = [5_000, 15_000];
 
 export function useChatStream(): UseChatStreamReturn {
   const [state, setState] = useState<ChatStreamState>(INITIAL_STATE);
@@ -97,6 +104,15 @@ export function useChatStream(): UseChatStreamReturn {
     providerId?: number;
   } | null>(null);
   const pendingUserMessageRef = useRef<string | null>(null);
+  const [autoRetryAt, setAutoRetryAt] = useState<number | null>(null);
+  const autoRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rateLimitAttemptsRef = useRef(0);
+
+  const clearAutoRetry = useCallback(() => {
+    if (autoRetryTimerRef.current) clearTimeout(autoRetryTimerRef.current);
+    autoRetryTimerRef.current = null;
+    setAutoRetryAt(null);
+  }, []);
 
   const streamSettled = state.status === 'done' || state.status === 'error';
   const displayedContent = useTypewriter(state.content, streamSettled);
@@ -108,10 +124,14 @@ export function useChatStream(): UseChatStreamReturn {
       references?: ChatReferences,
       sessionId?: number,
       providerId?: number,
+      isAutoRetry = false,
     ) => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
+
+      clearAutoRetry();
+      if (!isAutoRetry) rateLimitAttemptsRef.current = 0;
 
       lastSendRef.current = { paperId, message, references, sessionId, providerId };
       pendingUserMessageRef.current = message;
@@ -121,6 +141,11 @@ export function useChatStream(): UseChatStreamReturn {
         status: 'connecting',
         content: '',
       });
+
+      // Object wrapper so TS doesn't narrow the closure-assigned value to never.
+      const streamErrorRef: { current: { code: string; recoverable: boolean } | null } = {
+        current: null,
+      };
 
       try {
         const gen = chatStreamClient.streamMessage(
@@ -196,6 +221,10 @@ export function useChatStream(): UseChatStreamReturn {
                   code: (event.error_code as string) || 'internal',
                   recoverable: event.recoverable !== false,
                 };
+                streamErrorRef.current = {
+                  code: next.error.code,
+                  recoverable: next.error.recoverable,
+                };
                 break;
 
               case 'keepalive':
@@ -219,6 +248,36 @@ export function useChatStream(): UseChatStreamReturn {
           }
           return prev;
         });
+
+        // Rate limits are transient — retry automatically with backoff before
+        // falling back to the manual Retry button.
+        const streamError = streamErrorRef.current;
+        if (
+          streamError?.code === 'rate_limit' &&
+          streamError.recoverable &&
+          !controller.signal.aborted &&
+          rateLimitAttemptsRef.current < RATE_LIMIT_AUTO_RETRIES
+        ) {
+          const attempt = rateLimitAttemptsRef.current;
+          rateLimitAttemptsRef.current = attempt + 1;
+          const delay =
+            RATE_LIMIT_BACKOFF_MS[Math.min(attempt, RATE_LIMIT_BACKOFF_MS.length - 1)];
+          setAutoRetryAt(Date.now() + delay);
+          autoRetryTimerRef.current = setTimeout(() => {
+            const last = lastSendRef.current;
+            if (!last) return;
+            void runStream(
+              last.paperId,
+              last.message,
+              last.references,
+              last.sessionId,
+              last.providerId,
+              true,
+            );
+          }, delay);
+        } else if (streamError == null) {
+          rateLimitAttemptsRef.current = 0;
+        }
       } catch (err) {
         if ((err as Error).name === 'AbortError') {
           setState((prev) => ({
@@ -245,7 +304,7 @@ export function useChatStream(): UseChatStreamReturn {
         pendingUserMessageRef.current = null;
       }
     },
-    [],
+    [clearAutoRetry],
   );
 
   const send = useCallback(
@@ -264,13 +323,15 @@ export function useChatStream(): UseChatStreamReturn {
   const cancel = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
+    clearAutoRetry();
+    rateLimitAttemptsRef.current = 0;
     setState((prev) => ({
       ...prev,
       status: 'idle',
       error: null,
     }));
     pendingUserMessageRef.current = null;
-  }, []);
+  }, [clearAutoRetry]);
 
   const retry = useCallback(() => {
     const last = lastSendRef.current;
@@ -287,14 +348,17 @@ export function useChatStream(): UseChatStreamReturn {
   const reset = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
+    clearAutoRetry();
+    rateLimitAttemptsRef.current = 0;
     setState(INITIAL_STATE);
     pendingUserMessageRef.current = null;
     lastSendRef.current = null;
-  }, []);
+  }, [clearAutoRetry]);
 
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
+      if (autoRetryTimerRef.current) clearTimeout(autoRetryTimerRef.current);
     };
   }, []);
 
@@ -311,6 +375,7 @@ export function useChatStream(): UseChatStreamReturn {
       state.status === 'thinking' ||
       state.status === 'using_tool',
     pendingUserMessage: pendingUserMessageRef.current,
+    autoRetryAt,
   };
 }
 

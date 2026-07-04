@@ -14,6 +14,9 @@ import {
   Stickynote as StickyNote,
   TickCircle as Check,
   ArrowDown2 as ChevronDown,
+  DocumentText,
+  Note1,
+  Edit,
 } from "iconsax-reactjs";
 import {
   Popover,
@@ -64,10 +67,18 @@ export interface ExpandedInputProps {
   className?: string;
 }
 
-const MENTION_STYLES: Record<string, string> = {
-  note: "bg-orange-500/15 text-orange-700 rounded-[3px]",
-  annotation: "bg-rose-500/15 text-rose-700 rounded-[3px]",
-  paper: "bg-sky-500/15 text-sky-700 rounded-[3px]",
+// Same icon/tint convention as ReferenceChip, so an in-progress mention
+// reads as the same "reference" affordance once it's sent and rendered.
+const MENTION_ICONS: Record<string, typeof DocumentText> = {
+  note: Note1,
+  annotation: Edit,
+  paper: DocumentText,
+};
+
+const MENTION_TINT: Record<string, string> = {
+  note: "text-orange-600",
+  annotation: "text-rose-600",
+  paper: "text-sky-600",
 };
 
 // Order matters: mention | bold | inline-code | link | heading-line.
@@ -88,9 +99,29 @@ function highlightContent(value: string): ReactNode[] {
         | "note"
         | "annotation"
         | "paper";
+      const Icon = MENTION_ICONS[type];
+      // The icon is absolutely positioned so it doesn't add width to the
+      // token — the overlay text has to stay character-for-character
+      // identical to the real (invisible) textarea value, or the caret and
+      // this highlight drift apart as soon as anything wraps.
       nodes.push(
-        <span key={key++} className={MENTION_STYLES[type]}>
-          {full}
+        <span key={key++} className="relative">
+          <Icon
+            size={11}
+            variant="Bold"
+            className={cn(
+              "absolute -left-3.5 top-1/2 -translate-y-1/2",
+              MENTION_TINT[type],
+            )}
+          />
+          <span
+            className={cn(
+              "border-b border-dotted border-(--border)",
+              MENTION_TINT[type],
+            )}
+          >
+            {full}
+          </span>
         </span>,
       );
     } else if (bold) {
@@ -165,6 +196,13 @@ export function ExpandedInput({
   const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
   const mentionDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Debounced so the paper search below doesn't fire a request per keystroke.
+  const [debouncedMentionQuery, setDebouncedMentionQuery] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedMentionQuery(mentionQuery), 250);
+    return () => clearTimeout(timer);
+  }, [mentionQuery]);
+
   // Auto-resize textarea
   useEffect(() => {
     const el = textareaRef.current;
@@ -180,65 +218,71 @@ export function ExpandedInput({
     enabled: !!mentionPaperId,
   });
 
+  // Searches the whole library server-side (title + content) rather than
+  // filtering a fixed local batch — otherwise a paper outside the first page
+  // just never shows up here no matter what you type.
   const { data: papersData } = useQuery({
-    queryKey: ["papers"],
-    queryFn: () => papersApi.list(1, 100),
+    queryKey: ["papers", "mention-search", debouncedMentionQuery],
+    queryFn: () => papersApi.list(1, 20, debouncedMentionQuery || undefined),
     enabled: !!mentionPaperId,
   });
 
-  const buildMentionItems = useCallback((): MentionItem[] => {
-    if (!mentionPaperId) return [];
+  // Notes/annotations have no server-side search, so they're filtered
+  // client-side against the current paper's full (usually small) list.
+  const buildNoteAndAnnotationItems = useCallback((): MentionItem[] => {
+    if (!mentionPaperId || !annotations) return [];
     const items: MentionItem[] = [];
 
-    if (annotations) {
-      annotations
-        .filter((a) => a.type === "note")
-        .forEach((note) => {
-          const page = note.coordinate_data?.page;
-          items.push({
-            id: note.id,
-            type: "note",
-            display: `Note ${note.id}${page ? ` (Page ${page})` : ""}`,
-            content: note.content,
-          });
+    annotations
+      .filter((a) => a.type === "note")
+      .forEach((note) => {
+        const page = note.coordinate_data?.page;
+        items.push({
+          id: note.id,
+          type: "note",
+          display: `Note ${note.id}${page ? ` (Page ${page})` : ""}`,
+          content: note.content,
         });
+      });
 
-      annotations
-        .filter((a) => a.type === "annotation")
-        .forEach((ann) => {
-          const page = ann.coordinate_data?.page;
-          const preview = ann.highlighted_text || ann.content?.substring(0, 50);
-          items.push({
-            id: ann.id,
-            type: "annotation",
-            display: `Annotation ${ann.id}${page ? ` (Page ${page})` : ""}: ${preview}...`,
-            content: ann.content,
-          });
+    annotations
+      .filter((a) => a.type === "annotation")
+      .forEach((ann) => {
+        const page = ann.coordinate_data?.page;
+        const preview = ann.highlighted_text || ann.content?.substring(0, 50);
+        items.push({
+          id: ann.id,
+          type: "annotation",
+          display: `Annotation ${ann.id}${page ? ` (Page ${page})` : ""}: ${preview}...`,
+          content: ann.content,
         });
-    }
-
-    if (papersData?.papers && mentionPaperId) {
-      papersData.papers
-        .filter((p) => p.id !== mentionPaperId)
-        .forEach((paper) => {
-          items.push({
-            id: paper.id,
-            type: "paper",
-            display: `Paper: ${paper.title}`,
-            title: paper.title,
-          });
-        });
-    }
+      });
 
     return items;
-  }, [annotations, papersData, mentionPaperId]);
+  }, [annotations, mentionPaperId]);
 
-  const allMentionItems = buildMentionItems();
-  const filteredMentionItems = mentionQuery
-    ? allMentionItems.filter((item) =>
+  const noteAndAnnotationItems = buildNoteAndAnnotationItems();
+  const filteredNoteAndAnnotationItems = mentionQuery
+    ? noteAndAnnotationItems.filter((item) =>
         item.display.toLowerCase().includes(mentionQuery.toLowerCase()),
       )
-    : allMentionItems;
+    : noteAndAnnotationItems;
+
+  // Papers are already server-filtered by the search query above (title +
+  // content), so they're used as-is — re-filtering by `display` client-side
+  // would incorrectly drop matches that only hit in the paper's content.
+  const paperItems: MentionItem[] = !mentionPaperId
+    ? []
+    : (papersData?.papers ?? [])
+        .filter((p) => p.id !== mentionPaperId)
+        .map((paper) => ({
+          id: paper.id,
+          type: "paper" as const,
+          display: `Paper: ${paper.title}`,
+          title: paper.title,
+        }));
+
+  const filteredMentionItems = [...filteredNoteAndAnnotationItems, ...paperItems];
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
@@ -407,7 +451,7 @@ export function ExpandedInput({
                           type="button"
                           disabled={disabled}
                           onClick={() => handlePromptClick(suggestion.prompt)}
-                          className="group flex items-center gap-2 rounded-full border border-(--border) px-3 py-1.5 text-sm text-(--foreground) transition-colors duration-200 ease-out hover:bg-(--muted)/30 h-auto bg-transparent disabled:opacity-40"
+                          className="group flex items-center gap-2 rounded-full border border-(--border) px-3 py-1.5 text-sm text-(--foreground) transition-all duration-200 ease-out hover:bg-(--muted)/30 hover:shadow-(--shadow-subtle) active:translate-y-px active:bg-(--muted)/50 h-auto bg-transparent disabled:opacity-40"
                         >
                           <IconComponent
                             size={14}
@@ -429,7 +473,7 @@ export function ExpandedInput({
                   type="button"
                   disabled={disabled}
                   onClick={() => handlePromptClick(suggestion.prompt)}
-                  className="group flex items-center gap-2 rounded-full border border-(--border) px-3 py-2 text-sm text-(--foreground) transition-colors duration-200 ease-out hover:bg-(--muted)/30 h-auto bg-transparent disabled:opacity-40"
+                  className="group flex items-center gap-2 rounded-full border border-(--border) px-3 py-2 text-sm text-(--foreground) transition-all duration-200 ease-out hover:bg-(--muted)/30 hover:shadow-(--shadow-subtle) active:translate-y-px active:bg-(--muted)/50 h-auto bg-transparent disabled:opacity-40"
                 >
                   <IconComponent
                     size={16}
@@ -603,7 +647,7 @@ export function ExpandedInput({
                                       onClick={() => {
                                         handlePromptClick(suggestion.prompt);
                                       }}
-                                      className="group flex items-center gap-1.5 rounded-full border border-(--border) px-2.5 py-1 text-sm text-(--foreground) transition-colors duration-200 ease-out hover:bg-(--muted)/30 bg-transparent disabled:opacity-40"
+                                      className="group flex items-center gap-1.5 rounded-full border border-(--border) px-2.5 py-1 text-sm text-(--foreground) transition-all duration-200 ease-out hover:bg-(--muted)/30 hover:shadow-(--shadow-subtle) active:translate-y-px active:bg-(--muted)/50 bg-transparent disabled:opacity-40"
                                     >
                                       <IconComponent
                                         size={12}

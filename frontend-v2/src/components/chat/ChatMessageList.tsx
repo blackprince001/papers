@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from "react";
+import type { ReactNode } from "react";
 import {
   MagicStar as Sparkles,
   Copy,
@@ -15,6 +16,7 @@ import { StreamingMessage } from "@/components/ai/StreamingMessage";
 import { MessageAuthor } from "@/components/ai/MessageAuthor";
 import { cn } from "@/lib/utils";
 import type { ChatController } from "@/hooks/use-chat-controller";
+import type { ChatMessage } from "@/lib/api/chat";
 
 interface ChatMessageListProps {
   controller: ChatController;
@@ -22,6 +24,65 @@ interface ChatMessageListProps {
   className?: string;
   /** Centres and width-caps the message column (used by the full-page view). */
   centered?: boolean;
+}
+
+interface MessageTurn {
+  user: ChatMessage | null;
+  replies: ChatMessage[];
+}
+
+function groupIntoTurns(messages: ChatMessage[]): MessageTurn[] {
+  const turns: MessageTurn[] = [];
+  for (const msg of messages) {
+    if (msg.role === "user") {
+      turns.push({ user: msg, replies: [] });
+    } else if (turns.length > 0) {
+      turns[turns.length - 1].replies.push(msg);
+    } else {
+      turns.push({ user: null, replies: [msg] });
+    }
+  }
+  return turns;
+}
+
+function StickyQuery({ children }: { children: ReactNode }) {
+  return <div className="sticky top-0 z-20">{children}</div>;
+}
+
+
+function CollapsibleQueryText({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [isTruncated, setIsTruncated] = useState(false);
+  const textRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+    setIsTruncated(el.scrollHeight > el.clientHeight + 1);
+  }, [text]);
+
+  return (
+    <>
+      <p
+        ref={textRef}
+        className={cn(
+          "text-code leading-relaxed whitespace-pre-wrap",
+          !expanded && "line-clamp-4",
+        )}
+      >
+        {text}
+      </p>
+      {(isTruncated || expanded) && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-1 text-caption font-medium text-(--muted-foreground) hover:text-(--foreground) transition-colors"
+        >
+          {expanded ? "Show less" : "Show more"}
+        </button>
+      )}
+    </>
+  );
 }
 
 export function ChatMessageList({
@@ -36,7 +97,8 @@ export function ChatMessageList({
     setActiveThreadId,
     copiedId,
     copyMessage,
-    currentSessionId,
+    sessionSwitchToken,
+    setComposerHidden,
   } = controller;
 
   const {
@@ -55,18 +117,18 @@ export function ChatMessageList({
     reset,
     isActive,
     pendingUserMessage,
+    autoRetryAt,
   } = stream;
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesTopRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  // Whether the view is "stuck" to the bottom. While true, streaming output
-  // keeps the latest text in view; once the user scrolls up it goes false and
-  // auto-scroll stops until they return to the bottom.
+
   const pinnedToBottomRef = useRef(true);
   const prevPendingRef = useRef<string | null>(null);
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [showScrollUp, setShowScrollUp] = useState(false);
+  const lastScrollTopRef = useRef(0);
 
   const scrollToBottom = useCallback(() => {
     pinnedToBottomRef.current = true;
@@ -84,9 +146,30 @@ export function ChatMessageList({
     pinnedToBottomRef.current = distanceFromBottom < 80;
     setShowScrollDown(distanceFromBottom > 100);
     setShowScrollUp(scrollTop > 100);
-  }, []);
 
-  // Sending a new message always snaps back to the bottom.
+    // Composer auto-hide, keyed on scroll DIRECTION (scrollTop delta), not
+    // distance-from-bottom. Toggling the composer resizes this container,
+    // which shifts distanceFromBottom by the composer's full height — any
+    // distance-based rule feeds back on itself and oscillates (hide → grow
+    // → "near bottom" → show → shrink → "far" → hide...). scrollTop is
+    // untouched by that resize, so direction is stable.
+    const delta = scrollTop - lastScrollTopRef.current;
+    lastScrollTopRef.current = scrollTop;
+    if (isActive) return;
+    if (Math.abs(delta) < 2) return; // resize-induced event, not user scroll
+    if (delta > 0 || distanceFromBottom < 80) {
+      // Scrolling down (heading back to the conversation) or at the bottom.
+      setComposerHidden(false);
+    } else if (distanceFromBottom > 150) {
+      // Scrolling up through history.
+      setComposerHidden(true);
+    }
+  }, [isActive, setComposerHidden]);
+
+  useEffect(() => {
+    if (isActive) setComposerHidden(false);
+  }, [isActive, setComposerHidden]);
+
   useEffect(() => {
     if (pendingUserMessage && pendingUserMessage !== prevPendingRef.current) {
       pinnedToBottomRef.current = true;
@@ -94,19 +177,19 @@ export function ChatMessageList({
     prevPendingRef.current = pendingUserMessage;
   }, [pendingUserMessage]);
 
-  // Auto-scroll while streaming — but only if the user hasn't scrolled up.
   useEffect(() => {
     if ((isActive || pendingUserMessage) && pinnedToBottomRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [displayedContent, pendingUserMessage, isActive]);
 
-  // Jump to top when the session changes
   useEffect(() => {
+    if (sessionSwitchToken === 0) return;
     messagesTopRef.current?.scrollIntoView({ behavior: "instant" });
-  }, [currentSessionId]);
+  }, [sessionSwitchToken]);
 
   const inner = centered ? "mx-auto w-full max-w-3xl" : "";
+  const turns = groupIntoTurns(messages);
 
   return (
     <div className={cn("relative flex-1 min-h-0", className)}>
@@ -114,7 +197,7 @@ export function ChatMessageList({
         ref={messagesContainerRef}
         onScroll={handleScroll}
         data-chat-scroll
-        className="h-full overflow-y-auto p-4"
+        className="h-full overflow-y-auto px-4 pb-4 pt-2"
       >
         <div ref={messagesTopRef} />
         {messages.length === 0 && !isActive && !pendingUserMessage && (
@@ -125,19 +208,27 @@ export function ChatMessageList({
         )}
 
         <div className={cn("space-y-0.5", inner)}>
-          {messages.map((msg) => (
-            <div key={msg.id}>
-              <div className="flex justify-start">
-                <div className="group relative w-full px-3 py-2.5 rounded-xl bg-transparent transition-colors hover:bg-(--muted)/40">
-                  <MessageAuthor
-                    role={msg.role === "user" ? "user" : "assistant"}
-                  />
-                  {msg.role === "user" ? (
-                    <p className="text-code leading-relaxed whitespace-pre-wrap">
-                      {msg.content}
-                    </p>
-                  ) : (
-                    <>
+          {turns.map((turn, turnIdx) => (
+            <div key={turn.user?.id ?? `turn-${turnIdx}`}>
+              {turn.user && (
+                <StickyQuery>
+                  <div className="flex justify-start">
+                    <div className="group relative w-full px-3.5 py-3 rounded-2xl bg-(--muted)">
+                      <MessageAuthor role="user" />
+                      <CollapsibleQueryText text={turn.user.content} />
+                      <span className="absolute top-3 right-2.5 text-[0.625rem] text-(--muted-foreground) opacity-0 group-hover:opacity-60 transition-opacity pointer-events-none">
+                        {format(new Date(turn.user.created_at), "MMM d, h:mm a")}
+                      </span>
+                    </div>
+                  </div>
+                </StickyQuery>
+              )}
+
+              {turn.replies.map((msg) => (
+                <div key={msg.id} className="mb-6">
+                  <div className="flex justify-start">
+                    <div className="group relative w-full px-4 py-4 rounded-xl bg-transparent">
+                      <MessageAuthor role="assistant" />
                       <MarkdownMessage
                         content={msg.content}
                         referenceManifest={msg.reference_manifest}
@@ -170,55 +261,59 @@ export function ChatMessageList({
                           <MessageSquare size={12} />
                         </Button>
                       </div>
-                    </>
-                  )}
-                  <span className="absolute top-2.5 right-2 text-[0.625rem] text-(--muted-foreground) opacity-0 group-hover:opacity-60 transition-opacity pointer-events-none">
-                    {format(new Date(msg.created_at), "MMM d, h:mm a")}
-                  </span>
-                </div>
-              </div>
+                      <span className="absolute top-4 right-3 text-[0.625rem] text-(--muted-foreground) opacity-0 group-hover:opacity-60 transition-opacity pointer-events-none">
+                        {format(new Date(msg.created_at), "MMM d, h:mm a")}
+                      </span>
+                    </div>
+                  </div>
 
-              {msg.role === "assistant" &&
-                (msg.thread_count > 0 || activeThreadId === msg.id) && (
-                  <MessageThread
-                    parentMessage={msg}
-                    showInput={activeThreadId === msg.id}
-                    onCloseInput={() => setActiveThreadId(null)}
-                  />
-                )}
+                  {(msg.thread_count > 0 || activeThreadId === msg.id) && (
+                    <MessageThread
+                      parentMessage={msg}
+                      showInput={activeThreadId === msg.id}
+                      onCloseInput={() => setActiveThreadId(null)}
+                    />
+                  )}
+                </div>
+              ))}
             </div>
           ))}
 
-          {pendingUserMessage && (
-            <div className="flex justify-start">
-              <div className="relative w-full px-3 py-2.5 rounded-xl bg-transparent">
-                <MessageAuthor role="user" />
-                <p className="text-code leading-relaxed whitespace-pre-wrap">
-                  {pendingUserMessage}
-                </p>
-              </div>
-            </div>
-          )}
+          {(pendingUserMessage || isActive) && (
+            <div>
+              {pendingUserMessage && (
+                <StickyQuery>
+                  <div className="flex justify-start">
+                    <div className="relative w-full px-3.5 py-3 rounded-2xl bg-(--muted)">
+                      <MessageAuthor role="user" />
+                      <CollapsibleQueryText text={pendingUserMessage} />
+                    </div>
+                  </div>
+                </StickyQuery>
+              )}
 
-          {isActive && (
-            <StreamingMessage
-              state={{
-                status,
-                content,
-                displayedContent,
-                toolCalls,
-                toolResults,
-                thoughts,
-                currentTool,
-                error,
-                messageId,
-                sessionId: responseSessionId,
-                referenceManifest,
-              }}
-              isStreaming={isActive}
-              onRetry={retry}
-              onDismiss={reset}
-            />
+              {isActive && (
+                <StreamingMessage
+                  state={{
+                    status,
+                    content,
+                    displayedContent,
+                    toolCalls,
+                    toolResults,
+                    thoughts,
+                    currentTool,
+                    error,
+                    messageId,
+                    sessionId: responseSessionId,
+                    referenceManifest,
+                    autoRetryAt,
+                  }}
+                  isStreaming={isActive}
+                  onRetry={retry}
+                  onDismiss={reset}
+                />
+              )}
+            </div>
           )}
         </div>
 

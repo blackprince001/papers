@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 
@@ -5,6 +6,8 @@ export interface ErrorBannerProps {
   message: string;
   code: string;
   recoverable: boolean;
+  /** Epoch ms of a scheduled automatic retry — shows a live countdown. */
+  retryingAt?: number | null;
   onRetry?: () => void;
   onDismiss?: () => void;
   onSettings?: () => void;
@@ -73,15 +76,34 @@ function styleForCode(code: string) {
   return ERROR_STYLES[code] || ERROR_STYLES.internal;
 }
 
+function useCountdownSeconds(target: number | null | undefined): number | null {
+  const [seconds, setSeconds] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!target) {
+      setSeconds(null);
+      return;
+    }
+    const tick = () => setSeconds(Math.max(0, Math.ceil((target - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [target]);
+
+  return seconds;
+}
+
 export function ErrorBanner({
   message,
   code,
   recoverable,
+  retryingAt,
   onRetry,
   onDismiss,
   onSettings,
 }: ErrorBannerProps) {
   const s = styleForCode(code);
+  const retrySeconds = useCountdownSeconds(retryingAt);
 
   return (
     <div
@@ -94,6 +116,11 @@ export function ErrorBanner({
       <span className="mt-0.5 shrink-0 text-sm">{s.icon}</span>
       <div className="flex-1 min-w-0">
         <p className={cn('font-medium', s.text)}>{message}</p>
+        {retrySeconds !== null && (
+          <p className="text-(--muted-foreground) mt-0.5 text-[0.6875rem]">
+            Retrying automatically in {retrySeconds}s…
+          </p>
+        )}
         {!recoverable && (
           <p className="text-(--muted-foreground) mt-0.5 text-[0.6875rem]">
             This error cannot be automatically retried.

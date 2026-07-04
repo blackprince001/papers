@@ -49,6 +49,7 @@ export function MessageThread({ parentMessage, showInput = false, onCloseInput }
 
   const [pendingUserMessage, setPendingUserMessage] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [showEarlier, setShowEarlier] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const queryClient = useQueryClient();
@@ -63,8 +64,7 @@ export function MessageThread({ parentMessage, showInput = false, onCloseInput }
   useEffect(() => {
     const end = messagesEndRef.current;
     if (!end) return;
-    // Don't yank the user down mid-stream if they've scrolled up to read.
-    // Threads render inside the chat's scroll container (data-chat-scroll).
+
     const container = end.closest('[data-chat-scroll]') as HTMLElement | null;
     if (container) {
       const distanceFromBottom =
@@ -184,11 +184,11 @@ export function MessageThread({ parentMessage, showInput = false, onCloseInput }
         return prev;
       });
 
-      // Invalidate caches and close input on success
       setStreamState((prev) => {
         if (prev.status === 'done') {
           queryClient.invalidateQueries({ queryKey: ['thread', parentMessage.id] });
           queryClient.invalidateQueries({ queryKey: ['chat', 'session'] });
+          setExpanded(true);
           onCloseInput?.();
         }
         return prev;
@@ -255,12 +255,18 @@ export function MessageThread({ parentMessage, showInput = false, onCloseInput }
   }, []);
 
   const threadCount = parentMessage.thread_count || threadMessages.length;
-  // Replying (showInput) always forces the thread open; otherwise it's
-  // collapsed by default so the main conversation stays scannable.
   const isExpanded = expanded || showInput;
   const lastMessageId = threadMessages.length
     ? threadMessages[threadMessages.length - 1].id
     : null;
+
+  const EARLIER_COLLAPSE_THRESHOLD = 4;
+  const RECENT_VISIBLE_COUNT = 2;
+  const hasHiddenEarlier = !showEarlier && threadMessages.length > EARLIER_COLLAPSE_THRESHOLD;
+  const visibleThreadMessages = hasHiddenEarlier
+    ? threadMessages.slice(-RECENT_VISIBLE_COUNT)
+    : threadMessages;
+  const hiddenEarlierCount = threadMessages.length - visibleThreadMessages.length;
 
   return (
     <div className="relative mt-1 ml-3 pl-4 border-l-2 border-(--border)">
@@ -281,75 +287,94 @@ export function MessageThread({ parentMessage, showInput = false, onCloseInput }
 
       {/* Thread messages */}
       {isExpanded && (
-      <div className="space-y-0.5">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-4">
-            <Skeleton className="w-8 h-8 rounded-full" />
-          </div>
-        ) : (
-          <>
-            {threadMessages.map(msg => (
-              <div key={msg.id} className="flex justify-start">
-                <div className="group relative w-full px-3 py-2 rounded-xl text-caption bg-transparent transition-colors hover:bg-(--muted)/40">
-                  <MessageAuthor role={msg.role === 'user' ? 'user' : 'assistant'} />
+        <div className="space-y-2">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Skeleton className="w-8 h-8 rounded-full" />
+            </div>
+          ) : (
+            <>
+              {hasHiddenEarlier && (
+                <button
+                  type="button"
+                  onClick={() => setShowEarlier(true)}
+                  className="inline-flex items-center gap-1 text-caption text-(--muted-foreground) font-medium hover:text-(--foreground) transition-colors"
+                >
+                  <ArrowDown2 size={12} />
+                  Show {hiddenEarlierCount} earlier {hiddenEarlierCount === 1 ? 'reply' : 'replies'}
+                </button>
+              )}
+
+              {visibleThreadMessages.map(msg => (
+                <div key={msg.id} className="flex justify-start">
                   {msg.role === 'user' ? (
-                    <div className="whitespace-pre-wrap wrap-break-word">{msg.content}</div>
+                    <div className="group relative w-full px-3 py-2.5 rounded-2xl text-caption bg-(--muted)">
+                      <MessageAuthor role="user" />
+                      <div className="whitespace-pre-wrap wrap-break-word">{msg.content}</div>
+                      {msg.id === lastMessageId && (
+                        <span className="absolute top-2.5 right-2.5 text-[0.625rem] text-(--muted-foreground) opacity-0 group-hover:opacity-60 transition-opacity pointer-events-none">
+                          {format(new Date(msg.created_at), 'HH:mm')}
+                        </span>
+                      )}
+                    </div>
                   ) : (
-                    <MarkdownMessage content={msg.content} referenceManifest={(msg as any).reference_manifest} />
-                  )}
-                  {msg.id === lastMessageId && (
-                    <span className="absolute top-2 right-2 text-[0.625rem] text-(--muted-foreground) opacity-0 group-hover:opacity-60 transition-opacity pointer-events-none">
-                      {format(new Date(msg.created_at), 'HH:mm')}
-                    </span>
+                    <div className="group relative w-full px-3.5 py-2.5 rounded-xl text-caption bg-transparent">
+                      <MessageAuthor role="assistant" />
+                      <MarkdownMessage content={msg.content} referenceManifest={(msg as any).reference_manifest} />
+                      {msg.id === lastMessageId && (
+                        <span className="absolute top-2.5 right-2.5 text-[0.625rem] text-(--muted-foreground) opacity-0 group-hover:opacity-60 transition-opacity pointer-events-none">
+                          {format(new Date(msg.created_at), 'HH:mm')}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
-              </div>
-            ))}
+              ))}
 
-            {pendingUserMessage && (
-              <div className="flex justify-start">
-                <div className="relative w-full px-3 py-2 rounded-xl text-caption bg-transparent">
-                  <MessageAuthor role="user" />
-                  <div className="whitespace-pre-wrap wrap-break-word">{pendingUserMessage}</div>
+              {pendingUserMessage && (
+                <div className="flex justify-start">
+                  <div className="relative w-full px-3 py-2.5 rounded-2xl text-caption bg-(--muted)">
+                    <MessageAuthor role="user" />
+                    <div className="whitespace-pre-wrap wrap-break-word">{pendingUserMessage}</div>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {isStreaming && (
-              <StreamingMessage
-                state={{
-                  status: streamState.status as any,
-                  content: streamState.content,
-                  displayedContent: streamState.displayedContent,
-                  toolCalls: streamState.toolCalls.map(e => ({
-                    tool: e.tool as string,
-                    arguments: (e.arguments as Record<string, unknown>) || {},
-                    timestamp: Date.now(),
-                  })),
-                  toolResults: streamState.toolResults.map(e => ({
-                    tool: e.tool as string,
-                    result: e.result as string,
-                    timestamp: Date.now(),
-                  })),
-                  thoughts: streamState.thoughts.map(e => ({
-                    content: e.content as string,
-                    timestamp: Date.now(),
-                  })),
-                  currentTool: streamState.currentTool,
-                  error: streamState.error,
-                  messageId: streamState.messageId,
-                  sessionId: streamState.sessionId,
-                  referenceManifest: streamState.referenceManifest,
-                }}
-                isStreaming={isStreaming}
-                onRetry={handleRetry}
-                onDismiss={handleCancel}
-              />
-            )}
-          </>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
+              {isStreaming && (
+                <StreamingMessage
+                  state={{
+                    status: streamState.status as any,
+                    content: streamState.content,
+                    displayedContent: streamState.displayedContent,
+                    toolCalls: streamState.toolCalls.map(e => ({
+                      tool: e.tool as string,
+                      arguments: (e.arguments as Record<string, unknown>) || {},
+                      timestamp: Date.now(),
+                    })),
+                    toolResults: streamState.toolResults.map(e => ({
+                      tool: e.tool as string,
+                      result: e.result as string,
+                      timestamp: Date.now(),
+                    })),
+                    thoughts: streamState.thoughts.map(e => ({
+                      content: e.content as string,
+                      timestamp: Date.now(),
+                    })),
+                    currentTool: streamState.currentTool,
+                    error: streamState.error,
+                    messageId: streamState.messageId,
+                    sessionId: streamState.sessionId,
+                    referenceManifest: streamState.referenceManifest,
+                  }}
+                  isStreaming={isStreaming}
+                  onRetry={handleRetry}
+                  onDismiss={handleCancel}
+                />
+              )}
+            </>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
       )}
 
       {/* Thread input */}

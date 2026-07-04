@@ -87,7 +87,11 @@ export function SessionPills({ controller, showExpand = true }: SessionPillsProp
                 className={cn(
                   'shrink-0 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-micro transition-all duration-150 whitespace-nowrap border',
                   isActive
-                    ? 'bg-(--foreground) text-(--card) border-(--foreground) font-medium'
+                    ? cn(
+                        'bg-(--foreground) text-(--card) border-(--foreground) font-medium',
+                        'shadow-(--shadow-inset) hover:shadow-(--shadow-inset-hover) hover:opacity-90',
+                        'active:translate-y-px active:shadow-(--shadow-inset-hover)',
+                      )
                     : 'bg-(--card) text-(--muted-foreground) border-(--border) hover:text-(--foreground) hover:border-(--foreground)/30',
                 )}
               >

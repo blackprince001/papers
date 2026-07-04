@@ -1,8 +1,9 @@
+import { TickCircle as Check, Warning2 as AlertTriangle } from 'iconsax-reactjs';
 import { cn } from '@/lib/utils';
 
 export interface ToolCallIndicatorProps {
   tool: string;
-  status: 'pending' | 'running' | 'complete' | 'error';
+  status: 'running' | 'complete' | 'error';
   result?: string;
   expanded?: boolean;
   onToggle?: () => void;
@@ -32,20 +33,20 @@ export function ToolCallIndicator({
   onToggle,
 }: ToolCallIndicatorProps) {
   return (
-    <div className="flex items-start gap-2 py-1">
-      <span className="mt-0.5 shrink-0">
-        {status === 'pending' && (
-          <span className="inline-block w-3 h-3 rounded-full bg-(--muted-foreground) opacity-50" />
+    <div className="flex items-start gap-2 py-0.5">
+      <span
+        className={cn(
+          'mt-0.5 shrink-0 flex items-center justify-center w-4 h-4 rounded-full',
+          status === 'running' && 'text-blue-500',
+          status === 'complete' && 'text-emerald-500',
+          status === 'error' && 'text-amber-500',
         )}
+      >
         {status === 'running' && (
-          <span className="inline-block w-3 h-3 rounded-full bg-blue-400 animate-pulse" />
+          <span className="inline-block w-2 h-2 rounded-full bg-current animate-pulse" />
         )}
-        {status === 'complete' && (
-          <span className="inline-block w-3 h-3 rounded-full bg-green-400" />
-        )}
-        {status === 'error' && (
-          <span className="inline-block w-3 h-3 rounded-full bg-amber-400" />
-        )}
+        {status === 'complete' && <Check size={12} variant="Bold" />}
+        {status === 'error' && <AlertTriangle size={12} variant="Bold" />}
       </span>
 
       <div className="flex-1 min-w-0">
@@ -58,7 +59,6 @@ export function ToolCallIndicator({
             status === 'running' && 'text-blue-500',
             status === 'complete' && 'text-(--muted-foreground)',
             status === 'error' && 'text-amber-500',
-            status === 'pending' && 'text-(--muted-foreground)',
             result && 'hover:text-(--foreground) cursor-pointer',
             !result && 'cursor-default',
           )}
@@ -66,7 +66,6 @@ export function ToolCallIndicator({
           {status === 'running' && `${toolLabel(tool)}...`}
           {status === 'complete' && `${toolLabel(tool)} — done`}
           {status === 'error' && `${toolLabel(tool)} — failed`}
-          {status === 'pending' && toolLabel(tool)}
         </button>
 
         {result && expanded && (

@@ -4,13 +4,9 @@ import { useChatSessions } from '@/hooks/use-chat-sessions';
 import { useChatStream } from '@/hooks/use-chat-stream';
 import { type ChatMessage, type ChatReferences } from '@/lib/api/chat';
 import { useConfirmDialog } from '@/components/ConfirmDialog';
-import { toastError, toastSuccess } from '@/lib/utils/toast';
+import { toastChatError, toastError, toastInfo, toastSuccess } from '@/lib/utils/toast';
 
-/**
- * Owns all state and behaviour for a paper chat: sessions, streaming, the
- * composer, threads, and the optimistic cache. Both the compact `ChatTab`
- * and the full-page `PaperChat` view consume this so the two never drift.
- */
+
 export function useChatController(paperId: number) {
   const queryClient = useQueryClient();
   const {
@@ -19,11 +15,20 @@ export function useChatController(paperId: number) {
     messages,
     isLoading,
     setCurrentSessionId,
-    switchSession,
+    switchSession: switchSessionRaw,
     createSession,
     deleteSession,
     renameSession,
   } = useChatSessions(paperId);
+
+  const [sessionSwitchToken, setSessionSwitchToken] = useState(0);
+  const switchSession = useCallback(
+    (id: number) => {
+      setSessionSwitchToken((t) => t + 1);
+      switchSessionRaw(id);
+    },
+    [switchSessionRaw],
+  );
 
   const [input, setInput] = useState('');
   const [references, setReferences] = useState<ChatReferences>({ notes: [], annotations: [], papers: [] });
@@ -31,6 +36,8 @@ export function useChatController(paperId: number) {
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [activeThreadId, setActiveThreadId] = useState<number | null>(null);
   const [activeProviderId, setActiveProviderId] = useState<number | null>(null);
+
+  const [composerHidden, setComposerHidden] = useState(false);
 
   const { confirm, dialogProps } = useConfirmDialog();
 
@@ -44,16 +51,16 @@ export function useChatController(paperId: number) {
     isActive,
   } = stream;
 
-  // Toast on streaming errors
   useEffect(() => {
     if (stream.error && !isActive) {
-      toastError(
-        stream.error.code === 'no_provider'
-          ? 'AI provider not configured'
-          : stream.error.message || 'Chat error',
-      );
+      if (stream.autoRetryAt) {
+        const seconds = Math.max(1, Math.ceil((stream.autoRetryAt - Date.now()) / 1000));
+        toastInfo('Rate limit reached', `Retrying automatically in ${seconds}s…`);
+      } else {
+        toastChatError(stream.error.code, stream.error.message);
+      }
     }
-  }, [stream.error, isActive]);
+  }, [stream.error, stream.autoRetryAt, isActive]);
 
   // Abort mid-stream when session switches
   useEffect(() => {
@@ -101,7 +108,7 @@ export function useChatController(paperId: number) {
           return { ...oldSession, messages: [...(oldSession.messages || []), newUserMsg, newAssistantMsg] };
         });
         setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ['chat', 'session', finalSessionId] });
+          queryClient.invalidateQueries({ queryKey: ['chat', 'session', finalSessionId], refetchType: 'none' });
           queryClient.invalidateQueries({ queryKey: ['chat', 'sessions', paperId] });
         }, 100);
       }
@@ -136,6 +143,7 @@ export function useChatController(paperId: number) {
     setIsCreatingSession(true);
     try {
       await createSession();
+      setSessionSwitchToken((t) => t + 1);
       toastSuccess('New session created');
     } catch {
       toastError('Failed to create session');
@@ -151,13 +159,31 @@ export function useChatController(paperId: number) {
       confirmLabel: 'Delete',
       destructive: true,
     });
-    if (ok) await deleteSession(id);
+    if (ok) {
+      await deleteSession(id);
+      setSessionSwitchToken((t) => t + 1);
+    }
   }, [confirm, deleteSession]);
 
-  const copyMessage = useCallback((text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const copyMessage = useCallback(async (text: string, id: string) => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      toastError('Failed to copy to clipboard');
+    }
   }, []);
 
   return {
@@ -165,6 +191,7 @@ export function useChatController(paperId: number) {
     // sessions
     sessions,
     currentSessionId,
+    sessionSwitchToken,
     switchSession,
     renameSession,
     handleCreateSession,
@@ -183,6 +210,8 @@ export function useChatController(paperId: number) {
     activeProviderId,
     setActiveProviderId,
     handleSend,
+    composerHidden,
+    setComposerHidden,
     // threads
     activeThreadId,
     setActiveThreadId,

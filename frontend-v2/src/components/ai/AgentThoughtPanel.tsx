@@ -62,11 +62,11 @@ export function AgentThoughtPanel({ thoughts }: AgentThoughtPanelProps) {
   const visible = reasoning.slice(0, displayedLen);
 
   return (
-    <div className="text-caption text-(--muted-foreground) border-l-2 border-(--border) pl-3 my-1">
+    <div className="text-caption text-(--muted-foreground) rounded-lg border border-(--border) bg-(--muted)/20 px-2.5 py-2 my-1.5">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1 text-[0.6875rem] font-medium hover:text-(--foreground) transition-colors"
+        className="flex items-center gap-1.5 text-[0.6875rem] font-medium hover:text-(--foreground) transition-colors"
       >
         <span className="inline-block w-2 h-2 rounded-full bg-(--muted-foreground) animate-pulse" />
         {expanded ? 'Hide reasoning' : 'Show reasoning'}
@@ -74,7 +74,7 @@ export function AgentThoughtPanel({ thoughts }: AgentThoughtPanelProps) {
       </button>
 
       {expanded && (
-        <div className="mt-1.5 max-h-64 overflow-y-auto whitespace-pre-wrap text-[0.6875rem] leading-relaxed opacity-80">
+        <div className="mt-1.5 max-h-64 overflow-y-auto whitespace-pre-wrap text-[0.6875rem] leading-relaxed opacity-80 border-t border-(--border) pt-1.5">
           {visible}
           {displayedLen < reasoning.length && (
             <span className="inline-block w-[0.125rem] h-3 bg-(--foreground) ml-0.5 animate-pulse align-middle" />

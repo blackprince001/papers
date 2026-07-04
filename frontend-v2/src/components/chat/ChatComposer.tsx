@@ -38,48 +38,60 @@ interface ChatComposerProps {
 export function ChatComposer({ controller, centered = false }: ChatComposerProps) {
   const {
     paperId, input, setInput, setReferences, handleSend,
-    activeProviderId, setActiveProviderId, stream,
+    activeProviderId, setActiveProviderId, stream, composerHidden,
   } = controller;
 
   return (
     <div
       className={cn(
-        'shrink-0 relative z-10 -mt-10 pt-10 px-3 pb-3 pointer-events-none bg-gradient-to-b from-transparent',
-        centered ? 'to-(--background)' : 'to-(--panel-surface)',
+        'shrink-0 grid transition-[grid-template-rows] duration-300 ease-out',
+        composerHidden ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]',
       )}
     >
-      <div className={cn('pointer-events-auto', centered && 'mx-auto w-full max-w-3xl')}>
-        <div className="mb-2 flex justify-end">
-          <ProviderPicker
-            value={activeProviderId}
-            onChange={setActiveProviderId}
-            className="max-w-56"
-          />
+      {/* overflow only needs to clip while the row is actually collapsing —
+          left visible at rest so the mention dropdown and prompts popover
+          (which render above the input) aren't cut off. */}
+      <div className={composerHidden ? 'overflow-hidden' : 'overflow-visible'}>
+        <div
+          className={cn(
+            'relative z-10 -mt-10 pt-10 px-3 pb-3 pointer-events-none bg-gradient-to-b from-transparent',
+            centered ? 'to-(--background)' : 'to-(--panel-surface)',
+          )}
+        >
+          <div className={cn('pointer-events-auto', centered && 'mx-auto w-full max-w-3xl')}>
+            <div className="mb-2 flex justify-end">
+              <ProviderPicker
+                value={activeProviderId}
+                onChange={setActiveProviderId}
+                className="max-w-56"
+              />
+            </div>
+            <ExpandedInput
+              value={input}
+              onChange={setInput}
+              onSubmit={handleSend}
+              placeholder="Ask about this paper... (use @ to mention notes/annotations/papers)"
+              submitLabel="Send"
+              submitIcon={<Send size={14} />}
+              bordered={false}
+              disabled={stream.isActive}
+              mentionPaperId={paperId}
+              onMentionSelect={(mention) => {
+                const refKey = `${mention.type}s` as 'notes' | 'annotations' | 'papers';
+                setReferences(prev => ({
+                  ...prev,
+                  [refKey]: [...(prev[refKey] || []), { id: mention.id, type: mention.type }],
+                }));
+              }}
+              promptsCollapsible
+              promptGroups={CHAT_PROMPT_GROUPS}
+              onSuggestionClick={(prompt) => setInput(prompt)}
+            />
+            <p className="text-caption text-(--muted-foreground) px-1 mt-2">
+              Press Enter to send, Shift+Enter for newline
+            </p>
+          </div>
         </div>
-        <ExpandedInput
-          value={input}
-          onChange={setInput}
-          onSubmit={handleSend}
-          placeholder="Ask about this paper... (use @ to mention notes/annotations/papers)"
-          submitLabel="Send"
-          submitIcon={<Send size={14} />}
-          bordered={false}
-          disabled={stream.isActive}
-          mentionPaperId={paperId}
-          onMentionSelect={(mention) => {
-            const refKey = `${mention.type}s` as 'notes' | 'annotations' | 'papers';
-            setReferences(prev => ({
-              ...prev,
-              [refKey]: [...(prev[refKey] || []), { id: mention.id, type: mention.type }],
-            }));
-          }}
-          promptsCollapsible
-          promptGroups={CHAT_PROMPT_GROUPS}
-          onSuggestionClick={(prompt) => setInput(prompt)}
-        />
-        <p className="text-caption text-(--muted-foreground) px-1 mt-2">
-          Press Enter to send, Shift+Enter for newline
-        </p>
       </div>
     </div>
   );
