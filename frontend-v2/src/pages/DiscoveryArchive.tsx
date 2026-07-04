@@ -5,6 +5,7 @@ import { Archive, SearchNormal as Search, Trash as Trash2, Refresh as Loader2, C
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent } from '@/components/ui/Card';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { discoveryApi, type DiscoverySession } from '@/lib/api/discovery';
 
 function formatDate(dateStr: string) {
@@ -69,8 +70,13 @@ export default function DiscoveryArchive() {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 size={24} className="animate-spin text-(--muted-foreground)" />
+        <div className="space-y-4">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="p-4 rounded-2xl border border-(--panel-border) space-y-2">
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-3 w-1/4" />
+            </div>
+          ))}
         </div>
       ) : !sessions || sessions.length === 0 ? (
         <div className="text-center py-16">

@@ -8,6 +8,7 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Textarea';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { aiFeaturesApi } from '@/lib/api/aiFeatures';
 import { cn } from '@/lib/utils';
 import { toastInfo } from '@/lib/utils/toast';
@@ -58,9 +59,10 @@ export function AISummary({ paperId }: AISummaryProps) {
 
   if (isLoading) {
     return (
-      <div className="p-6 flex flex-col items-center justify-center text-(--muted-foreground) animate-pulse">
-        <Sparkles size={24} className="mb-2 opacity-50" />
-        <p className="text-code">Reading paper...</p>
+      <div className="p-4 space-y-2">
+        <Skeleton className="h-3.5 w-full" />
+        <Skeleton className="h-3.5 w-full" />
+        <Skeleton className="h-3.5 w-2/3" />
       </div>
     );
   }

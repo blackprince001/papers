@@ -4,6 +4,7 @@ import { ExportSquare as ExternalLink, Book1 as BookOpen, Book1 as Library, Arro
 import { Link } from 'react-router-dom';
 import { papersApi, type RelatedPaperExternal, type Paper } from '@/lib/api/papers';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface RelatedPapersProps {
   paperId: number;
@@ -20,9 +21,13 @@ export function RelatedPapers({ paperId }: RelatedPapersProps) {
 
   if (isLoading) {
     return (
-      <div className="p-8 flex flex-col items-center justify-center text-(--muted-foreground) opacity-50 space-y-3">
-        <div className="w-8 h-8 rounded-full border-2 border-current border-t-transparent animate-spin" />
-        <p className="text-code">Finding connections...</p>
+      <div className="space-y-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="p-4 rounded-xl border border-(--border) bg-(--card) space-y-2">
+            <Skeleton className="h-3.5 w-3/4" />
+            <Skeleton className="h-3 w-1/3" />
+          </div>
+        ))}
       </div>
     );
   }
