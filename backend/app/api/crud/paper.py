@@ -242,6 +242,13 @@ async def increment_view_count(
     session, paper_id, with_relations=True, user_id=user_id
   )
   paper.viewed_count = (paper.viewed_count or 0) + 1
+  if user_id is not None:
+    from datetime import datetime, timezone
+
+    from app.api.crud.user_paper_state import get_or_create_state
+
+    state = await get_or_create_state(session, user_id, paper_id)
+    state.last_opened_at = datetime.now(timezone.utc)
   await session.commit()
   return paper
 

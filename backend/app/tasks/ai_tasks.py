@@ -16,7 +16,13 @@ from app.services.ai.providers.base import (
   GenerateConfig,
   ProviderConfig,
 )
-from app.tasks.base import BaseAITask, get_sync_session
+from app.tasks.base import (
+  BaseAITask,
+  RateLimitExceeded,
+  check_ai_rate_limit,
+  get_sync_session,
+  push_paper_progress,
+)
 from app.utils.json_extractor import extract_json_from_text
 
 logger = get_logger(__name__)
@@ -218,6 +224,7 @@ def _anchor_quote_to_block(
 @celery_app.task(bind=True, base=BaseAITask, name="ai.generate_summary")
 def generate_summary_task(self, paper_id: int) -> dict[str, Any]:
   """Generate AI summary for a paper."""
+  push_paper_progress(paper_id, {"step": "summary", "status": "running"})
   session = get_sync_session()
   try:
     paper = session.query(Paper).filter(Paper.id == paper_id).first()
@@ -227,13 +234,15 @@ def generate_summary_task(self, paper_id: int) -> dict[str, Any]:
     # Use the paper owner's configured provider (BYO key). There is no
     # environment fallback: with no provider the step is skipped and the
     # retry sweep leaves it to run once one is configured.
-    p = get_provider_for_user_sync(paper.uploaded_by_id)
+    user_id = cast(int | None, paper.uploaded_by_id)
+    p = get_provider_for_user_sync(user_id)
     if not p:
       return {
         "status": "skipped",
         "reason": "no provider configured",
         "paper_id": paper_id,
       }
+    check_ai_rate_limit(user_id)
 
     import asyncio
 
@@ -257,6 +266,9 @@ def generate_summary_task(self, paper_id: int) -> dict[str, Any]:
     # Transient lookup failure — retry rather than skip as "no provider".
     session.rollback()
     raise
+  except RateLimitExceeded:
+    session.rollback()
+    raise
   except Exception as e:
     session.rollback()
     logger.error("Error generating summary", paper_id=paper_id, error=str(e))
@@ -270,6 +282,7 @@ def generate_summary_task(self, paper_id: int) -> dict[str, Any]:
 @celery_app.task(bind=True, base=BaseAITask, name="ai.extract_findings")
 def extract_findings_task(self, paper_id: int) -> dict[str, Any]:
   """Extract key findings from a paper."""
+  push_paper_progress(paper_id, {"step": "findings", "status": "running"})
   session = get_sync_session()
   try:
     paper = session.query(Paper).filter(Paper.id == paper_id).first()
@@ -279,13 +292,15 @@ def extract_findings_task(self, paper_id: int) -> dict[str, Any]:
     # Use the paper owner's configured provider (BYO key). There is no
     # environment fallback: with no provider the step is skipped and the
     # retry sweep leaves it to run once one is configured.
-    p = get_provider_for_user_sync(paper.uploaded_by_id)
+    user_id = cast(int | None, paper.uploaded_by_id)
+    p = get_provider_for_user_sync(user_id)
     if not p:
       return {
         "status": "skipped",
         "reason": "no provider configured",
         "paper_id": paper_id,
       }
+    check_ai_rate_limit(user_id)
 
     import asyncio
 
@@ -308,6 +323,9 @@ def extract_findings_task(self, paper_id: int) -> dict[str, Any]:
   except ProviderLookupError:
     session.rollback()
     raise
+  except RateLimitExceeded:
+    session.rollback()
+    raise
   except Exception as e:
     session.rollback()
     logger.error("Error extracting findings", paper_id=paper_id, error=str(e))
@@ -319,6 +337,7 @@ def extract_findings_task(self, paper_id: int) -> dict[str, Any]:
 @celery_app.task(bind=True, base=BaseAITask, name="ai.generate_reading_guide")
 def generate_reading_guide_task(self, paper_id: int) -> dict[str, Any]:
   """Generate reading guide for a paper."""
+  push_paper_progress(paper_id, {"step": "reading_guide", "status": "running"})
   session = get_sync_session()
   try:
     paper = session.query(Paper).filter(Paper.id == paper_id).first()
@@ -328,13 +347,15 @@ def generate_reading_guide_task(self, paper_id: int) -> dict[str, Any]:
     # Use the paper owner's configured provider (BYO key). There is no
     # environment fallback: with no provider the step is skipped and the
     # retry sweep leaves it to run once one is configured.
-    p = get_provider_for_user_sync(paper.uploaded_by_id)
+    user_id = cast(int | None, paper.uploaded_by_id)
+    p = get_provider_for_user_sync(user_id)
     if not p:
       return {
         "status": "skipped",
         "reason": "no provider configured",
         "paper_id": paper_id,
       }
+    check_ai_rate_limit(user_id)
 
     import asyncio
 
@@ -357,6 +378,9 @@ def generate_reading_guide_task(self, paper_id: int) -> dict[str, Any]:
   except ProviderLookupError:
     session.rollback()
     raise
+  except RateLimitExceeded:
+    session.rollback()
+    raise
   except Exception as e:
     session.rollback()
     logger.error("Error generating reading guide", paper_id=paper_id, error=str(e))
@@ -368,6 +392,7 @@ def generate_reading_guide_task(self, paper_id: int) -> dict[str, Any]:
 @celery_app.task(bind=True, base=BaseAITask, name="ai.generate_highlights")
 def generate_highlights_task(self, paper_id: int) -> dict[str, Any]:
   """Generate auto-highlights for a paper."""
+  push_paper_progress(paper_id, {"step": "highlights", "status": "running"})
   session = get_sync_session()
   try:
     paper = session.query(Paper).filter(Paper.id == paper_id).first()
@@ -377,13 +402,15 @@ def generate_highlights_task(self, paper_id: int) -> dict[str, Any]:
     # Use the paper owner's configured provider (BYO key). There is no
     # environment fallback: with no provider the step is skipped and the
     # retry sweep leaves it to run once one is configured.
-    p = get_provider_for_user_sync(paper.uploaded_by_id)
+    user_id = cast(int | None, paper.uploaded_by_id)
+    p = get_provider_for_user_sync(user_id)
     if not p:
       return {
         "status": "skipped",
         "reason": "no provider configured",
         "paper_id": paper_id,
       }
+    check_ai_rate_limit(user_id)
 
     import asyncio
 
@@ -486,6 +513,7 @@ def generate_highlights_task(self, paper_id: int) -> dict[str, Any]:
 @celery_app.task(bind=True, base=BaseAITask, name="ai.generate_embedding")
 def generate_embedding_task(self, paper_id: int) -> dict[str, Any]:
   """Generate embedding for a paper."""
+  push_paper_progress(paper_id, {"step": "embedding", "status": "running"})
   session = get_sync_session()
   try:
     paper = session.query(Paper).filter(Paper.id == paper_id).first()

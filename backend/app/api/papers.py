@@ -335,6 +335,52 @@ async def _single_paper_schema(
   return _paper_to_schema(paper, states.get(pid), user_id=uid, share=shares.get(pid))
 
 
+# NOTE: must be registered before /papers/{paper_id} so "recent" isn't
+# swallowed by the int path parameter.
+@router.get("/papers/recent", response_model=PaperListResponse)
+async def recent_papers_endpoint(
+  user: CurrentUser,
+  limit: int = Query(10, ge=1, le=50),
+  session: AsyncSession = Depends(get_db),
+):
+  """Papers the user opened most recently (server-side recents)."""
+  uid = scoped_user_id(user)
+  if uid is None:
+    return PaperListResponse(papers=[], total=0, page=1, page_size=limit)
+
+  result = await session.execute(
+    select(Paper)
+    .join(
+      UserPaperState,
+      (UserPaperState.paper_id == Paper.id) & (UserPaperState.user_id == uid),
+    )
+    .options(
+      selectinload(Paper.tags),
+      selectinload(Paper.groups),
+    )
+    .where(UserPaperState.last_opened_at.isnot(None))
+    .order_by(UserPaperState.last_opened_at.desc())
+    .limit(limit)
+  )
+  papers = list(result.scalars().all())
+
+  paper_ids = [cast(int, p.id) for p in papers]
+  states = await _fetch_user_states(session, uid, paper_ids)
+  shares = await _fetch_share_info(session, uid, paper_ids)
+
+  return PaperListResponse(
+    papers=[
+      _paper_to_schema(
+        p, states.get(cast(int, p.id)), user_id=uid, share=shares.get(cast(int, p.id))
+      )
+      for p in papers
+    ],
+    total=len(papers),
+    page=1,
+    page_size=limit,
+  )
+
+
 @router.get("/papers/{paper_id}", response_model=PaperSchema)
 async def get_paper_endpoint(
   paper_id: int, user: CurrentUser, session: AsyncSession = Depends(get_db)
@@ -343,6 +389,39 @@ async def get_paper_endpoint(
   uid = scoped_user_id(user)
   paper = await increment_view_count(session, paper_id, user_id=uid)
   return await _single_paper_schema(session, paper, uid)
+
+
+@router.get("/papers/{paper_id}/progress")
+async def get_paper_processing_progress(
+  paper_id: int, user: CurrentUser, session: AsyncSession = Depends(get_db)
+):
+  """Per-step processing progress, read from the Redis marker list."""
+  import json
+
+  paper = await get_visible_paper_or_404(
+    session, paper_id, user_id=scoped_user_id(user)
+  )
+
+  def _read_markers() -> list[str]:
+    from app.tasks.base import get_redis
+
+    return cast(
+      "list[str]", get_redis().lrange(f"paper:{paper_id}:progress", 0, -1)
+    )
+
+  events = []
+  for raw in await asyncio.to_thread(_read_markers):
+    try:
+      events.append(json.loads(raw))
+    except (ValueError, TypeError):
+      continue
+
+  return {
+    "paper_id": paper_id,
+    "processing_status": paper.processing_status,
+    "events": events,
+    "done": paper.processing_status in ("completed", "failed"),
+  }
 
 
 @router.get("/papers/{paper_id}/file")

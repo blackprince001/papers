@@ -16,7 +16,14 @@ from app.tasks.ai_tasks import (
   generate_reading_guide_task,
   generate_summary_task,
 )
-from app.tasks.base import BaseAITask, BaseTask, get_sync_session
+from app.tasks.base import (
+  BaseAITask,
+  BaseTask,
+  RateLimitExceeded,
+  check_ai_rate_limit,
+  get_sync_session,
+  push_paper_progress,
+)
 
 logger = get_logger(__name__)
 
@@ -89,6 +96,7 @@ def _build_citation_context(citation: dict[str, Any]) -> str:
 @celery_app.task(bind=True, base=BaseAITask, name="processing.extract_citations")
 def extract_citations_task(self, paper_id: int, file_path: str) -> dict[str, Any]:
   """Extract citations from a paper's layout blocks (or PDF fallback)."""
+  push_paper_progress(paper_id, {"step": "citations", "status": "running"})
   session = get_sync_session()
   try:
     paper = session.query(Paper).filter(Paper.id == paper_id).first()
@@ -121,13 +129,15 @@ def extract_citations_task(self, paper_id: int, file_path: str) -> dict[str, Any
     # Call AI to parse citations
     from app.services.ai.providers.base import GenerateConfig
 
-    provider = get_provider_for_user_sync(paper.uploaded_by_id)
+    user_id = cast(int | None, paper.uploaded_by_id)
+    provider = get_provider_for_user_sync(user_id)
     if not provider:
       return {
         "status": "skipped",
         "reason": "no provider configured",
         "paper_id": paper_id,
       }
+    check_ai_rate_limit(user_id)
 
     prompt = CITATION_EXTRACTION_PROMPT.format(text=references_text)
     config = GenerateConfig(
@@ -191,6 +201,9 @@ def extract_citations_task(self, paper_id: int, file_path: str) -> dict[str, Any
     return {"status": "success", "paper_id": paper_id, "citations_count": stored_count}
 
   except ProviderLookupError:
+    session.rollback()
+    raise
+  except RateLimitExceeded:
     session.rollback()
     raise
   except Exception as e:
@@ -312,6 +325,7 @@ def _finalize_paper_processing(
   failed — and none merely skipped for lack of a provider — do we mark the
   paper ``failed`` with no further retries.
   """
+  push_paper_progress(paper_id, {"step": "finalize", "status": "running"})
   statuses = [r.get("status") for r in results if isinstance(r, dict)]
   succeeded = [s for s in statuses if s == "success"]
   skipped = [s for s in statuses if s == "skipped"]
@@ -325,9 +339,11 @@ def _finalize_paper_processing(
     if succeeded or skipped:
       paper.processing_status = "completed"
       paper.processing_error = None
+      processing_status = "completed"
     else:
       paper.processing_status = "failed"
       paper.processing_error = "All AI processing steps failed"
+      processing_status = "failed"
     session.commit()
     logger.info(
       "Paper processing finalized",
@@ -336,6 +352,16 @@ def _finalize_paper_processing(
       succeeded=len(succeeded),
       skipped=len(skipped),
       total=len(statuses),
+    )
+    push_paper_progress(
+      paper_id,
+      {
+        "step": "finalize",
+        "status": processing_status,
+        "succeeded": len(succeeded),
+        "skipped": len(skipped),
+        "total": len(statuses),
+      },
     )
     return {
       "status": "success",

@@ -36,6 +36,8 @@ class UserPaperState(Base):
   reading_time_minutes = Column(Integer, nullable=False, default=0, server_default="0")
   last_read_page = Column(Integer, nullable=True)
   last_read_at = Column(DateTime(timezone=True), nullable=True)
+  # Touched every time the user opens the paper — powers server-side recents.
+  last_opened_at = Column(DateTime(timezone=True), nullable=True, index=True)
   status_updated_at = Column(DateTime(timezone=True), nullable=True)
   created_at = Column(
     DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False

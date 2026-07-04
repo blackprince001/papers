@@ -18,49 +18,43 @@ class Settings(BaseSettings):
   STORAGE_PATH: str = "./storage/papers"
   EMBEDDING_MODEL: str = "gemini-embedding-001"
   EMBEDDING_DIMENSION: int = 768
-  # Google key powers embeddings only (the one server-side default).
-  # Chat/feature providers are per-user (BYO) — there is no env-key fallback.
+
   GOOGLE_API_KEY: str = ""
   SERPAPI_KEY: str = ""
   SEMANTIC_SCHOLAR_API_KEY: str = ""
   OPENALEX_API_KEY: str = ""
   ENABLE_DEEP_RESEARCH: bool = False
   AGENT_MAX_TURNS: int = 25
+  AI_TASK_RATE_LIMIT: int = Field(
+    default=10, description="Max AI tasks per minute per user (Celery)"
+  )
   DEBUG: bool = False
   PORT: int = 8000
 
-  # Database connection components (optional, used to construct DATABASE_URL if not set)
-  # These have development defaults but should be explicitly set in production
   DB_HOST: str = ""
   DB_PORT: str = ""
   DB_USER: str = ""
   DB_PASSWORD: str = ""
   DB_NAME: str = ""
 
-  # Redis configuration
   REDIS_HOST: str = "localhost"
   REDIS_PORT: int = 6379
   REDIS_DB: int = 0
   REDIS_PASSWORD: str = ""
 
-  # JWT configuration
   JWT_SECRET_KEY: str = ""
   AI_KEY_ENCRYPTION_KEY: str = ""
   JWT_ALGORITHM: str = "HS256"
   ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
   REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-  # Google OAuth
   GOOGLE_CLIENT_ID: str = ""
 
-  # Admin credentials (base64-encoded)
   ADMIN_USERNAME: str = ""
   ADMIN_PASSWORD: str = ""
 
-  # Frontend URL for CORS
   FRONTEND_URL: str = "http://localhost:5173"
 
-  # Email (Resend)
   RESEND_API_KEY: str | None = None
   EMAIL_FROM: str = "noreply@papers.local"
   EMAIL_ENABLED: bool = False
