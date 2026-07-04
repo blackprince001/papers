@@ -29,6 +29,13 @@ export default function Search() {
   const [readingStatus, setReadingStatus] = useState('');
   const [priority, setPriority] = useState('');
 
+  // Semantic search availability (server embedding key present?)
+  const { data: capabilities } = useQuery({
+    queryKey: ['search', 'capabilities'],
+    queryFn: searchApi.getCapabilities,
+    staleTime: 5 * 60 * 1000,
+  });
+
   // Search query
   const { data, isLoading, isError } = useQuery({
     queryKey: ['search', query, mode, yearFrom, yearTo, readingStatus, priority],
@@ -71,6 +78,8 @@ export default function Search() {
 
   const hasFilters = yearFrom || yearTo || readingStatus || priority;
   const results = data?.results ?? [];
+  const semanticUnavailable =
+    capabilities?.semantic_available === false || data?.semantic_available === false;
 
   return (
     <div className="max-w-content mx-auto px-6 py-8">
@@ -184,6 +193,28 @@ export default function Search() {
           <span>Semantic</span>
         </button>
       </div>
+
+      {/* Semantic search degradation notice */}
+      {semanticUnavailable && mode === 'semantic' && (
+        <div className="flex items-start gap-3 px-3 py-2 mb-6 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 text-caption">
+          <span className="mt-0.5 shrink-0 text-sm">⚠</span>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-amber-800 dark:text-amber-200">
+              Semantic search is unavailable — the server has no embedding key configured.
+            </p>
+            <p className="text-(--muted-foreground) mt-0.5 text-[0.6875rem]">
+              Full-text search still works normally.
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            className="h-6! text-caption! shrink-0"
+            onClick={() => handleModeChange('fulltext')}
+          >
+            Use full-text
+          </Button>
+        </div>
+      )}
 
       {/* Results */}
       {isLoading && (

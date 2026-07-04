@@ -25,6 +25,13 @@ export interface SearchResponse {
   results: SearchResultItem[];
   query: string;
   total: number;
+  /** False when the server has no embedding key — semantic mode is degraded. */
+  semantic_available: boolean;
+}
+
+export interface SearchCapabilities {
+  semantic_available: boolean;
+  reason?: string | null;
 }
 
 export const searchApi = {
@@ -32,7 +39,7 @@ export const searchApi = {
     const { mode = 'fulltext', ...rest } = request;
     const endpoint = mode === 'semantic' ? '/search' : '/search/fulltext';
     
-    const response = await api.post<{ results: Array<{ paper: any; similarity: number }>; query: string; total: number }>(
+    const response = await api.post<{ results: Array<{ paper: any; similarity: number }>; query: string; total: number; semantic_available?: boolean }>(
       endpoint,
       { ...rest, limit: rest.limit || 20 }
     );
@@ -48,6 +55,10 @@ export const searchApi = {
       })),
       query: response.query,
       total: response.total,
+      semantic_available: response.semantic_available !== false,
     };
   },
+
+  getCapabilities: (): Promise<SearchCapabilities> =>
+    api.get<SearchCapabilities>('/search/capabilities'),
 };
