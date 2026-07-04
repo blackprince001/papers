@@ -9,6 +9,8 @@ export interface Tab {
   zoomLevel: number;
   sidebarOpen: boolean;
   url: string;
+  /** Which right-side panel tab (Details/Insights/Chat/...) this paper was last showing. */
+  panelTab?: string;
 }
 
 interface TabContextType {

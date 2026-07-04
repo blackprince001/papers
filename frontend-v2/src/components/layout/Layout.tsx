@@ -6,6 +6,7 @@ import ChatPanel from "./ChatPanel";
 import { TabBar } from "./TabBar";
 import { ReaderProvider } from "@/contexts/ReaderContext";
 import { ChatControllerProvider } from "@/contexts/ChatControllerContext";
+import { useTabs } from "@/contexts/TabContext";
 
 const SIDEBAR_MIN = 57;
 const SIDEBAR_SNAP_CLOSE = 154; // below this → snap to collapsed icon-only mode
@@ -67,9 +68,20 @@ export default function Layout() {
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
   const [chatWidth, setChatWidth] = useState(CHAT_MAX);
   const [chatPanelOpen, setChatPanelOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState("details");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { tabs, activeTabId, updateTab } = useTabs();
+
+  // The right-side panel tab (Details/Insights/Chat/...) is remembered per
+  // paper tab so switching tabs doesn't reset which panel you were viewing.
+  const activePaperTab = tabs.find((t) => t.id === activeTabId);
+  const activeTab = activePaperTab?.panelTab ?? "details";
+  const setActiveTab = useCallback(
+    (tab: string) => {
+      if (activeTabId) updateTab(activeTabId, { panelTab: tab });
+    },
+    [activeTabId, updateTab],
+  );
 
   // Only the reader route itself gets the tab bar + chat side panel. Sub-routes
   // like /papers/:id/chat are standalone pages and must not inherit that chrome.
@@ -88,7 +100,6 @@ export default function Layout() {
     if (isPaperDetailPage) {
       setChatPanelOpen(true);
       setChatWidth(CHAT_DEFAULT);
-      setActiveTab("details"); // Reset tab to details on new paper entry
     }
   }, [isPaperDetailPage, location.pathname]);
 
