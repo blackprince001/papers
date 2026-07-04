@@ -81,7 +81,8 @@ export default function PapersList() {
       const hasInFlight = papers.some(
         (p) => p.processing_status === 'pending' || p.processing_status === 'processing'
       );
-      return hasInFlight ? 3000 : false;
+      // Per-paper progress badges poll at 2.5s; this only refreshes coarse status.
+      return hasInFlight ? 10000 : false;
     },
   });
 

@@ -4,10 +4,12 @@ import { useQuery } from '@tanstack/react-query';
 import { papersApi } from '@/lib/api/papers';
 import { annotationsApi } from '@/lib/api/annotations';
 import { ReaderShell } from '@/components/reader/ReaderShell';
+import { ProcessingProgressPanel } from '@/components/ProcessingProgressPanel';
 import { useTabs } from '@/contexts/TabContext';
 import { useReadingSession } from '@/hooks/use-reading-session';
 import { Warning2 as AlertCircle, DocumentText as FileText } from 'iconsax-reactjs';
 import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 export default function PaperDetail() {
   const { id } = useParams<{ id: string }>();
@@ -59,9 +61,12 @@ export default function PaperDetail() {
 
   if (paperLoading) {
     return (
-      <div className="h-full flex flex-col items-center justify-center bg-(--background)">
-        <div className="w-12 h-12 rounded-full border-4 border-(--border) border-t-(--sky-blue) animate-spin" />
-        <p className="mt-4 text-code font-medium text-(--muted-foreground)">Fetching paper data...</p>
+      <div className="h-full w-full flex flex-col p-6 gap-4 bg-(--background)">
+        <Skeleton className="h-8 w-2/3" />
+        <div className="flex-1 flex gap-4 min-h-0">
+          <Skeleton className="flex-1 rounded-2xl" />
+          <Skeleton className="w-72 shrink-0 rounded-2xl hidden md:block" />
+        </div>
       </div>
     );
   }
@@ -80,21 +85,28 @@ export default function PaperDetail() {
   }
 
   return (
-    <div className="h-full w-full">
-      <ReaderShell
-        paper={paper}
-        annotations={annotations || []}
-        initialPage={initialPage}
-        focusRef={focusRef}
-        onAnnotationSuccess={() => {
-          refetchAnnotations();
-          refetchPaper();
-        }}
-        onCurrentPageChange={(page) => {
-          const activeTab = tabs.find((t) => t.id === activeTabId);
-          if (activeTab) updateTab(activeTab.id, { currentPage: page });
-        }}
+    <div className="h-full w-full flex flex-col">
+      <ProcessingProgressPanel
+        paperId={paperId}
+        processingStatus={paper.processing_status}
+        className="m-2 shrink-0"
       />
+      <div className="flex-1 min-h-0">
+        <ReaderShell
+          paper={paper}
+          annotations={annotations || []}
+          initialPage={initialPage}
+          focusRef={focusRef}
+          onAnnotationSuccess={() => {
+            refetchAnnotations();
+            refetchPaper();
+          }}
+          onCurrentPageChange={(page) => {
+            const activeTab = tabs.find((t) => t.id === activeTabId);
+            if (activeTab) updateTab(activeTab.id, { currentPage: page });
+          }}
+        />
+      </div>
     </div>
   );
 }

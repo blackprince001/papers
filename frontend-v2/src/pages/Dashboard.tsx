@@ -77,12 +77,22 @@ export default function Dashboard() {
     queryFn: () => papersApi.list(1, 6, undefined, { sort_by: 'date_added', sort_order: 'desc' }),
   });
 
+  // Server-side "recently opened" — survives device/browser changes.
+  const { data: recentlyOpenedData, isLoading: recentlyOpenedLoading } = useQuery({
+    queryKey: ['papers', 'recently-opened', 6],
+    queryFn: () => papersApi.getRecent(6),
+  });
+
   const { data: tagsData, isLoading: tagsLoading } = useQuery({
     queryKey: ['tags'],
     queryFn: () => tagsApi.list(1, 20),
   });
 
-  const recentPapers = recentData?.papers ?? [];
+  const recentlyAdded = recentData?.papers ?? [];
+  const recentlyOpened = recentlyOpenedData?.papers ?? [];
+  // Prefer "recently opened" once the user has actually opened papers.
+  const recentPapers = recentlyOpened.length > 0 ? recentlyOpened : recentlyAdded;
+  const recentTitle = recentlyOpened.length > 0 ? 'Recently Opened' : 'Recently Added';
   const tags = tagsData?.tags ?? [];
   const currentStreak = streaks?.current_streak ?? 0;
   const longestStreak = streaks?.longest_streak ?? 0;
@@ -237,11 +247,11 @@ export default function Dashboard() {
       {/* Recent papers + Tags */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent papers */}
-        {recentLoading ? (
+        {recentLoading || recentlyOpenedLoading ? (
           <DashCardSkeleton rows={5} />
         ) : (
           <DashCard
-            title="Recently Added"
+            title={recentTitle}
             trailing={
               <Link to="/papers" className="text-caption text-(--muted-foreground) hover:text-(--foreground)">
                 View all →

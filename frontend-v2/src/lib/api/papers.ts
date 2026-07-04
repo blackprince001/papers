@@ -17,6 +17,7 @@ export interface Paper {
   file_path?: string;
   file_url?: string;
   content_text?: string;
+  ai_summary?: string;
   metadata_json?: Record<string, unknown>;
   volume?: string;
   issue?: string;
@@ -40,6 +41,37 @@ export interface Paper {
   my_permission?: 'owner' | 'editor' | 'viewer';
   is_shared?: boolean;
   shared_by?: { id: number; display_name: string; email: string };
+}
+
+export type ProcessingStepName =
+  | 'citations'
+  | 'summary'
+  | 'findings'
+  | 'reading_guide'
+  | 'highlights'
+  | 'embedding'
+  | 'finalize';
+
+export type ProcessingStepStatus = 'running' | 'completed' | 'skipped' | 'failed';
+
+export interface ProcessingProgressEvent {
+  step: ProcessingStepName;
+  status: ProcessingStepStatus;
+  reason?: string;
+  error?: string;
+  count?: number;
+  anchored?: number;
+  citations_count?: number;
+  succeeded?: number;
+  skipped?: number;
+  total?: number;
+}
+
+export interface PaperProcessingProgress {
+  paper_id: number;
+  processing_status?: 'pending' | 'processing' | 'completed' | 'failed';
+  events: ProcessingProgressEvent[];
+  done: boolean;
 }
 
 export interface PaperCreate {
@@ -153,6 +185,10 @@ export interface Bookmark {
 }
 
 export const papersApi = {
+  /** Papers the user opened most recently (server-side recents). */
+  getRecent: (limit = 10): Promise<PaperListResponse> =>
+    api.get<PaperListResponse>('/papers/recent', { params: { limit } }),
+
   list: (page = 1, pageSize = 20, search?: string, filters?: PaperListFilters): Promise<PaperListResponse> => {
     const params = new URLSearchParams({
       page: page.toString(),
@@ -175,6 +211,9 @@ export const papersApi = {
 
   get: (id: number): Promise<Paper> =>
     api.get<Paper>(`/papers/${id}`),
+
+  getProgress: (id: number): Promise<PaperProcessingProgress> =>
+    api.get<PaperProcessingProgress>(`/papers/${id}/progress`),
 
   create: (paper: PaperCreate): Promise<Paper> =>
     api.post<Paper>('/ingest', paper),

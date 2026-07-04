@@ -117,7 +117,7 @@ export function PaperTable({ papers, sortBy, sortOrder, onSort, onDelete, select
                         </Link>
                       )}
                       {paper.processing_status && paper.processing_status !== 'completed' && (
-                        <ProcessingStatusBadge status={paper.processing_status} />
+                        <ProcessingStatusBadge status={paper.processing_status} paperId={paper.id} />
                       )}
                     </div>
                     {paper.doi && (

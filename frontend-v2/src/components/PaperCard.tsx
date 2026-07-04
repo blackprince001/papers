@@ -1,5 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Trash as Trash2, People, Message as MessageSquare } from 'iconsax-reactjs';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 import { getPaperTheme } from '@/lib/paper-themes';
 import { paperAuthors, paperYear } from '@/lib/paper-display';
@@ -9,6 +11,32 @@ import { ReadingStatusBadge } from '@/components/ReadingStatusBadge';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { ProcessingStatusBadge } from '@/components/ProcessingStatusBadge';
 import type { Paper } from '@/lib/api/papers';
+
+// Block elements (paragraphs, headings, lists...) and links are unwrapped to
+// their plain inline text — the card only has room for a 2-line clamp, and a
+// nested <a> would break out of the card's own <Link>. Only inline emphasis
+// (bold/italic/code) survives as real markup.
+const SUMMARY_BLOCK_ELEMENTS = [
+  'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'ul', 'ol', 'li', 'blockquote', 'pre', 'hr',
+  'table', 'thead', 'tbody', 'tr', 'th', 'td',
+  'a', 'img',
+];
+
+function SummaryPreview({ text }: { text: string }) {
+  // Only the first paragraph is worth parsing — the rest is clipped by the
+  // line-clamp anyway, and rendering it would run paragraph breaks together.
+  const firstParagraph = text.split(/\n\s*\n/)[0];
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      disallowedElements={SUMMARY_BLOCK_ELEMENTS}
+      unwrapDisallowed
+    >
+      {firstParagraph}
+    </ReactMarkdown>
+  );
+}
 
 interface PaperCardProps {
   paper: Paper;
@@ -70,7 +98,7 @@ export function PaperCard({
 
           {/* Processing badge (only when not completed) */}
           {paper.processing_status && paper.processing_status !== 'completed' && (
-            <ProcessingStatusBadge status={paper.processing_status} />
+            <ProcessingStatusBadge status={paper.processing_status} paperId={paper.id} />
           )}
 
           {/* Reading status */}
@@ -158,10 +186,10 @@ export function PaperCard({
             </p>
           )}
 
-          {/* Abstract / content preview */}
-          {paper.content_text && (
+          {/* AI-generated abstract preview */}
+          {paper.ai_summary && (
             <p className="text-caption line-clamp-2 leading-relaxed opacity-80 mb-3" style={{ color: theme.text }}>
-              {paper.content_text.slice(0, 200)}
+              <SummaryPreview text={paper.ai_summary} />
             </p>
           )}
 
