@@ -39,7 +39,7 @@ export function Providers() {
 
           <a
             href={APP_URL}
-            className="mt-10 inline-flex items-center gap-2 rounded-xl bg-forest px-6 py-3.5 text-base font-semibold text-off-white transition-colors hover:bg-true-black"
+            className="mt-10 inline-flex items-center gap-2 rounded-xl bg-forest px-6 py-3.5 text-base font-semibold text-off-white transition-[background-color,transform] duration-150 ease-out hover:bg-true-black active:scale-[0.97]"
           >
             Create a free account
           </a>

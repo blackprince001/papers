@@ -18,10 +18,7 @@ const SOURCES = [
 function Row({ reverse = false }: { reverse?: boolean }) {
   return (
     <div
-      className="flex w-max shrink-0 items-center gap-4 pr-4"
-      style={{
-        animation: `marquee 38s linear infinite${reverse ? ' reverse' : ''}`,
-      }}
+      className={`marquee-row flex w-max shrink-0 items-center gap-4 pr-4${reverse ? ' marquee-row-reverse' : ''}`}
     >
       {[...SOURCES, ...SOURCES].map((s, i) => (
         <span

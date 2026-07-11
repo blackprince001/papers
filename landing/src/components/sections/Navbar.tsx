@@ -35,7 +35,7 @@ export function Navbar() {
           </a>
           <a
             href={APP_URL}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-forest px-4 py-2 text-sm font-semibold text-off-white transition-colors hover:bg-true-black"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-forest px-4 py-2 text-sm font-semibold text-off-white transition-[background-color,transform] duration-150 ease-out hover:bg-true-black active:scale-[0.97]"
           >
             Open Lumen <ArrowRight size={15} />
           </a>
@@ -45,6 +45,7 @@ export function Navbar() {
           className="text-forest md:hidden"
           onClick={() => setOpen((v) => !v)}
           aria-label="Toggle menu"
+          aria-expanded={open}
         >
           {open ? <CloseCircle size={26} /> : <HamburgerMenu size={26} />}
         </button>
@@ -64,7 +65,13 @@ export function Navbar() {
           ))}
           <a
             href={APP_URL}
-            className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-xl bg-forest px-4 py-3 text-sm font-semibold text-off-white"
+            className="border-b border-border-gray py-3 text-sm font-medium text-mid-gray hover:text-forest"
+          >
+            Sign in
+          </a>
+          <a
+            href={APP_URL}
+            className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-xl bg-forest px-4 py-3 text-sm font-semibold text-off-white active:scale-[0.98]"
           >
             Open Lumen <ArrowRight size={15} />
           </a>

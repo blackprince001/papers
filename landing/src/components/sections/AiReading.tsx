@@ -18,15 +18,15 @@ const PANELS: Panel[] = [
     caption: 'Context-aware Q&A',
     gradient: 'from-mint to-mint-deep',
     text: 'text-deep-forest',
-    span: 'col-span-12 md:col-span-4',
-    src: '/screens/chat-tab.png',
+    span: 'col-span-12 md:col-span-8',
+    src: '/screens/chat-alongside.png',
   },
   {
     title: 'Auto summaries & key findings',
     caption: 'Generated on ingestion',
     gradient: 'from-sky to-[#2b6fbf]',
     text: 'text-white',
-    span: 'col-span-12 md:col-span-8',
+    span: 'col-span-12 md:col-span-4',
     src: '/screens/summary.png',
   },
   {
@@ -53,7 +53,7 @@ export function AiReading() {
       <div className="mb-10 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
         <h2 className="max-w-2xl text-4xl font-bold tracking-tight text-forest md:text-5xl">
           AI that helps you read,
-          <span className="text-cool-gray"> not read for you.</span>
+          <span className="text-mid-gray"> not read for you.</span>
         </h2>
         <motion.a
           href={APP_URL}
@@ -81,7 +81,7 @@ export function AiReading() {
                     src={p.src}
                     alt={p.title}
                     loading="lazy"
-                    className="block h-auto w-full"
+                    className="size-full object-cover object-top"
                   />
                 </div>
               ) : (

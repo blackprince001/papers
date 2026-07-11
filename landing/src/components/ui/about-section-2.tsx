@@ -56,18 +56,18 @@ export default function AboutSection2() {
       y: 0,
       opacity: 1,
       filter: 'blur(0px)',
-      transition: { delay: i * 0.4, duration: 0.7 },
+      transition: { delay: i * 0.08, duration: 0.5, ease: 'easeOut' },
     }),
-    hidden: { filter: 'blur(10px)', y: 40, opacity: 0 },
+    hidden: { filter: 'blur(8px)', y: 20, opacity: 0 },
   };
 
   const textVariants: Variants = {
     visible: (i: number) => ({
       filter: 'blur(0px)',
       opacity: 1,
-      transition: { delay: i * 0.2, duration: 0.7 },
+      transition: { delay: i * 0.06, duration: 0.45, ease: 'easeOut' },
     }),
-    hidden: { filter: 'blur(10px)', opacity: 0 },
+    hidden: { filter: 'blur(8px)', opacity: 0 },
   };
 
   const current = CONTENT_TYPES[active];

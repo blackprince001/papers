@@ -53,7 +53,7 @@ export function Features() {
             How Lumen can help
           </span>
           <h2 className="mt-3 text-4xl font-bold tracking-tight text-forest md:text-5xl">
-            We've got you covered
+            We&rsquo;ve got you covered
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-mid-gray">
             From discovering your first paper, to managing references, to writing
@@ -68,24 +68,28 @@ export function Features() {
               className={`flex flex-col overflow-hidden rounded-3xl border border-border-gray bg-card-surface p-7 md:p-8 ${f.span}`}
             >
               <h3 className="text-xl font-semibold tracking-tight text-forest">
-                {f.title}{' '}
-                <span className="font-normal text-mid-gray">{f.body}</span>
+                {f.title}
               </h3>
+              <p className="mt-1 text-xl font-normal tracking-tight text-mid-gray">
+                {f.body}
+              </p>
+              {/* Spacer keeps at least one gap between copy and shot while pinning the shot to the card bottom. */}
+              <div className="min-h-6 flex-1" />
               {f.src ? (
-                // Let the screenshot bleed to the card's right edge so it reads big.
-                <div className="-mr-7 mt-6 overflow-hidden rounded-l-xl shadow-[0_20px_50px_-25px_rgba(35,41,39,0.5)] md:-mr-8">
+                // Fixed-height frame bleeding into the bottom-right corner; crop keeps the top-left of the UI.
+                <div className="-mb-7 -mr-7 h-[280px] overflow-hidden rounded-tl-xl shadow-[0_20px_50px_-25px_rgba(35,41,39,0.5)] md:-mb-8 md:-mr-8 lg:h-[320px]">
                   <img
                     src={f.src}
                     alt={f.placeholder}
                     loading="lazy"
-                    className="block h-auto w-full"
+                    className="size-full object-cover object-left-top"
                   />
                 </div>
               ) : (
                 <Placeholder
                   label={f.placeholder}
                   hint={f.hint}
-                  className="mt-6 min-h-[240px] bg-off-white"
+                  className="min-h-[240px] bg-off-white"
                 />
               )}
             </article>

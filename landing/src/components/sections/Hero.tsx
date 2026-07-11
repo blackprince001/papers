@@ -22,13 +22,13 @@ export function Hero() {
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <a
             href={APP_URL}
-            className="inline-flex items-center gap-2 rounded-xl bg-forest px-6 py-3.5 text-base font-semibold text-off-white transition-colors hover:bg-true-black"
+            className="inline-flex items-center gap-2 rounded-xl bg-forest px-6 py-3.5 text-base font-semibold text-off-white transition-[background-color,transform] duration-150 ease-out hover:bg-true-black active:scale-[0.97]"
           >
             Open Lumen <ArrowRight size={18} />
           </a>
           <a
             href="#how-it-works"
-            className="inline-flex items-center gap-2 rounded-xl border border-border-gray bg-off-white px-6 py-3.5 text-base font-semibold text-forest transition-colors hover:bg-card-surface"
+            className="inline-flex items-center gap-2 rounded-xl border border-border-gray bg-off-white px-6 py-3.5 text-base font-semibold text-forest transition-[background-color,transform] duration-150 ease-out hover:bg-card-surface active:scale-[0.97]"
           >
             See how it works
           </a>
@@ -41,6 +41,7 @@ export function Hero() {
           <img
             src="/screens/dashboard-light.png"
             alt="Lumen library"
+            fetchPriority="high"
             className="block w-full rounded-2xl shadow-[0_50px_90px_-40px_rgba(35,41,39,0.55)]"
             style={{
               transform: 'rotateX(9deg) scale(1.01)',

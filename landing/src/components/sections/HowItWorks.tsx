@@ -1,6 +1,6 @@
 import SectionWithMockup from '@/components/ui/section-with-mockup';
 import { Carousel } from '@/components/Carousel';
-import { IMG_WIDE, IMG_WIDE_LEFT } from '@/lib/img';
+import { IMG_CROP, IMG_CROP_RIGHT, IMG_WIDE, IMG_WIDE_LEFT } from '@/lib/img';
 
 interface Step {
   eyebrow: string;
@@ -66,6 +66,8 @@ export function HowItWorks() {
       <div className="flex flex-col gap-24 md:gap-36">
         {STEPS.map((s) => {
           const sizing = s.reverse ? IMG_WIDE_LEFT : IMG_WIDE;
+          // Reversed steps sit left of the copy, so keep their right edge; normal steps keep their left.
+          const crop = s.reverse ? IMG_CROP_RIGHT : IMG_CROP;
           return (
             <SectionWithMockup
               key={s.eyebrow}
@@ -81,13 +83,14 @@ export function HowItWorks() {
                     alt={s.alt}
                     tone="dark"
                     className={sizing}
+                    imgClassName={crop}
                   />
                 ) : (
                   <img
                     src={s.src}
                     alt={s.alt}
                     loading="lazy"
-                    className={sizing}
+                    className={`${sizing} ${crop}`}
                   />
                 )
               }

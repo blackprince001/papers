@@ -7,9 +7,15 @@ tags: [landing, marketing, react]
 timestamp: 2026-06-28T00:00:00Z
 ---
 
-`landing/src/App.tsx` (`:12-28`) renders one scrolling marketing page by
-stacking 9 section components in order (no React Router). Root wrapper:
-`<div className="min-h-screen overflow-x-clip bg-off-white text-forest">` (`App.tsx:14`).
+`landing/src/App.tsx` renders one scrolling marketing page by
+stacking 9 section components in order (no React Router). The tree is wrapped
+in `<MotionConfig reducedMotion="user">` so every `motion/react` animation
+respects `prefers-reduced-motion`; inside it the root wrapper is
+`<div className="min-h-screen overflow-x-clip bg-off-white text-forest">`.
+CSS-side reduced-motion (marquee keyframes, smooth scroll) is handled in
+`landing/src/index.css` via a `prefers-reduced-motion` media query and the
+`.marquee-row` / `.marquee-row-reverse` utility classes used by
+`SourcesMarquee`.
 
 # Sections (in render order)
 

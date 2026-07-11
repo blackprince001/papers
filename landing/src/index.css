@@ -57,7 +57,7 @@
 @theme inline {
   --font-sans:
     'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'Inter', ui-monospace, SFMono-Regular, monospace;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -111,6 +111,22 @@
   }
   to {
     transform: translateX(-50%);
+  }
+}
+
+.marquee-row {
+  animation: marquee 38s linear infinite;
+}
+.marquee-row-reverse {
+  animation-direction: reverse;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+  .marquee-row {
+    animation: none;
   }
 }
 

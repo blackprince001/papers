@@ -7,6 +7,8 @@ interface CarouselProps {
   alt: string;
   /** Sizing class for the outer frame (e.g. IMG_WIDE). */
   className?: string;
+  /** Extra classes for the front image itself (e.g. IMG_CROP height caps). */
+  imgClassName?: string;
   /** Deck-card styling behind the front image. */
   tone?: 'light' | 'dark';
 }
@@ -15,7 +17,13 @@ interface CarouselProps {
  * A stacked deck of screenshots. Clicking anywhere advances to the next image,
  * cycling through like a deck of cards. No prev/next buttons by design.
  */
-export function Carousel({ images, alt, className, tone = 'light' }: CarouselProps) {
+export function Carousel({
+  images,
+  alt,
+  className,
+  imgClassName,
+  tone = 'light',
+}: CarouselProps) {
   const [i, setI] = useState(0);
   const n = images.length;
   const next = () => setI((prev) => (prev + 1) % n);
@@ -26,18 +34,14 @@ export function Carousel({ images, alt, className, tone = 'light' }: CarouselPro
       : 'border-forest/10 bg-card-surface';
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       aria-label={`${alt} — click to cycle through ${n} screenshots`}
       onClick={next}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          next();
-        }
-      }}
-      className={cn('group relative block cursor-pointer select-none', className)}
+      className={cn(
+        'group relative block cursor-pointer select-none rounded-2xl text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring',
+        className
+      )}
     >
       {/* Deck cards peeking out behind the front image */}
       <div
@@ -65,12 +69,15 @@ export function Carousel({ images, alt, className, tone = 'light' }: CarouselPro
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.985 }}
           transition={{ duration: 0.28, ease: 'easeOut' }}
-          className="relative block h-auto w-full rounded-2xl shadow-[0_30px_90px_-20px_rgba(35,41,39,0.55)] ring-1 ring-forest/5"
+          className={cn(
+            'relative block h-auto w-full rounded-2xl shadow-[0_30px_90px_-20px_rgba(35,41,39,0.55)] ring-1 ring-forest/5',
+            imgClassName
+          )}
         />
       </AnimatePresence>
 
       {/* Progress dots */}
-      <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-1.5 rounded-full bg-forest-black/35 px-2.5 py-1.5 backdrop-blur-sm">
+      <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-1.5 rounded-full bg-forest/35 px-2.5 py-1.5 backdrop-blur-sm">
         {images.map((_, idx) => (
           <span
             key={idx}
@@ -81,6 +88,6 @@ export function Carousel({ images, alt, className, tone = 'light' }: CarouselPro
           />
         ))}
       </div>
-    </div>
+    </button>
   );
 }

@@ -1,3 +1,4 @@
+import { MotionConfig } from 'motion/react';
 import { Navbar } from '@/components/sections/Navbar';
 import { Hero } from '@/components/sections/Hero';
 import { SourcesMarquee } from '@/components/sections/SourcesMarquee';
@@ -11,19 +12,21 @@ import { Footer } from '@/components/sections/Footer';
 
 export default function App() {
   return (
-    <div className="min-h-screen overflow-x-clip bg-off-white text-forest">
-      <Navbar />
-      <main>
-        <Hero />
-        <SourcesMarquee />
-        <AboutSection2 />
-        <Features />
-        <AiReading />
-        <HowItWorks />
-        <Providers />
-        <FinalCta />
-      </main>
-      <Footer />
-    </div>
+    <MotionConfig reducedMotion="user">
+      <div className="min-h-screen overflow-x-clip bg-off-white text-forest">
+        <Navbar />
+        <main>
+          <Hero />
+          <SourcesMarquee />
+          <AboutSection2 />
+          <Features />
+          <AiReading />
+          <HowItWorks />
+          <Providers />
+          <FinalCta />
+        </main>
+        <Footer />
+      </div>
+    </MotionConfig>
   );
 }

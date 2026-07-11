@@ -14,12 +14,12 @@ interface SectionWithMockupProps {
 
 const containerVariants: Variants = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.2 } },
+  visible: { transition: { staggerChildren: 0.08 } },
 };
 
 const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 50 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: 'easeOut' } },
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: 'easeOut' } },
 };
 
 const SectionWithMockup: React.FC<SectionWithMockupProps> = ({
@@ -61,7 +61,7 @@ const SectionWithMockup: React.FC<SectionWithMockupProps> = ({
             <h2 className="text-3xl font-semibold leading-tight text-white md:text-[40px] md:leading-[1.15]">
               {title}
             </h2>
-            <p className="text-[15px] leading-7 text-white/55">{description}</p>
+            <p className="text-[15px] leading-7 text-white/70">{description}</p>
           </motion.div>
 
           {/* Mockup content — rendered big, free to bleed past the edge */}
