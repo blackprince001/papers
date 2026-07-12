@@ -1,18 +1,15 @@
+import { Skeleton as HeroSkeleton } from '@heroui/react';
 import { cn } from '@/lib/utils';
+
+/* Lumen facade over the HeroUI v3 Skeleton (shimmer). Shape comes from the
+ * caller's className, exactly as before. */
 
 interface SkeletonProps {
   className?: string;
 }
 
 export function Skeleton({ className }: SkeletonProps) {
-  return (
-    <div
-      className={cn(
-        'animate-pulse motion-reduce:animate-none rounded-lg bg-(--muted)',
-        className,
-      )}
-    />
-  );
+  return <HeroSkeleton className={cn('rounded-lg motion-reduce:animate-none', className)} />;
 }
 
 interface SkeletonTextProps {

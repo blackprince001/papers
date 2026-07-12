@@ -1,14 +1,18 @@
+import { Children, isValidElement, type OptionHTMLAttributes, type ReactNode } from 'react';
 import {
-  Children,
-  isValidElement,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-  type OptionHTMLAttributes,
-} from 'react';
-import { ArrowDown2 as ChevronDown, TickCircle as Check } from 'iconsax-reactjs';
+  ListBox,
+  ListBoxItem,
+  SelectIndicator,
+  SelectPopover,
+  SelectRoot,
+  SelectTrigger,
+  SelectValue,
+} from '@heroui/react';
 import { cn } from '@/lib/utils';
+
+/* Lumen facade over the HeroUI v3 Select (React Aria). Keeps the historical
+ * native-select-like API: <option> children and onChange({target:{value}}).
+ * Keyboard nav, typeahead, and focus management come from React Aria. */
 
 interface SelectProps {
   value?: string | number | readonly string[];
@@ -60,136 +64,51 @@ export function Select({
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
 }: SelectProps) {
-  const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [triggerWidth, setTriggerWidth] = useState<number | null>(null);
-
   const items = collectItems(children);
-  const current = value !== undefined ? String(value) : defaultValue !== undefined ? String(defaultValue) : '';
-  const selected = items.find((it) => it.value === current);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (
-        !triggerRef.current?.contains(e.target as Node) &&
-        !contentRef.current?.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
-    };
-    const escape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    document.addEventListener('keydown', escape);
-    return () => {
-      document.removeEventListener('mousedown', handler);
-      document.removeEventListener('keydown', escape);
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (open && triggerRef.current) {
-      setTriggerWidth(triggerRef.current.offsetWidth);
-    }
-  }, [open]);
-
-  const choose = (v: string) => {
-    setOpen(false);
-    if (v !== current) {
-      onChange?.({ target: { value: v } });
-    }
-  };
-
-  const displayLabel = selected
-    ? selected.label
-    : placeholder
-    ? <span className="text-(--muted-foreground)">{placeholder}</span>
-    : items[0]?.label ?? null;
+  const selectedKey = value === undefined ? undefined : value === '' ? null : String(value);
+  const defaultKey = defaultValue === undefined ? undefined : String(defaultValue);
 
   return (
-    <div className="relative inline-flex w-full">
-      <button
-        ref={triggerRef}
-        type="button"
-        id={id}
-        name={name}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-required={required || undefined}
-        aria-label={ariaLabel}
-        aria-labelledby={ariaLabelledBy}
-        disabled={disabled}
-        onClick={() => setOpen((o) => !o)}
-        className={cn(
-          'w-full inline-flex items-center justify-between gap-2',
-          'bg-(--card) text-(--foreground)',
-          'text-code font-normal leading-5',
-          'pl-3 pr-2.5 h-9',
-          'rounded-lg border border-(--border)',
-          'hover:bg-(--muted)',
-          'focus:outline-none focus:border-(--ring) focus:ring-2 focus:ring-(--ring)/10',
-          'disabled:opacity-40 disabled:cursor-not-allowed',
-          'transition-colors duration-150 cursor-pointer',
-          error && 'border-(--destructive)',
-          className,
-        )}
-      >
-        <span className="truncate text-left">{displayLabel}</span>
-        <ChevronDown
-          size={14}
-          className={cn(
-            'shrink-0 text-(--muted-foreground) transition-transform duration-150',
-            open && 'rotate-180',
-          )}
-        />
-      </button>
-
-      {open && (
-        <div
-          ref={contentRef}
-          role="listbox"
-          style={triggerWidth ? { minWidth: triggerWidth } : undefined}
-          className={cn(
-            'absolute z-50 top-full left-0 mt-1.5',
-            'bg-(--popover) border border-(--border) rounded-lg',
-            'shadow-elevated p-1',
-            'max-h-64 overflow-y-auto',
-            'animate-in fade-in-0 zoom-in-95 duration-100',
-          )}
-        >
+    <SelectRoot
+      selectedKey={selectedKey}
+      defaultSelectedKey={defaultKey}
+      onSelectionChange={(key) => {
+        if (key != null) onChange?.({ target: { value: String(key) } });
+      }}
+      isDisabled={disabled}
+      isRequired={required}
+      placeholder={placeholder}
+      name={name}
+      id={id}
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
+      className="w-full"
+    >
+      <SelectTrigger className={cn('w-full', error && 'border-(--danger)', className)}>
+        <SelectValue />
+        <SelectIndicator />
+      </SelectTrigger>
+      <SelectPopover>
+        <ListBox>
           {items.length === 0 ? (
-            <div className="px-2.5 py-1.5 text-code text-(--muted-foreground)">No options</div>
+            <ListBoxItem id="__empty" isDisabled textValue="No options">
+              No options
+            </ListBoxItem>
           ) : (
-            items.map((it) => {
-              const active = it.value === current;
-              return (
-                <button
-                  key={it.value}
-                  type="button"
-                  role="option"
-                  aria-selected={active}
-                  disabled={it.disabled}
-                  onClick={() => choose(it.value)}
-                  className={cn(
-                    'w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md text-left',
-                    'text-code text-(--foreground)',
-                    'hover:bg-(--muted) transition-colors duration-100',
-                    'disabled:opacity-40 disabled:cursor-not-allowed',
-                    active && 'bg-(--muted) font-medium',
-                  )}
-                >
-                  <span className="truncate">{it.label || <span className="text-(--muted-foreground)">(empty)</span>}</span>
-                  {active && <Check size={12} className="shrink-0 text-(--foreground)" />}
-                </button>
-              );
-            })
+            items.map((it) => (
+              <ListBoxItem
+                key={it.value}
+                id={it.value}
+                isDisabled={it.disabled}
+                textValue={typeof it.label === 'string' ? it.label : it.value}
+              >
+                {it.label}
+              </ListBoxItem>
+            ))
           )}
-        </div>
-      )}
-    </div>
+        </ListBox>
+      </SelectPopover>
+    </SelectRoot>
   );
 }
 
