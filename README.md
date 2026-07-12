@@ -160,39 +160,31 @@ Papers relies on several third-party services and libraries that need to be conf
    - Node.js 18+ or Bun: <https://nodejs.org/> or <https://bun.sh/>
    - Docker & Docker Compose: <https://www.docker.com/products/docker-desktop>
 
-### Local Development Setup
+There are three ways to run Papers. Pick one:
+
+| Mode | Compose file | Best for |
+| --- | --- | --- |
+| [Local instance](#local-instance-without-docker) | none (or services-only) | Day-to-day development with hot reload |
+| [Docker dev](#docker-dev) | `docker-compose.dev.yml` | Running the full stack locally, HTTP only |
+| [Docker prod](#production-deployment) | `docker-compose.prod.yml` | Self-hosting on a server with a real domain + TLS |
+
+> There is no plain `docker-compose.yml` — always pass `-f docker-compose.dev.yml` or `-f docker-compose.prod.yml`.
+
+### Local Instance (Without Docker)
+
+Run PostgreSQL and Redis (the easiest way is Docker for just the services), then run the backend and frontend directly with hot reload.
+
+**PostgreSQL & Redis:**
 
 ```bash
-# Clone the repository
-git clone <your-repo-url>
-cd papers
+# Using Docker for just the services
+# (dev compose maps postgres to host port 5433, redis to 6379)
+docker compose -f docker-compose.dev.yml up -d postgres redis
 
-# Create .env file in root directory
-cat > .env << EOF
-GOOGLE_API_KEY=your_google_api_key_here
-GOOGLE_CLIENT_ID=your_google_client_id_here
-SEMANTIC_SCHOLAR_API_KEY=optional_semantic_scholar_key
-SERPAPI_KEY=optional_serpapi_key
-DB_PASSWORD=your_secure_password
-JWT_SECRET_KEY=your_random_secret_key
-ADMIN_USERNAME=$(echo -n "admin" | base64)
-ADMIN_PASSWORD=$(echo -n "yourpassword" | base64)
-EOF
-
-# Start all services with Docker
-docker compose up -d
-
-# Run database migrations
-docker compose exec backend alembic upgrade head
-
-# Access the application
-# Frontend: http://papers.localhost
-# Backend API: http://api.localhost
-# API Docs: http://api.localhost/docs
-# Traefik Dashboard: http://traefik.localhost/dashboard
+# Or install locally and run
+# PostgreSQL: createdb papers; psql papers -c "CREATE EXTENSION IF NOT EXISTS vector;"
+# Redis: redis-server
 ```
-
-### Local Development (Without Docker)
 
 **Backend:**
 
@@ -201,11 +193,14 @@ cd backend
 uv sync                           # Install dependencies
 export GOOGLE_API_KEY=your_key
 export GOOGLE_CLIENT_ID=your_client_id
-export JWT_SECRET_KEY=your_secret
+export JWT_SECRET_KEY=$(openssl rand -hex 32)
+export AI_KEY_ENCRYPTION_KEY=$(openssl rand -hex 32)   # encrypts user-provided AI keys
 export ADMIN_USERNAME=$(echo -n "admin" | base64)
 export ADMIN_PASSWORD=$(echo -n "yourpassword" | base64)
 export DB_HOST=localhost
+export DB_PORT=5433               # 5432 if running PostgreSQL natively
 export DB_NAME=papers
+export FRONTEND_URL=http://localhost:5173
 export DEBUG=true
 uv run alembic upgrade head      # Run migrations
 uv run fastapi dev app/main.py   # Start dev server (localhost:8000)
@@ -222,25 +217,69 @@ echo "VITE_GOOGLE_CLIENT_ID=your_google_client_id" >> .env
 bun run dev                       # or: npm run dev (localhost:5173)
 ```
 
-**Celery Worker (optional for background tasks):**
+**Celery Worker (needed for paper ingestion and AI background tasks):**
 
 ```bash
 cd backend
-uv run celery -A app.celery_app worker -l info -Q ai,processing,dead_letter
+uv run celery -A app.celery_app worker -l info -Q ai,processing,discovery,dead_letter
+
+# Optional: beat scheduler for periodic retry sweeps
+uv run celery -A app.celery_app beat -l info
 ```
 
-**PostgreSQL & Redis:**
+### Docker Dev
+
+`docker-compose.dev.yml` runs the full 7-service stack (Traefik, PostgreSQL, Redis, backend, 2 Celery workers, Celery beat, frontend) behind Traefik on port 80, HTTP only. The hostnames are **hardcoded** to `*.testing.maurc.org`, so point them at localhost first:
 
 ```bash
-# Using Docker for just services
-docker compose up -d postgres redis
-
-# Or install locally and run
-# PostgreSQL: createdb papers; psql papers -c "CREATE EXTENSION IF NOT EXISTS vector;"
-# Redis: redis-server
+# Add the dev hostnames to /etc/hosts
+echo "127.0.0.1 testing.maurc.org api.testing.maurc.org traefik.testing.maurc.org" | sudo tee -a /etc/hosts
 ```
 
+```bash
+# Clone the repository
+git clone <your-repo-url>
+cd papers
+
+# Create .env from the template and fill in your values
+cp .env.example .env
+```
+
+At minimum set these in `.env` (the dev compose defaults `DB_USER`/`DB_PASSWORD` to `postgres` and `DEBUG` to `true`):
+
+```bash
+GOOGLE_API_KEY=your_google_api_key_here
+GOOGLE_CLIENT_ID=your_google_client_id_here
+JWT_SECRET_KEY=your_random_secret_key
+AI_KEY_ENCRYPTION_KEY=your_random_secret_key
+ADMIN_USERNAME=YWRtaW4=              # base64("admin")
+ADMIN_PASSWORD=your_base64_password
+
+# Dev URLs (must match the /etc/hosts entries above)
+FRONTEND_URL=http://testing.maurc.org
+APP_URL=http://testing.maurc.org
+VITE_API_URL=http://api.testing.maurc.org/api/v1
+VITE_GOOGLE_CLIENT_ID=your_google_client_id_here
+```
+
+Then build and start:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d --build
+```
+
+Database migrations run automatically when the backend container starts (`alembic upgrade head` is part of the image's startup command) — no manual migration step.
+
+Once up:
+
+- App: <http://testing.maurc.org>
+- API: <http://api.testing.maurc.org> (health check at `/health`)
+- Traefik dashboard: <http://traefik.testing.maurc.org/dashboard/>
+- PostgreSQL is exposed on host port **5433** and Redis on **6379** for debugging.
+
 ## Production Deployment
+
+`docker-compose.prod.yml` runs the same 7-service stack as dev, with production hardening: Traefik terminates TLS on port 443 with automatic Let's Encrypt certificates (HTTP redirects to HTTPS), all hostnames come from environment variables instead of being hardcoded, security-headers middleware is attached to every router, the database and Redis ports are not exposed to the host, and paper storage is bind-mounted to `./backend/storage` so it lives on the server's disk.
 
 ### 1. Prepare Your Server
 
@@ -273,6 +312,7 @@ SERPAPI_KEY=your_optional_api_key
 
 # Auth
 JWT_SECRET_KEY=your_very_long_random_secret_key
+AI_KEY_ENCRYPTION_KEY=another_long_random_secret_key
 ADMIN_USERNAME=YWRtaW4=        # base64("admin")
 ADMIN_PASSWORD=your_base64_password
 
@@ -288,8 +328,12 @@ LETSENCRYPT_EMAIL=your-email@yourdomain.com
 TRAEFIK_DOMAIN=traefik.yourdomain.com
 BACKEND_DOMAIN=api.yourdomain.com
 FRONTEND_DOMAIN=papers.yourdomain.com
-FRONTEND_URL=https://papers.yourdomain.com
+
+# Frontend build args (VITE_API_URL is derived from BACKEND_DOMAIN automatically)
+VITE_GOOGLE_CLIENT_ID=your_google_client_id_here
 ```
+
+`FRONTEND_URL` and `APP_URL` are derived from `FRONTEND_DOMAIN` in the prod compose file, so you don't need to set them.
 
 ### 3. Configure DNS
 
@@ -307,18 +351,19 @@ papers.yourdomain.com     A  your.server.ip.address
 cd /opt/papers
 
 # Create directories for persistent data
-mkdir -p data/storage letsencrypt
+# (backend/storage is bind-mounted into the backend and workers;
+#  letsencrypt stores the ACME certificates)
+mkdir -p backend/storage letsencrypt
 
-# Start all services
+# Build and start all services
 docker compose -f docker-compose.prod.yml up -d --build
-
-# Run database migrations
-docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
 
 # Verify it's running
 curl https://api.yourdomain.com/health
 curl https://papers.yourdomain.com
 ```
+
+Database migrations run automatically when the backend container starts, so there is no manual migration step. Certificate provisioning can take a minute on first boot — check `docker compose -f docker-compose.prod.yml logs traefik` if HTTPS isn't up immediately.
 
 ## Contributing
 
