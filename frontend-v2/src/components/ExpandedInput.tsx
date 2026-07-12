@@ -10,10 +10,8 @@ import { useQuery } from "@tanstack/react-query";
 import { annotationsApi } from "@/lib/api/annotations";
 import { papersApi } from "@/lib/api/papers";
 import {
-  AnnotationIcon,
   CheckIcon,
   ChevronDownIcon,
-  EditIcon,
   FileTextIcon,
   LibraryIcon,
   NoteIcon,
@@ -68,14 +66,8 @@ export interface ExpandedInputProps {
   className?: string;
 }
 
-// Same icon/tint convention as ReferenceChip, so an in-progress mention
-// reads as the same "reference" affordance once it's sent and rendered.
-const MENTION_ICONS: Record<string, ComponentType<IconProps>> = {
-  note: AnnotationIcon,
-  annotation: EditIcon,
-  paper: FileTextIcon,
-};
-
+// Same tint convention as ReferenceChip, so an in-progress mention reads
+// as the same "reference" affordance once it's sent and rendered.
 const MENTION_TINT: Record<string, string> = {
   note: "text-orange-600",
   annotation: "text-rose-600",
@@ -100,29 +92,16 @@ function highlightContent(value: string): ReactNode[] {
         | "note"
         | "annotation"
         | "paper";
-      const Icon = MENTION_ICONS[type];
-      // The icon is absolutely positioned so it doesn't add width to the
-      // token — the overlay text has to stay character-for-character
-      // identical to the real (invisible) textarea value, or the caret and
-      // this highlight drift apart as soon as anything wraps.
+      // No icon in the overlay: the highlight must stay character-for-
+      // character identical to the invisible textarea value, and a hanging
+      // icon overlaps whatever precedes the token. Tint + underline are
+      // enough to mark the mention.
       nodes.push(
-        <span key={key++} className="relative">
-          <Icon
-            size="xs"
-            filled
-            className={cn(
-              "absolute -left-3.5 top-1/2 -translate-y-1/2",
-              MENTION_TINT[type],
-            )}
-          />
-          <span
-            className={cn(
-              "border-b border-dotted border-(--border)",
-              MENTION_TINT[type],
-            )}
-          >
-            {full}
-          </span>
+        <span
+          key={key++}
+          className={cn("border-b border-dotted border-(--border)", MENTION_TINT[type])}
+        >
+          {full}
         </span>,
       );
     } else if (bold) {

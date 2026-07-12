@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { toastInfo, toastError } from '@/lib/utils/toast';
-import { CalendarIcon, CheckIcon, CloseIcon, DownloadIcon, EditIcon, ExternalLinkIcon, FingerprintIcon, LinkIcon, RefreshIcon, ShareIcon, TrashIcon } from '@/components/icons';
+import { toastInfo, toastError, toastSuccess } from '@/lib/utils/toast';
+import { CalendarIcon, CheckIcon, CloseIcon, DownloadIcon, EditIcon, ExternalLinkIcon, FingerprintIcon, HighlighterIcon, LinkIcon, RefreshIcon, ShareIcon, TrashIcon } from '@/components/icons';
+import { aiFeaturesApi } from '@/lib/api/aiFeatures';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { type Paper, papersApi } from '@/lib/api/papers';
 import { Button } from '@/components/ui/Button';
@@ -48,6 +49,22 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
       queryClient.invalidateQueries({ queryKey: ['paper', paperId] });
       setIsEditingTitle(false);
     },
+  });
+
+  // Spawns the auto-highlight AI agent (moved here from the former
+  // Insights > Highlights tab — it's a one-shot action, not a view).
+  const autoHighlightMutation = useMutation({
+    mutationFn: () => aiFeaturesApi.generateHighlights(paperId),
+    onMutate: () => {
+      toastInfo('Spawning AI agent…', 'It will highlight core methods and findings shortly.');
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['annotations', paperId] });
+      queryClient.invalidateQueries({ queryKey: ['paper', paperId] });
+      toastSuccess(`${data.count} highlights identified and added`);
+    },
+    onError: (e) =>
+      toastError('AI highlighting failed', e instanceof Error ? e.message : undefined),
   });
 
   const extractCitationsMutation = useMutation({
@@ -112,6 +129,16 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
               <ShareIcon size="sm" />
             </Button>
             )}
+            <Button
+              variant="icon"
+              size="icon"
+              onClick={() => autoHighlightMutation.mutate()}
+              loading={autoHighlightMutation.isPending}
+              title="Auto-highlight with AI"
+              aria-label="Auto-highlight with AI"
+            >
+              <HighlighterIcon size="sm" />
+            </Button>
             <Button
               variant="icon"
               size="icon"
@@ -202,14 +229,11 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
                 <div className="absolute bottom-0 left-0 right-0 h-8 bg-linear-to-t from-(--white) to-transparent pointer-events-none" />
               )}
 
-              <motion.div
-                animate={{ rotate: isAbstractExpanded ? 180 : 0 }}
-                className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-(--white) border border-(--border) rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-              >
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-(--white) border border-(--border) rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                 <div className="text-micro text-(--muted-foreground) px-1">
                   {isAbstractExpanded ? 'Show less' : 'Read more'}
                 </div>
-              </motion.div>
+              </div>
             </div>
           </div>
         )}

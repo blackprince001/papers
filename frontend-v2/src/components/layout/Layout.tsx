@@ -74,11 +74,15 @@ export default function Layout() {
 
   // The right-side panel tab (Details/Insights/Chat/...) is remembered per
   // paper tab so switching tabs doesn't reset which panel you were viewing.
+  // When the paper isn't registered in the tab context (direct navigation),
+  // fall back to local state so the panel remains switchable.
+  const [fallbackPanelTab, setFallbackPanelTab] = useState("details");
   const activePaperTab = tabs.find((t) => t.id === activeTabId);
-  const activeTab = activePaperTab?.panelTab ?? "details";
+  const activeTab = activePaperTab?.panelTab ?? fallbackPanelTab;
   const setActiveTab = useCallback(
     (tab: string) => {
       if (activeTabId) updateTab(activeTabId, { panelTab: tab });
+      else setFallbackPanelTab(tab);
     },
     [activeTabId, updateTab],
   );

@@ -17,7 +17,6 @@ import { PaperDetails } from '@/components/PaperDetails';
 import { AISummary } from '@/components/AISummary';
 import { KeyFindings } from '@/components/KeyFindings';
 import { ReadingGuide } from '@/components/ReadingGuide';
-import { AutoHighlights } from '@/components/AutoHighlights';
 import { NotesPanel } from '@/components/NotesPanel';
 import { RelatedPapers } from '@/components/RelatedPapers';
 import { ChatTab } from '@/components/ChatTab';
@@ -98,14 +97,14 @@ export default function ChatPanel({ isOpen, onToggle, activeTab, setActiveTab }:
                   key={value}
                   value={value}
                   title={label}
-                  className="group relative inline-flex items-center justify-center h-10 rounded-full text-caption overflow-hidden transition-all duration-300 ease-out data-[state=active]:bg-(--foreground) data-[state=active]:text-(--card) data-[state=inactive]:w-10 data-[state=inactive]:text-(--muted-foreground) data-[state=inactive]:hover:bg-(--muted) data-[state=inactive]:hover:text-(--foreground) data-[state=active]:px-3.5 data-[state=active]:gap-2"
+                  className="group relative inline-flex items-center justify-center h-10 rounded-full text-caption transition-all duration-300 ease-out data-[state=active]:bg-(--foreground) data-[state=active]:text-(--card) data-[state=inactive]:w-10 data-[state=inactive]:text-(--muted-foreground) data-[state=inactive]:hover:bg-(--muted) data-[state=inactive]:hover:text-(--foreground) data-[state=active]:px-3.5 data-[state=active]:gap-2"
                 >
                   <Icon size="md" className="shrink-0" />
                   <span className="grid grid-cols-[0fr] group-data-[state=active]:grid-cols-[1fr] transition-[grid-template-columns] duration-300 ease-out">
                     <span className="overflow-hidden whitespace-nowrap font-medium">{label}</span>
                   </span>
                   {badge ? (
-                    <span className="absolute -top-0.5 -right-0.5 text-micro bg-(--muted) text-(--foreground) px-1 py-0.5 rounded-full tabular-nums leading-none group-data-[state=active]:hidden">
+                    <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 inline-flex items-center justify-center rounded-full bg-(--foreground) text-(--background) text-micro tabular-nums leading-none group-data-[state=active]:hidden">
                       {badge}
                     </span>
                   ) : null}
@@ -141,9 +140,6 @@ export default function ChatPanel({ isOpen, onToggle, activeTab, setActiveTab }:
                     <TabsTrigger value="guide" className="px-2.5 py-1 text-caption rounded-full transition-colors data-[state=active]:bg-(--foreground) data-[state=active]:text-(--card) data-[state=inactive]:text-(--muted-foreground) data-[state=inactive]:hover:bg-(--muted) data-[state=inactive]:hover:text-(--foreground)">
                       Guide
                     </TabsTrigger>
-                    <TabsTrigger value="highlights" className="px-2.5 py-1 text-caption rounded-full transition-colors data-[state=active]:bg-(--foreground) data-[state=active]:text-(--card) data-[state=inactive]:text-(--muted-foreground) data-[state=inactive]:hover:bg-(--muted) data-[state=inactive]:hover:text-(--foreground)">
-                      Highlights
-                    </TabsTrigger>
                   </TabsList>
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-none p-6 text-(--foreground)">
@@ -164,9 +160,6 @@ export default function ChatPanel({ isOpen, onToggle, activeTab, setActiveTab }:
                       <h3 className="text-body font-bold mb-4">Reading Guide</h3>
                       <ReadingGuide paperId={paper.id} />
                     </section>
-                  </TabsContent>
-                  <TabsContent value="highlights">
-                    <AutoHighlights paperId={paper.id} />
                   </TabsContent>
                 </div>
               </Tabs>
