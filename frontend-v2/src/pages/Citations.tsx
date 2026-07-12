@@ -7,8 +7,8 @@ import { FocalPaperPicker } from '@/components/citation-map/FocalPaperPicker';
 import { NodeDetailPanel } from '@/components/citation-map/NodeDetailPanel';
 import { CitedByTab } from '@/components/citation-map/CitedByTab';
 import { Button } from '@/components/ui/Button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { toastError } from '@/lib/utils/toast';
-import { cn } from '@/lib/utils';
 
 type Tab = 'map' | 'cited-by';
 
@@ -62,7 +62,7 @@ export default function Citations() {
   }, [selectedNode, data]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-var(--header-h,3.5rem))]">
+    <div className="flex flex-col h-[calc(100vh-var(--header-h))]">
       <div className="px-4 md:px-6 pt-4 md:pt-6 pb-3 md:pb-4 shrink-0">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -76,35 +76,31 @@ export default function Citations() {
           {tab === 'map' && focalIds.length > 0 && (
             <Button
               variant="secondary"
-              className="h-8! text-caption!"
+              size="sm"
               icon={<TrashIcon size="sm" />}
               onClick={() => clearMutation.mutate()}
-              disabled={clearMutation.isPending}
+              loading={clearMutation.isPending}
             >
               Clear map
             </Button>
           )}
         </div>
 
-        <div className="flex items-center gap-1 mt-4 border-b border-(--border)">
-          {([['map', 'Citation Map', CitationGraphIcon], ['cited-by', 'Cited by', QuoteIcon]] as const).map(
-            ([id, label, Icon]) => (
-              <button
-                key={id}
-                onClick={() => setTab(id)}
-                className={cn(
-                  'flex items-center gap-1.5 h-9 px-3 text-code font-semibold border-b-2 -mb-px transition-all',
-                  tab === id
-                    ? 'border-(--foreground) text-(--foreground)'
-                    : 'border-transparent text-(--muted-foreground) hover:text-(--foreground)'
-                )}
-              >
+        <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="mt-4">
+          <TabsList>
+            {(
+              [
+                ['map', 'Citation Map', CitationGraphIcon],
+                ['cited-by', 'Cited by', QuoteIcon],
+              ] as const
+            ).map(([id, label, Icon]) => (
+              <TabsTrigger key={id} value={id} className="flex items-center gap-1.5">
                 <Icon size="sm" />
                 {label}
-              </button>
-            )
-          )}
-        </div>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
         {tab === 'map' && (
           <>
