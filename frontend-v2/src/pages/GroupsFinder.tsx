@@ -453,6 +453,7 @@ export default function GroupsFinder() {
           <Button
             variant="ghost"
             size="sm"
+            className="max-sm:size-10"
             icon={<ArrowRightIcon size="sm" />}
             onClick={() => setMovePaperIds(selectedPaperIds)}
             aria-label={`Move ${selectedPaperIds.length} selected papers`}
@@ -463,6 +464,7 @@ export default function GroupsFinder() {
           <Button
             variant="ghost"
             size="sm"
+            className="max-sm:size-10"
             icon={<DownloadIcon size="sm" />}
             onClick={() => exportPapers(selectedPaperIds)}
             aria-label={`Export ${selectedPaperIds.length} selected papers`}
@@ -477,6 +479,7 @@ export default function GroupsFinder() {
         <Button
           variant="ghost"
           size="sm"
+          className="max-sm:size-10"
           icon={<FolderIcon size="sm" />}
           onClick={() => {
             setNameValue('');
@@ -492,6 +495,7 @@ export default function GroupsFinder() {
         <Button
           variant="ghost"
           size="sm"
+          className="max-sm:size-10"
           icon={<PlusIcon size="sm" />}
           onClick={() =>
             navigate('/ingest', { state: { preselectedGroupIds: [currentGroup.id] } })
@@ -507,17 +511,17 @@ export default function GroupsFinder() {
 
   if (isLoading) {
     return (
-      <div className="max-w-content mx-auto px-6 py-8">
-        <Skeleton className="mb-2 h-8 w-48" />
-        <Skeleton className="mb-8 h-5 w-96" />
+      <div className="max-w-content mx-auto px-4 py-6 sm:px-6 sm:py-8">
+        <Skeleton className="mb-2 h-8 w-48 max-w-full" />
+        <Skeleton className="mb-8 h-5 w-96 max-w-full" />
         <Skeleton className="h-[60vh] w-full" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-content mx-auto flex h-full flex-col px-6 py-8">
-      <div className="mb-6 flex items-end justify-between">
+    <div className="max-w-content mx-auto flex h-full flex-col px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-6">
         <div>
           <h1>Groups</h1>
           <p className="text-btn mt-1 text-(--muted-foreground)">
