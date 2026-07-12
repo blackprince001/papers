@@ -69,7 +69,7 @@ export interface ExpandedInputProps {
 // Same tint convention as ReferenceChip, so an in-progress mention reads
 // as the same "reference" affordance once it's sent and rendered.
 const MENTION_TINT: Record<string, string> = {
-  note: "text-orange-600",
+  note: "text-(--coral-red)",
   annotation: "text-rose-600",
   paper: "text-sky-600",
 };
@@ -124,7 +124,7 @@ function highlightContent(value: string): ReactNode[] {
       );
     } else if (heading) {
       nodes.push(
-        <span key={key++} className="text-amber-700">
+        <span key={key++} className="text-(--warning)">
           {full}
         </span>,
       );

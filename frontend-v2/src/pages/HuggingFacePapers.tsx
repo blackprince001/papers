@@ -10,6 +10,8 @@ import { getPaperTheme } from '@/lib/paper-themes';
 import { AddToLibraryDialog } from '@/components/discovery/AddToLibraryDialog';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 type ViewMode = 'daily' | 'monthly';
 
@@ -159,7 +161,7 @@ export default function HuggingFacePapers() {
   const parsedDate = parseISO(selectedDate);
   const isTodaySelected = isToday(parsedDate);
 
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch, isRefetching } = useQuery({
     queryKey: ['huggingface-papers', selectedDate],
     queryFn: () => huggingfaceApi.fetchDailyPapers(selectedDate),
     staleTime: 5 * 60 * 1000,
@@ -282,13 +284,13 @@ export default function HuggingFacePapers() {
 
       {/* Error */}
       {isError && (
-        <div className="text-center py-12">
-          <div className="inline-block px-6 py-4 bg-red-50 border border-red-200 rounded-xl">
-            <p className="text-body font-semibold text-red-800 mb-1">Failed to load papers</p>
-            <p className="text-caption text-red-600 mb-4">{error instanceof Error ? error.message : 'An error occurred'}</p>
-            <Button variant="secondary" icon={<RefreshIcon size="sm" />} onClick={() => refetch()}>Try Again</Button>
-          </div>
-        </div>
+        <ErrorState
+          size="page"
+          title="Failed to load papers"
+          description={error instanceof Error ? error.message : 'An error occurred'}
+          onRetry={() => refetch()}
+          retrying={isRefetching}
+        />
       )}
 
       {/* Results */}
@@ -308,10 +310,12 @@ export default function HuggingFacePapers() {
               {data.papers.map((paper, i) => <HFPaperCard key={paper.paper.id} paper={paper} index={i} />)}
             </div>
           ) : (
-            <div className="text-center py-16">
-              <p className="text-btn font-medium text-(--foreground) mb-1">No papers for this {viewMode === 'daily' ? 'date' : 'month'}</p>
-              <p className="text-code text-(--muted-foreground)">Try selecting a different {viewMode === 'daily' ? 'date' : 'month'}.</p>
-            </div>
+            <EmptyState
+              size="page"
+              icon={CalendarIcon}
+              title={`No papers for this ${viewMode === 'daily' ? 'date' : 'month'}`}
+              description={`Try selecting a different ${viewMode === 'daily' ? 'date' : 'month'}.`}
+            />
           )}
         </>
       )}

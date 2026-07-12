@@ -9,6 +9,9 @@ import {
 } from '@/components/icons';
 import { papersApi, type Paper } from '@/lib/api/papers';
 import { citationMapApi, type CitedByPaper } from '@/lib/api/citationMap';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Spinner } from '@/components/ui/Spinner';
 import { cn } from '@/lib/utils';
 
 function CitedByRow({ c }: { c: CitedByPaper }) {
@@ -94,7 +97,7 @@ export function CitedByTab() {
         </div>
         <ul className="rounded-xl border border-(--border) divide-y divide-(--border) overflow-hidden bg-(--card)">
           {results.length === 0 ? (
-            <li className="px-4 py-3 text-code text-(--muted-foreground)">No papers found.</li>
+            <li><EmptyState size="row" title="No papers found" /></li>
           ) : (
             results.map((p) => (
               <li key={p.id}>
@@ -138,8 +141,13 @@ export function CitedByTab() {
       </div>
 
       {isLoading ? (
-        <div className="rounded-xl border border-(--border) bg-(--card) px-4 py-8 text-center text-code text-(--muted-foreground)">
-          Looking up who cites this…
+        <div className="rounded-xl border border-(--border) bg-(--card) divide-y divide-(--border)">
+          {Array.from({ length: 3 }, (_, i) => (
+            <div key={i} className="px-4 py-3 space-y-1.5">
+              <Skeleton className="h-3.5 w-full" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          ))}
         </div>
       ) : !resolved ? (
         <div className="flex items-start gap-2 rounded-xl border border-(--border) bg-(--muted) px-4 py-3 text-caption text-(--muted-foreground)">
@@ -147,8 +155,8 @@ export function CitedByTab() {
           <span>Couldn’t find this paper on Semantic Scholar, so citing works are unavailable.</span>
         </div>
       ) : citations.length === 0 ? (
-        <div className="rounded-xl border border-(--border) bg-(--card) px-4 py-8 text-center text-code text-(--muted-foreground)">
-          No citing works found yet.
+        <div className="rounded-xl border border-(--border) bg-(--card)">
+          <EmptyState size="panel" icon={QuoteIcon} title="No citing works found yet" />
         </div>
       ) : (
         <>
@@ -165,9 +173,9 @@ export function CitedByTab() {
               type="button"
               onClick={() => fetchNextPage()}
               disabled={isFetchingNextPage}
-              className="mt-3 w-full h-9 text-code font-semibold bg-(--muted) text-(--foreground) border border-(--border) rounded-lg hover:bg-(--border) transition-colors disabled:opacity-60"
+              className="mt-3 flex w-full items-center justify-center h-9 text-code font-semibold bg-(--muted) text-(--foreground) border border-(--border) rounded-lg hover:bg-(--border) transition-colors disabled:opacity-60"
             >
-              {isFetchingNextPage ? 'Loading…' : 'Load more'}
+              {isFetchingNextPage ? <Spinner size="xs" /> : 'Load more'}
             </button>
           )}
         </>

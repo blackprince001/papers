@@ -53,11 +53,11 @@ const KIND_LABELS: Record<string, string> = {
 
 const KIND_ICON_TINT: Record<string, string> = {
   paper: "text-sky-600",
-  citation: "text-amber-600",
+  citation: "text-(--warning)",
   figure: "text-emerald-600",
   section: "text-violet-600",
   annotation: "text-rose-600",
-  note: "text-orange-600",
+  note: "text-(--coral-red)",
   external: "text-cyan-600",
   author: "text-indigo-600",
 };

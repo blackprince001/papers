@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { SparklesIcon, WarningIcon, RefreshIcon } from '@/components/icons';
+import { SparklesIcon, RefreshIcon } from '@/components/icons';
 import { Link } from 'react-router-dom';
 import { discoveryApi } from '@/lib/api/discovery';
 import { DiscoveredPaperCard } from '@/components/discovery/DiscoveredPaperCard';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 export default function Recommendations() {
   const { data, isLoading, error, refetch, isFetching } = useQuery({
@@ -74,40 +76,39 @@ export default function Recommendations() {
 
       {/* Error State */}
       {error && (
-        <div className="text-center py-16">
-          <WarningIcon size={48} className="text-red-500 mx-auto mb-4" />
-          <h2 className="text-body-lg font-bold mb-2">Couldn't load recommendations</h2>
-          <p className="text-code text-(--muted-foreground) mb-6 max-w-md mx-auto">
-            Make sure you have papers with DOIs in your library. Recommendations are generated based on your existing papers.
-          </p>
-          <div className="flex items-center justify-center gap-3">
-            <Button variant="ghost" onClick={() => refetch()}>
-              Try again
-            </Button>
+        <ErrorState
+          size="page"
+          title="Couldn't load recommendations"
+          description="Make sure you have papers with DOIs in your library. Recommendations are generated based on your existing papers."
+          onRetry={() => refetch()}
+          retrying={isFetching}
+          actions={
             <Link to="/papers">
               <Button variant="primary">Go to Library</Button>
             </Link>
-          </div>
-        </div>
+          }
+        />
       )}
 
       {/* Empty State */}
       {!isLoading && !error && recommendations.length === 0 && (
-        <div className="text-center py-16">
-          <SparklesIcon size={48} className="text-(--muted-foreground) mx-auto mb-4" />
-          <h2 className="text-body-lg font-bold mb-2">No recommendations yet</h2>
-          <p className="text-code text-(--muted-foreground) mb-6 max-w-md mx-auto">
-            Add more papers with DOIs to your library to get personalized recommendations based on your research interests.
-          </p>
-          <div className="flex items-center justify-center gap-3">
-            <Link to="/discovery">
-              <Button variant="ghost">Discover Papers</Button>
-            </Link>
-            <Link to="/ingest">
-              <Button variant="primary">Add Papers</Button>
-            </Link>
-          </div>
-        </div>
+        <EmptyState
+          size="page"
+          icon={SparklesIcon}
+          titleAs="h2"
+          title="No recommendations yet"
+          description="Add more papers with DOIs to your library to get personalized recommendations based on your research interests."
+          actions={
+            <>
+              <Link to="/discovery">
+                <Button variant="ghost">Discover Papers</Button>
+              </Link>
+              <Link to="/ingest">
+                <Button variant="primary">Add Papers</Button>
+              </Link>
+            </>
+          }
+        />
       )}
 
       {/* Results */}

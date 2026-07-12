@@ -3,6 +3,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { aiFeaturesApi } from '@/lib/api/aiFeatures';
 import { paperAuthors, paperYear } from '@/lib/paper-display';
 import { toastError } from '@/lib/utils/toast';
+import { SkeletonText } from '@/components/ui/Skeleton';
+import { Spinner } from '@/components/ui/Spinner';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SparklesIcon } from '@/components/icons';
 import type { Paper } from '@/lib/api/papers';
 
 /**
@@ -61,21 +65,28 @@ export function PaperInfoPanel({ paper }: { paper: Paper }) {
         <p className="leading-relaxed whitespace-pre-wrap text-muted-foreground">
           {summary}
         </p>
-      ) : isLoading || polling ? (
-        <p className="text-muted-foreground italic">
-          {polling ? 'Generating summary…' : 'Loading…'}
-        </p>
-      ) : (
-        <div className="space-y-1.5">
-          <p className="text-muted-foreground italic">No summary yet.</p>
-          <button
-            type="button"
-            onClick={generate}
-            className="rounded-md border px-2 py-1 font-medium transition-colors hover:bg-accent"
-          >
-            Generate summary
-          </button>
+      ) : polling ? (
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Spinner size="xs" aria-hidden />
+          <span>Generating summary…</span>
         </div>
+      ) : isLoading ? (
+        <SkeletonText lines={3} />
+      ) : (
+        <EmptyState
+          size="panel"
+          icon={SparklesIcon}
+          title="No summary yet"
+          actions={
+            <button
+              type="button"
+              onClick={generate}
+              className="rounded-md border px-2 py-1 font-medium transition-colors hover:bg-accent"
+            >
+              Generate summary
+            </button>
+          }
+        />
       )}
     </div>
   );

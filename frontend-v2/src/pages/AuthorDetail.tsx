@@ -108,9 +108,7 @@ export default function AuthorDetail() {
                     OpenAlex
                   </a>
                 )}
-                {profileQuery.isLoading && (
-                  <span className="text-(--muted-foreground)/60">Loading profile…</span>
-                )}
+                {profileQuery.isLoading && <Skeleton className="h-4 w-24" />}
               </div>
 
               {/* Secondary affiliations */}

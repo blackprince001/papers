@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { cn } from '@/lib/utils';
+import { SkeletonText } from '@/components/ui/Skeleton';
 import { extractTOC, type TOCItem } from './toc';
 
 function OutlineList({
@@ -76,9 +77,9 @@ export function OutlinePanel({
 
   if (items === 'loading') {
     return (
-      <p className="px-3 py-6 text-center text-caption text-(--muted-foreground)">
-        Loading outline…
-      </p>
+      <div className="px-3 py-4">
+        <SkeletonText lines={6} lastLineWidth="w-1/2" />
+      </div>
     );
   }
   if (!items || items.length === 0) {

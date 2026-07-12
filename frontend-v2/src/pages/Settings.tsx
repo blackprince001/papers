@@ -19,6 +19,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { Skeleton, SkeletonText } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
 import {
   userAiSettingsApi,
   userAiProvidersApi,
@@ -442,7 +444,7 @@ function ProviderForm({
             Your key is encrypted at rest
           </p>
           {draft.provider === 'gemini' && (
-            <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-caption text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-200">
+            <div className="mt-2 rounded-lg border border-(--warning-border) bg-(--warning-soft) px-3 py-2 text-caption text-(--warning)">
               Use a Gemini key with billing enabled. Free-tier keys have very low
               quotas and frequently fail with rate-limit / quota errors mid-request —
               a paid (billing-attached) key is strongly recommended for reliable use.
@@ -636,7 +638,13 @@ function AiSettingsSection() {
   };
 
   if (loading) {
-    return <p className="text-code text-(--muted-foreground)">Loading…</p>;
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-5 w-40" />
+        <SkeletonText lines={2} />
+        <Skeleton className="h-16 w-full rounded-xl" />
+      </div>
+    );
   }
 
   const providerLabel = (type: string) =>
@@ -684,10 +692,13 @@ function AiSettingsSection() {
       )}
 
       {items.length === 0 && editingId === null && (
-        <div className="border border-dashed border-(--border) rounded-xl p-8 text-center">
-          <p className="text-code text-(--muted-foreground)">
-            No providers yet. Add one to use your own API key, or the server default applies.
-          </p>
+        <div className="border border-dashed border-(--border) rounded-xl">
+          <EmptyState
+            size="panel"
+            icon={ChipIcon}
+            title="No providers yet"
+            description="Add one to use your own API key, or the server default applies."
+          />
         </div>
       )}
 

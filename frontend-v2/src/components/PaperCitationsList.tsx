@@ -1,5 +1,8 @@
 import { Link } from 'react-router-dom';
 import { BookOpenIcon, ExternalLinkIcon } from '@/components/icons';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { cn } from '@/lib/utils';
 import type { Citation } from '@/lib/api/papers';
 
@@ -13,26 +16,20 @@ interface PaperCitationsListProps {
 export function PaperCitationsList({ citations, isLoading, error, className }: PaperCitationsListProps) {
   if (isLoading) {
     return (
-      <div className="p-4 flex items-center justify-center text-code text-(--muted-foreground)">
-        <div className="animate-pulse">Loading citations...</div>
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-20 rounded-xl" />
+        ))}
       </div>
     );
   }
 
   if (error) {
-    return (
-      <div className="p-4 text-code text-(--destructive)">
-        Unable to load citations.
-      </div>
-    );
+    return <ErrorState size="row" title="Unable to load citations" />;
   }
 
   if (!citations || citations.length === 0) {
-    return (
-      <div className="p-8 text-center text-code text-(--muted-foreground) opacity-60">
-        No citations found for this paper.
-      </div>
-    );
+    return <EmptyState size="row" title="No citations found for this paper" />;
   }
 
   const internalCitations = citations.filter(c => c.cited_paper_id !== null && c.cited_paper);

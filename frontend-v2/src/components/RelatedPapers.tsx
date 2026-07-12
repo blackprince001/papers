@@ -5,6 +5,8 @@ import { Link } from 'react-router-dom';
 import { papersApi, type RelatedPaperExternal, type Paper } from '@/lib/api/papers';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 interface RelatedPapersProps {
   paperId: number;
@@ -13,7 +15,7 @@ interface RelatedPapersProps {
 export function RelatedPapers({ paperId }: RelatedPapersProps) {
   const [activeTab, setActiveTab] = useState('citations');
 
-  const { data: related, isLoading, error } = useQuery({
+  const { data: related, isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: ['related-papers', paperId],
     queryFn: () => papersApi.getRelated(paperId),
     enabled: !!paperId,
@@ -34,9 +36,12 @@ export function RelatedPapers({ paperId }: RelatedPapersProps) {
 
   if (error) {
     return (
-      <div className="p-8 text-center text-code text-(--destructive) opacity-80">
-        Could not load related papers.
-      </div>
+      <ErrorState
+        size="panel"
+        title="Could not load related papers"
+        onRetry={() => refetch()}
+        retrying={isRefetching}
+      />
     );
   }
 
@@ -110,7 +115,7 @@ export function RelatedPapers({ paperId }: RelatedPapersProps) {
               {related?.cited_by && related.cited_by.length > 0 ? (
                 related.cited_by.map((item, idx) => renderExternalPaper(item, idx))
               ) : (
-                <p className="py-6 text-center text-caption text-(--muted-foreground) opacity-50 italic">No incoming citations</p>
+                <EmptyState size="row" title="No incoming citations" />
               )}
             </div>
           </section>
@@ -126,7 +131,7 @@ export function RelatedPapers({ paperId }: RelatedPapersProps) {
               {related?.cited_here && related.cited_here.length > 0 ? (
                 related.cited_here.map((item, idx) => renderExternalPaper(item, idx))
               ) : (
-                <p className="py-6 text-center text-caption text-(--muted-foreground) opacity-50 italic">No outgoing references</p>
+                <EmptyState size="row" title="No outgoing references" />
               )}
             </div>
           </section>
@@ -144,7 +149,7 @@ export function RelatedPapers({ paperId }: RelatedPapersProps) {
               {related?.related_library && related.related_library.length > 0 ? (
                 related.related_library.map((item) => renderLibraryPaper(item))
               ) : (
-                <p className="py-6 text-center text-caption text-(--muted-foreground) opacity-50 italic">No similar papers in library</p>
+                <EmptyState size="row" title="No similar papers in library" />
               )}
             </div>
           </section>

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { papersApi, type Bookmark } from '@/lib/api/papers';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog, useConfirmDialog } from '@/components/ConfirmDialog';
 import { BookmarkIcon, NoteIcon, TrashIcon } from '@/components/icons';
 import { format } from 'date-fns';
@@ -76,10 +77,13 @@ export function BookmarksTab({ paperId, onJumpToPage }: BookmarksTabProps) {
 
   if (bookmarks.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center text-(--muted-foreground) opacity-50 p-6">
-        <BookmarkIcon size={32} className="mb-3" />
-        <p className="text-code">No bookmarks yet</p>
-        <p className="text-caption mt-1">Click the bookmark button in the PDF toolbar to save pages</p>
+      <div className="flex h-full items-center justify-center p-6">
+        <EmptyState
+          size="panel"
+          icon={BookmarkIcon}
+          title="No bookmarks yet"
+          description="Click the bookmark button in the PDF toolbar to save pages."
+        />
       </div>
     );
   }

@@ -19,6 +19,7 @@ import { discoveryApi, type DiscoverySessionCreate, type DiscoveredPaperPreview,
 import { toastSuccess, toastError } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 const DISCOVERY_PROMPTS = [
   {
@@ -281,9 +282,14 @@ export default function Discovery() {
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-          <p className="text-code text-red-800">{error}</p>
-        </div>
+        <ErrorState
+          size="panel"
+          title="Search failed"
+          description={error}
+          onRetry={handleSearch}
+          retrying={isSearching}
+          className="mb-6"
+        />
       )}
 
       {/* Research Overview */}

@@ -134,7 +134,7 @@ export default function DiscoveryArchive() {
                     <Button
                       variant="icon"
                       size="icon"
-                      className="text-(--muted-foreground) hover:text-red-500"
+                      className="text-(--muted-foreground) hover:text-(--danger)"
                       loading={deleteMutation.isPending}
                       aria-label="Delete saved discovery"
                       onClick={() => { if (confirm('Delete this saved discovery?')) deleteMutation.mutate(session.id); }}

@@ -10,6 +10,7 @@ import {
   TrashIcon,
 } from '@/components/icons';
 import { Spinner } from '@/components/ui/Spinner';
+import { EmptyState } from '@/components/ui/EmptyState';
 import {
   discoveryApi,
   type DiscoverySession,
@@ -167,9 +168,12 @@ export function SavedDiscoveriesPanel({ onLoadSession }: SavedDiscoveriesPanelPr
               ))}
             </div>
           ) : (
-            <p className="text-caption text-(--muted-foreground) text-center py-6">
-              No saved discoveries yet. Search and click "Save Session" to store results.
-            </p>
+            <EmptyState
+              size="panel"
+              icon={BookmarkIcon}
+              title="No saved discoveries yet"
+              description={'Search and click "Save Session" to store results.'}
+            />
           )}
         </div>
       )}

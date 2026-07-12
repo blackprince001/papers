@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/Button';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Select } from '@/components/ui/Select';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog, useConfirmDialog } from '@/components/ConfirmDialog';
 import { Textarea } from '@/components/ui/Textarea';
 import { format } from 'date-fns';
@@ -307,9 +308,8 @@ export default function Annotations() {
 
         {/* Grouped annotations table */}
         {groups.length === 0 ? (
-          <div className="text-center py-16 border border-dashed border-(--border) rounded-xl">
-            <FileTextIcon size={48} className="mx-auto mb-3 text-(--muted-foreground) opacity-40" />
-            <p className="text-body text-(--muted-foreground)">No annotations found</p>
+          <div className="border border-dashed border-(--border) rounded-xl">
+            <EmptyState size="page" icon={FileTextIcon} title="No annotations found" />
           </div>
         ) : (
           <div className="border border-(--border) rounded-xl overflow-hidden bg-(--card)">

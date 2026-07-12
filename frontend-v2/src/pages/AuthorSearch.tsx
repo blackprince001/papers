@@ -12,6 +12,7 @@ import {
 } from '@/components/icons';
 import { discoveryApi, type AuthorProfile } from '@/lib/api/discovery';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { AuthorAvatar, TopicChip } from '@/components/author/AuthorBits';
 
 export default function AuthorSearch() {
@@ -64,17 +65,19 @@ export default function AuthorSearch() {
       )}
 
       {!searchQuery.isLoading && nameParam && results.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-20 text-center text-(--muted-foreground)">
-          <SearchIcon size={32} className="opacity-30" />
-          <p className="text-body">No authors found matching “{nameParam}”</p>
-        </div>
+        <EmptyState
+          size="page"
+          icon={SearchIcon}
+          title={`No authors found matching “${nameParam}”`}
+        />
       )}
 
       {!nameParam && (
-        <div className="flex flex-col items-center gap-3 py-20 text-center text-(--muted-foreground)">
-          <UsersIcon size={32} className="opacity-30" />
-          <p className="text-body">Enter a name above to search for authors.</p>
-        </div>
+        <EmptyState
+          size="page"
+          icon={UsersIcon}
+          title="Enter a name above to search for authors"
+        />
       )}
 
       {!searchQuery.isLoading && results.length > 0 && (

@@ -1,5 +1,6 @@
 import { CheckIcon, FolderIcon, SearchIcon } from '@/components/icons';
 import { Input } from '@/components/ui/Input';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/lib/utils';
 import type { Group } from '@/lib/api/groups';
 
@@ -165,9 +166,8 @@ export function GroupTreeSelector({
             />
           ))
         ) : (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-(--muted-foreground)">
-            <FolderIcon size="xl" className="opacity-30" />
-            <span className="text-code">{emptyLabel}</span>
+          <div className="flex h-full items-center justify-center">
+            <EmptyState size="panel" icon={FolderIcon} title={emptyLabel} />
           </div>
         )}
       </div>

@@ -5,12 +5,14 @@ import { usersApi } from '@/lib/api/usersApi';
 import type { User } from '@/lib/api/authApi';
 import { toastSuccess as toastS, toastError as toastE } from '@/lib/utils/toast';
 import { Select } from '@/components/ui/Select';
+import { Skeleton, SkeletonText } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { formatDistanceToNow } from 'date-fns';
 
 function RoleBadge({ role }: { role: string }) {
   return (
     <span className={`text-[0.625rem] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded border ${role === 'admin'
-        ? 'text-amber-700 bg-amber-50 border-amber-200'
+        ? 'text-(--warning) bg-(--warning-soft) border-(--warning-border)'
         : 'text-(--muted-foreground) bg-(--muted) border-(--border)'
       }`}>
       {role}
@@ -20,7 +22,7 @@ function RoleBadge({ role }: { role: string }) {
 
 function StatusDot({ active }: { active: boolean }) {
   return (
-    <span className={`inline-block w-2 h-2 rounded-full ${active ? 'bg-green-500' : 'bg-(--muted-foreground)'}`} />
+    <span className={`inline-block w-2 h-2 rounded-full ${active ? 'bg-(--success)' : 'bg-(--muted-foreground)'}`} />
   );
 }
 
@@ -34,7 +36,16 @@ function UserDetailModal({ userId, onClose }: { userId: number; onClose: () => v
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div className="bg-(--white) border border-(--border) rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
         {isLoading || !data ? (
-          <div className="h-32 flex items-center justify-center text-body text-(--muted-foreground)">Loading…</div>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-10 h-10 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-3.5 w-32" />
+                <Skeleton className="h-3 w-44" />
+              </div>
+            </div>
+            <SkeletonText lines={4} />
+          </div>
         ) : (
           <>
             <div className="flex items-center gap-3 mb-4">
@@ -183,9 +194,15 @@ export default function UserManagement() {
           </thead>
           <tbody className="divide-y divide-(--border)">
             {isLoading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-(--muted-foreground)">Loading…</td></tr>
+              Array.from({ length: 3 }, (_, i) => (
+                <tr key={i}>
+                  <td colSpan={6} className="px-4 py-3.5">
+                    <Skeleton className="h-4 w-full" />
+                  </td>
+                </tr>
+              ))
             ) : sorted.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-(--muted-foreground)">No users found</td></tr>
+              <tr><td colSpan={6}><EmptyState size="row" title="No users found" /></td></tr>
             ) : sorted.map((user) => (
               <tr key={user.id} className="hover:bg-(--muted) transition-colors">
                 <td className="px-4 py-3">
@@ -209,7 +226,7 @@ export default function UserManagement() {
                     <button
                       onClick={() => { if (confirm(`Delete ${user.display_name}?`)) deleteMutation.mutate(user.id); }}
                       title="Delete user"
-                      className="p-1.5 rounded-lg hover:bg-red-50 transition-colors text-(--muted-foreground) hover:text-red-600"
+                      className="p-1.5 rounded-lg hover:bg-(--danger-soft) transition-colors text-(--muted-foreground) hover:text-(--danger)"
                     >
                       <TrashIcon size="sm" />
                     </button>

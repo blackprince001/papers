@@ -54,7 +54,7 @@ export default function UserMenu({ isOpen }: UserMenuProps) {
           <>
             <span className="text-code truncate flex-1 text-left">{user?.display_name ?? 'User'}</span>
             {isAdmin && (
-              <span className="text-[0.5625rem] font-semibold uppercase tracking-wide text-amber-600 bg-amber-50 border border-amber-200 rounded px-1 shrink-0">
+              <span className="text-[0.5625rem] font-semibold uppercase tracking-wide text-(--warning) bg-(--warning-soft) border border-(--warning-border) rounded px-1 shrink-0">
                 admin
               </span>
             )}
@@ -68,7 +68,7 @@ export default function UserMenu({ isOpen }: UserMenuProps) {
           {isOpen && (
             <div className="px-3 py-2 border-b border-(--border) mb-1">
               <p className="text-caption font-medium text-(--foreground) truncate">{user?.display_name}</p>
-              <p className="text-[0.6875rem] text-(--muted-foreground) truncate">{user?.email}</p>
+              <p className="text-micro text-(--muted-foreground) truncate">{user?.email}</p>
             </div>
           )}
           <Link
@@ -89,7 +89,7 @@ export default function UserMenu({ isOpen }: UserMenuProps) {
           )}
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2.5 px-3 h-8 text-body text-red-600 hover:bg-red-50 transition-colors w-full text-left"
+            className="flex items-center gap-2.5 px-3 h-8 text-body text-(--danger) hover:bg-(--danger-soft) transition-colors w-full text-left"
           >
             <LogoutIcon size="sm" /> Sign out
           </button>

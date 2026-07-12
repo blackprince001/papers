@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CloseIcon, PlusIcon } from '@/components/icons';
 import { tagsApi, type Tag } from '@/lib/api/tags';
 import { Input } from '@/components/ui/Input';
+import { Spinner } from '@/components/ui/Spinner';
 import { cn } from '@/lib/utils';
 
 interface TagInputProps {
@@ -111,7 +112,9 @@ export function TagInput({ selectedTags, onTagsChange, className }: TagInputProp
         {isOpen && (
           <div className="absolute z-50 w-full mt-1 bg-(--popover) border border-(--border) rounded-card shadow-elevated max-h-52 overflow-auto">
             {isLoading ? (
-              <p className="px-3 py-2 text-caption text-(--muted-foreground)">Loading…</p>
+              <div className="flex items-center justify-center px-3 py-2.5 text-(--muted-foreground)">
+                <Spinner size="xs" />
+              </div>
             ) : (
               <>
                 {available.map((tag) => (

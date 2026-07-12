@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { ChatIcon, ChevronRightIcon, EditIcon, ExternalLinkIcon, HighlighterIcon, TrashIcon } from '@/components/icons';
 import { type Annotation } from '@/lib/api/annotations';
 import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/lib/utils';
 
 interface PaperAnnotationsPanelProps {
@@ -39,7 +41,7 @@ export function PaperAnnotationsPanel({
     return (
       <div className="p-8 space-y-4">
         {[1, 2, 3].map(i => (
-          <div key={i} className="h-24 bg-(--muted)/50 rounded-xl animate-pulse" />
+          <Skeleton key={i} className="h-24 rounded-xl" />
         ))}
       </div>
     );
@@ -160,11 +162,12 @@ export function PaperAnnotationsPanel({
           {filteredAnnotations.map(renderAnnotationCard)}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-12 px-6 text-center bg-(--muted)/10 rounded-2xl border border-dashed border-(--border)">
-          <HighlighterIcon size={32} className="mb-4 text-(--muted-foreground) opacity-30" />
-          <p className="text-code text-(--muted-foreground)">
-            {filterByPage ? `No annotations on page ${currentPage}` : 'No annotations yet'}
-          </p>
+        <div className="bg-(--muted)/10 rounded-2xl border border-dashed border-(--border)">
+          <EmptyState
+            size="panel"
+            icon={HighlighterIcon}
+            title={filterByPage ? `No annotations on page ${currentPage}` : 'No annotations yet'}
+          />
         </div>
       )}
 
