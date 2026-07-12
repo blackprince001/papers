@@ -1,4 +1,4 @@
-import { CloseCircle as X } from 'iconsax-reactjs';
+import { CloseIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
 
 interface FilterChipProps {
@@ -25,7 +25,7 @@ export function FilterChip({ label, value, onRemove, className }: FilterChipProp
         aria-label={`Remove ${label} filter`}
         className="ml-0.5 rounded-full p-0.5 hover:bg-(--border) transition-colors"
       >
-        <X size={11} />
+        <CloseIcon size="xs" />
       </button>
     </span>
   );

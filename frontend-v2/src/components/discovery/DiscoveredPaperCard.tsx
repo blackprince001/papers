@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bookmark2 as BookmarkPlus, ExportSquare as ExternalLink } from 'iconsax-reactjs';
+import { BookmarkPlusIcon, CheckIcon, ExternalLinkIcon } from '@/components/icons';
 import type { DiscoveredPaperPreview } from '@/lib/api/discovery';
 import { AddToLibraryDialog } from './AddToLibraryDialog';
 import { PaperCoverPlaceholder } from '@/components/ui/PaperCoverPlaceholder';
@@ -50,9 +50,7 @@ export function DiscoveredPaperCard({
                   : 'bg-transparent border-(--mid-gray)',
               )}>
                 {isSelected && (
-                  <svg className="w-2.5 h-2.5 text-(--background)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
+                  <CheckIcon size="xs" strokeWidth={3} className="w-2.5 h-2.5 text-(--background)" />
                 )}
               </div>
             )}
@@ -79,7 +77,7 @@ export function DiscoveredPaperCard({
               style={{ color: theme.text }}
               title="Open original"
             >
-              <ExternalLink size={14} />
+              <ExternalLinkIcon size="sm" />
             </a>
             <button
               onClick={(e) => { e.stopPropagation(); setShowDialog(true); }}
@@ -87,7 +85,7 @@ export function DiscoveredPaperCard({
               style={{ color: theme.text }}
               title="Add to library"
             >
-              <BookmarkPlus size={14} />
+              <BookmarkPlusIcon size="sm" />
             </button>
           </div>
         </div>

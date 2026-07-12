@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Trash as Trash2, People, Message as MessageSquare } from 'iconsax-reactjs';
+import { ChatIcon, CheckIcon, TrashIcon, UsersIcon } from '@/components/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
@@ -89,9 +89,7 @@ export function PaperCard({
                 : 'bg-transparent border-(--mid-gray)',
             )}>
               {selected && (
-                <svg className="w-2.5 h-2.5 text-(--background)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
+                <CheckIcon size="xs" strokeWidth={3} className="text-(--background)" />
               )}
             </div>
           )}
@@ -109,7 +107,7 @@ export function PaperCard({
           {/* Shared indicator */}
           {isShared && (
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[0.625rem] font-medium bg-(--sky-blue)/10 text-(--sky-blue)">
-              <People size={10} />
+              <UsersIcon size="xs" />
               Shared
             </span>
           )}
@@ -134,7 +132,7 @@ export function PaperCard({
               className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-black/10"
               style={{ color: theme.text }}
             >
-              <MessageSquare size={12} />
+              <ChatIcon size="xs" />
             </button>
           )}
           {!selectionMode && onDelete && (
@@ -144,7 +142,7 @@ export function PaperCard({
               className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-black/10"
               style={{ color: theme.text }}
             >
-              <Trash2 size={12} />
+              <TrashIcon size="xs" />
             </button>
           )}
         </div>

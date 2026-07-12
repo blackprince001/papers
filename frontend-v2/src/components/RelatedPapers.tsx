@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ExportSquare as ExternalLink, Book1 as BookOpen, Book1 as Library, ArrowUp2 as ArrowUpRight, ArrowDown2 as ArrowDownLeft } from 'iconsax-reactjs';
+import { ArrowDownLeftIcon, ArrowUpRightIcon, BookOpenIcon, ExternalLinkIcon, LibraryIcon } from '@/components/icons';
 import { Link } from 'react-router-dom';
 import { papersApi, type RelatedPaperExternal, type Paper } from '@/lib/api/papers';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
@@ -53,7 +53,7 @@ export function RelatedPapers({ paperId }: RelatedPapersProps) {
             rel="noopener noreferrer"
             className="text-(--muted-foreground) hover:text-(--foreground) transition-colors p-1"
           >
-            <ExternalLink size={14} />
+            <ExternalLinkIcon size="sm" />
           </a>
         )}
       </div>
@@ -76,7 +76,7 @@ export function RelatedPapers({ paperId }: RelatedPapersProps) {
           {paper.title}
         </Link>
         <Link to={`/papers/${paper.id}`} className="text-(--muted-foreground) hover:text-(--foreground) transition-colors p-1">
-          <BookOpen size={14} />
+          <BookOpenIcon size="sm" />
         </Link>
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-(--muted-foreground) opacity-70">
@@ -101,7 +101,7 @@ export function RelatedPapers({ paperId }: RelatedPapersProps) {
         <TabsContent value="citations" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <ArrowUpRight size={14} className="text-(--muted-foreground)" />
+              <ArrowUpRightIcon size="sm" className="text-(--muted-foreground)" />
               <h3 className="text-caption font-bold uppercase tracking-wider text-(--muted-foreground)">
                 Cited by
               </h3>
@@ -117,7 +117,7 @@ export function RelatedPapers({ paperId }: RelatedPapersProps) {
 
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <ArrowDownLeft size={14} className="text-(--muted-foreground)" />
+              <ArrowDownLeftIcon size="sm" className="text-(--muted-foreground)" />
               <h3 className="text-caption font-bold uppercase tracking-wider text-(--muted-foreground)">
                 References
               </h3>
@@ -135,7 +135,7 @@ export function RelatedPapers({ paperId }: RelatedPapersProps) {
         <TabsContent value="similar" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <Library size={14} className="text-(--muted-foreground)" />
+              <LibraryIcon size="sm" className="text-(--muted-foreground)" />
               <h3 className="text-caption font-bold uppercase tracking-wider text-(--muted-foreground)">
                 In Your Library
               </h3>

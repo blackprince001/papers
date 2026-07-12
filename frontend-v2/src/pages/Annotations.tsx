@@ -4,17 +4,16 @@ import { useNavigate } from 'react-router-dom';
 import { annotationsApi, type Annotation } from '@/lib/api/annotations';
 import { papersApi, type Paper } from '@/lib/api/papers';
 import {
-  DocumentText as FileText,
-  Message as MessageSquare,
-  Magicpen as Highlighter,
-  Trash as Trash2,
-  Edit as Edit2,
-  CloseCircle as X,
-  TickCircle as Check,
-  ArrowRight2 as ChevronRight,
-  Copy,
-  ExportSquare,
-} from 'iconsax-reactjs';
+  FileTextIcon,
+  ChatIcon,
+  HighlighterIcon,
+  TrashIcon,
+  EditIcon,
+  CloseIcon,
+  CheckIcon,
+  ChevronRightIcon,
+  ExternalLinkIcon,
+} from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Select } from '@/components/ui/Select';
@@ -267,7 +266,7 @@ export default function Annotations() {
                   : 'bg-(--muted) text-(--foreground) hover:bg-(--border)',
               )}
             >
-              <Highlighter size={14} />
+              <HighlighterIcon size="sm" />
               <span>Highlights</span>
             </button>
             <button
@@ -279,7 +278,7 @@ export default function Annotations() {
                   : 'bg-(--muted) text-(--foreground) hover:bg-(--border)',
               )}
             >
-              <MessageSquare size={14} />
+              <ChatIcon size="sm" />
               <span>Notes</span>
             </button>
           </div>
@@ -309,7 +308,7 @@ export default function Annotations() {
         {/* Grouped annotations table */}
         {groups.length === 0 ? (
           <div className="text-center py-16 border border-dashed border-(--border) rounded-xl">
-            <FileText size={48} className="mx-auto mb-3 text-(--muted-foreground) opacity-40" />
+            <FileTextIcon size={48} className="mx-auto mb-3 text-(--muted-foreground) opacity-40" />
             <p className="text-body text-(--muted-foreground)">No annotations found</p>
           </div>
         ) : (
@@ -343,8 +342,8 @@ export default function Annotations() {
                       aria-expanded={isOpen}
                       className="flex items-center gap-2 min-w-0 text-left focus:outline-none"
                     >
-                      <ChevronRight
-                        size={14}
+                      <ChevronRightIcon
+                        size="sm"
                         className={cn(
                           'shrink-0 text-(--muted-foreground) transition-transform duration-150',
                           isOpen && 'rotate-90',
@@ -384,14 +383,8 @@ export default function Annotations() {
                         variant="ghost"
                         size="sm"
                         onClick={() => exportCitation(group.paper.id)}
-                        disabled={exportingPaperId === group.paper.id}
-                        icon={
-                          exportingPaperId === group.paper.id ? (
-                            <Copy size={12} className="animate-pulse" />
-                          ) : (
-                            <ExportSquare size={12} />
-                          )
-                        }
+                        loading={exportingPaperId === group.paper.id}
+                        icon={<ExternalLinkIcon size="xs" />}
                       >
                         Cite
                       </Button>
@@ -409,7 +402,7 @@ export default function Annotations() {
                   {isOpen && (
                     <div className="border-t border-(--border) bg-(--background) px-4 py-3 space-y-2">
                       {group.annotations.map((annotation) => {
-                        const Icon = annotation.type === 'note' ? MessageSquare : Highlighter;
+                        const Icon = annotation.type === 'note' ? ChatIcon : HighlighterIcon;
                         const page = annotation.coordinate_data?.page as number | undefined;
                         const isEditing = editingId === annotation.id;
 
@@ -420,7 +413,7 @@ export default function Annotations() {
                           >
                             <div className="flex items-start gap-3">
                               <div className="w-7 h-7 rounded-md bg-(--muted) flex items-center justify-center shrink-0 mt-0.5">
-                                <Icon size={14} className="text-(--muted-foreground)" />
+                                <Icon size="sm" className="text-(--muted-foreground)" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -433,20 +426,21 @@ export default function Annotations() {
                                     {!isEditing && (
                                       <>
                                         <Button
-                                          variant="ghost"
-                                          className="h-7! w-7! p-0!"
+                                          variant="icon"
+                                          size="icon-sm"
                                           onClick={() => startEdit(annotation)}
                                           aria-label="Edit annotation"
                                         >
-                                          <Edit2 size={12} />
+                                          <EditIcon size="xs" />
                                         </Button>
                                         <Button
-                                          variant="ghost"
-                                          className="h-7! w-7! p-0! text-(--destructive)"
+                                          variant="icon"
+                                          size="icon-sm"
+                                          className="text-(--destructive)"
                                           onClick={() => handleDelete(annotation.id)}
                                           aria-label="Delete annotation"
                                         >
-                                          <Trash2 size={12} />
+                                          <TrashIcon size="xs" />
                                         </Button>
                                       </>
                                     )}
@@ -478,7 +472,7 @@ export default function Annotations() {
                                         className="h-7! px-3! text-caption"
                                         onClick={saveEdit}
                                       >
-                                        <Check size={12} className="mr-1" />
+                                        <CheckIcon size="xs" className="mr-1" />
                                         Save
                                       </Button>
                                       <Button
@@ -486,7 +480,7 @@ export default function Annotations() {
                                         className="h-7! px-3! text-caption"
                                         onClick={cancelEdit}
                                       >
-                                        <X size={12} className="mr-1" />
+                                        <CloseIcon size="xs" className="mr-1" />
                                         Cancel
                                       </Button>
                                     </div>

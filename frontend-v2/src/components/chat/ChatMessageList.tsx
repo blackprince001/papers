@@ -1,13 +1,13 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import type { ReactNode } from "react";
 import {
-  MagicStar as Sparkles,
-  Copy,
-  TickCircle as Check,
-  Message as MessageSquare,
-  ArrowDown,
-  ArrowUp,
-} from "iconsax-reactjs";
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ChatIcon,
+  CheckCircleIcon,
+  CopyIcon,
+  SparklesIcon,
+} from "@/components/icons";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/Button";
 import { MarkdownMessage } from "@/components/MarkdownMessage";
@@ -202,7 +202,7 @@ export function ChatMessageList({
         <div ref={messagesTopRef} />
         {messages.length === 0 && !isActive && !pendingUserMessage && (
           <div className="flex flex-col items-center justify-center h-full text-center text-(--muted-foreground) opacity-50">
-            <Sparkles size={32} className="mb-3" />
+            <SparklesIcon size={32} className="mb-3" />
             <p className="text-code">Start a conversation about this paper</p>
           </div>
         )}
@@ -235,30 +235,32 @@ export function ChatMessageList({
                       />
                       <div className="absolute -bottom-5 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-(--card) border border-(--border) p-1 rounded-md z-10">
                         <Button
-                          variant="ghost"
-                          className="h-6! w-6! p-0!"
+                          variant="icon"
+                          size="icon-xs"
                           onClick={() =>
                             copyMessage(msg.content, `${msg.id}-copy`)
                           }
                           title="Copy"
+                          aria-label="Copy"
                         >
                           {copiedId === `${msg.id}-copy` ? (
-                            <Check size={12} className="text-(--success)" />
+                            <CheckCircleIcon size="xs" className="text-(--success)" />
                           ) : (
-                            <Copy size={12} />
+                            <CopyIcon size="xs" />
                           )}
                         </Button>
                         <Button
-                          variant="ghost"
-                          className="h-6! w-6! p-0!"
+                          variant="icon"
+                          size="icon-xs"
                           onClick={() =>
                             setActiveThreadId(
                               activeThreadId === msg.id ? null : msg.id,
                             )
                           }
                           title="Reply in thread"
+                          aria-label="Reply in thread"
                         >
-                          <MessageSquare size={12} />
+                          <ChatIcon size="xs" />
                         </Button>
                       </div>
                       <span className="absolute top-4 right-3 text-[0.625rem] text-(--muted-foreground) opacity-0 group-hover:opacity-60 transition-opacity pointer-events-none">
@@ -326,7 +328,7 @@ export function ChatMessageList({
           className="absolute right-4 top-4 z-30 w-8 h-8 rounded-full bg-(--card) border border-(--border) shadow-(--shadow-subtle) flex items-center justify-center text-(--muted-foreground) hover:text-(--foreground) hover:border-(--foreground)/30 transition-colors"
           title="Scroll to top"
         >
-          <ArrowUp size={14} />
+          <ArrowUpIcon size="sm" />
         </button>
       )}
       {showScrollDown && (
@@ -335,7 +337,7 @@ export function ChatMessageList({
           className="absolute right-4 bottom-4 z-30 w-8 h-8 rounded-full bg-(--card) border border-(--border) shadow-(--shadow-subtle) flex items-center justify-center text-(--muted-foreground) hover:text-(--foreground) hover:border-(--foreground)/30 transition-colors"
           title="Scroll to bottom"
         >
-          <ArrowDown size={14} />
+          <ArrowDownIcon size="sm" />
         </button>
       )}
     </div>

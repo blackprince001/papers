@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { ArrangeVertical as ArrowUpDown, Trash as Trash2, People } from 'iconsax-reactjs';
+import { CheckIcon, SortIcon, TrashIcon, UsersIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
@@ -37,8 +37,8 @@ export function PaperTable({ papers, sortBy, sortOrder, onSort, onDelete, select
             )}
           >
             {children}
-            <ArrowUpDown
-              size={11}
+            <SortIcon
+              size="xs"
               className={cn(
                 'transition-opacity',
                 isActive ? 'opacity-80' : 'opacity-30',
@@ -91,9 +91,7 @@ export function PaperTable({ papers, sortBy, sortOrder, onSort, onDelete, select
                         : 'border-(--border)',
                     )}>
                       {isSelected && (
-                        <svg className="w-2.5 h-2.5 text-(--background)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
+                        <CheckIcon size="xs" strokeWidth={3} className="text-(--background)" />
                       )}
                     </div>
                   </TableCell>
@@ -135,7 +133,7 @@ export function PaperTable({ papers, sortBy, sortOrder, onSort, onDelete, select
                     }
                     {paper.is_shared && (
                       <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[0.625rem] font-medium bg-(--sky-blue)/10 text-(--sky-blue)" title="Shared with you">
-                        <People size={10} />
+                        <UsersIcon size="xs" />
                       </span>
                     )}
                   </div>
@@ -192,13 +190,14 @@ export function PaperTable({ papers, sortBy, sortOrder, onSort, onDelete, select
                 {onDelete && (
                   <TableCell>
                     <Button
-                      variant="ghost"
-                      size="sm"
+                      variant="icon"
+                      size="icon-sm"
                       onClick={(e) => { e.stopPropagation(); onDelete(paper.id); }}
-                      className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 hover:text-(--destructive) hover:bg-(--destructive)/5"
+                      className="opacity-0 group-hover:opacity-100 hover:text-(--destructive) hover:bg-(--destructive)/5"
                       title="Delete paper"
+                      aria-label="Delete paper"
                     >
-                      <Trash2 size={13} />
+                      <TrashIcon size="sm" />
                     </Button>
                   </TableCell>
                 )}

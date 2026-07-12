@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ExportSquare as ExternalLink, Book1 as BookOpen } from 'iconsax-reactjs';
+import { BookOpenIcon, ExternalLinkIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import type { Citation } from '@/lib/api/papers';
 
@@ -75,11 +75,11 @@ export function PaperCitationsList({ citations, isLoading, error, className }: P
           {url && (
             isInternal ? (
               <Link to={url} className="text-(--muted-foreground) hover:text-(--foreground) transition-colors p-1">
-                <BookOpen size={14} />
+                <BookOpenIcon size="sm" />
               </Link>
             ) : (
               <a href={url} target="_blank" rel="noopener noreferrer" className="text-(--muted-foreground) hover:text-(--foreground) transition-colors p-1">
-                <ExternalLink size={14} />
+                <ExternalLinkIcon size="sm" />
               </a>
             )
           )}

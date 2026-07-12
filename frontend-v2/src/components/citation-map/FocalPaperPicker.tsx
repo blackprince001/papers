@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { SearchNormal as Search, Add as Plus, TickCircle, Refresh as Loader2 } from 'iconsax-reactjs';
+import { CheckCircleIcon, PlusIcon, SearchIcon } from '@/components/icons';
+import { Spinner } from '@/components/ui/Spinner';
 import { papersApi, type Paper } from '@/lib/api/papers';
 import { citationMapApi } from '@/lib/api/citationMap';
 import { toastError } from '@/lib/utils/toast';
@@ -33,7 +34,7 @@ export function FocalPaperPicker({ focalIds, className }: FocalPaperPickerProps)
     <div className={cn('flex flex-col md:border-r border-b md:border-b-0 border-(--border) bg-(--card)', className)}>
       <div className="p-3 border-b border-(--border)">
         <div className="relative">
-          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-(--muted-foreground)" />
+          <SearchIcon size="sm" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-(--muted-foreground)" />
           <input
             type="text"
             value={query}
@@ -74,7 +75,7 @@ export function FocalPaperPicker({ focalIds, className }: FocalPaperPickerProps)
                       )}
                     </div>
                     {isFocal ? (
-                      <TickCircle size={16} variant="Bold" className="shrink-0 mt-0.5 text-(--foreground)" />
+                      <CheckCircleIcon size="md" filled className="shrink-0 mt-0.5 text-(--foreground)" />
                     ) : (
                       <button
                         type="button"
@@ -83,7 +84,7 @@ export function FocalPaperPicker({ focalIds, className }: FocalPaperPickerProps)
                         aria-label="Add to map"
                         className="shrink-0 mt-0.5 flex items-center justify-center w-5 h-5 rounded hover:bg-(--border) text-(--muted-foreground) hover:text-(--foreground) transition-colors"
                       >
-                        {pending ? <Loader2 size={13} className="animate-spin" /> : <Plus size={14} />}
+                        {pending ? <Spinner size="xs" /> : <PlusIcon size="sm" />}
                       </button>
                     )}
                   </div>

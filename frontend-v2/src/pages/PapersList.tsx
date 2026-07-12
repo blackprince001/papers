@@ -1,7 +1,8 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Add as Plus, Grid1 as LayoutGrid, MenuBoard as List, Trash as Trash2, Refresh as RefreshCw, Layer, TickSquare as CheckSquare, CloseCircle as X, FolderAdd as FolderInput } from 'iconsax-reactjs';
+import { PlusIcon, ViewGridIcon, ViewListIcon, TrashIcon, RefreshIcon, LayersIcon, CheckSquareIcon, CheckIcon, CloseIcon, FolderPlusIcon } from '@/components/icons';
+import { Spinner } from '@/components/ui/Spinner';
 import { Link } from 'react-router-dom';
 
 import { papersApi } from '@/lib/api/papers';
@@ -246,7 +247,7 @@ export default function PapersList() {
           </p>
         </div>
         <Link to="/ingest" aria-label="Add paper">
-          <Button variant="primary" icon={<Plus size={14} />} className="px-2.5 sm:px-5">
+          <Button variant="primary" icon={<PlusIcon size="sm" />} className="px-2.5 sm:px-5">
             <span className="hidden sm:inline">Add Paper</span>
           </Button>
         </Link>
@@ -325,7 +326,7 @@ export default function PapersList() {
                     : 'text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted)',
                 )}
               >
-                <LayoutGrid size={14} />
+                <ViewGridIcon size="sm" />
               </button>
             </Tooltip>
             <Tooltip content="Table view" side="bottom">
@@ -339,7 +340,7 @@ export default function PapersList() {
                     : 'text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted)',
                 )}
               >
-                <List size={14} />
+                <ViewListIcon size="sm" />
               </button>
             </Tooltip>
           </div>
@@ -354,7 +355,7 @@ export default function PapersList() {
                   onClick={() => setSelectionMode(true)}
                   className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-(--border) text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) transition-colors"
                 >
-                  <CheckSquare size={14} />
+                  <CheckSquareIcon size="sm" />
                 </button>
               </Tooltip>
             ) : (
@@ -371,9 +372,7 @@ export default function PapersList() {
                       : 'border-current',
                   )}>
                     {selectedIds.length === papers.length && (
-                      <svg className="w-2 h-2 text-(--background)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
+                      <CheckIcon size="xs" strokeWidth={3} className="w-2 h-2 text-(--background)" />
                     )}
                   </div>
                   {selectedIds.length > 0 ? `${selectedIds.length} selected` : 'Select all'}
@@ -387,7 +386,7 @@ export default function PapersList() {
                       onClick={() => setMoveDialogOpen(true)}
                       className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-(--border) text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) transition-colors"
                     >
-                      <FolderInput size={14} />
+                      <FolderPlusIcon size="sm" />
                     </button>
                   </Tooltip>
                 )}
@@ -400,7 +399,7 @@ export default function PapersList() {
                       onClick={() => navigate('/export', { state: { paperIds: selectedIds } })}
                       className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-(--border) text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) transition-colors"
                     >
-                      <Layer size={14} />
+                      <LayersIcon size="sm" />
                     </button>
                   </Tooltip>
                 )}
@@ -414,7 +413,7 @@ export default function PapersList() {
                       disabled={deleteMutation.isPending}
                       className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-(--border) text-(--muted-foreground) hover:text-(--destructive) hover:border-(--destructive)/30 hover:bg-(--destructive)/5 transition-colors disabled:opacity-40"
                     >
-                      <Trash2 size={14} />
+                      <TrashIcon size="sm" />
                     </button>
                   </Tooltip>
                 )}
@@ -426,7 +425,7 @@ export default function PapersList() {
                     onClick={exitSelection}
                     className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-(--border) text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) transition-colors"
                   >
-                    <X size={14} />
+                    <CloseIcon size="sm" />
                   </button>
                 </Tooltip>
               </>
@@ -440,7 +439,7 @@ export default function PapersList() {
                 disabled={regenMutation.isPending}
                 className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-(--border) text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) transition-colors disabled:opacity-40"
               >
-                <RefreshCw size={14} className={regenMutation.isPending ? 'animate-spin' : ''} />
+                {regenMutation.isPending ? <Spinner size={14} /> : <RefreshIcon size="sm" />}
               </button>
             </Tooltip>
           </div>

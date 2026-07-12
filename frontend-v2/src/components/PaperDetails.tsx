@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toastInfo, toastError } from '@/lib/utils/toast';
-import { Trash as Trash2, Edit as Pencil, TickCircle as Check, CloseCircle as X, ExportSquare as ExternalLink, Calendar, Link as LinkIcon, FingerScan as Fingerprint, Refresh, Share, DocumentDownload } from 'iconsax-reactjs';
+import { CalendarIcon, CheckIcon, CloseIcon, DownloadIcon, EditIcon, ExternalLinkIcon, FingerprintIcon, LinkIcon, RefreshIcon, ShareIcon, TrashIcon } from '@/components/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { type Paper, papersApi } from '@/lib/api/papers';
 import { Button } from '@/components/ui/Button';
@@ -103,31 +103,35 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
             )}
             {isOwner(paper) && (
             <Button
-              variant="ghost"
-              className="h-8 w-8 p-0"
+              variant="icon"
+              size="icon"
               onClick={() => setShareOpen(true)}
               title="Share Paper"
+              aria-label="Share Paper"
             >
-              <Share size={14} />
+              <ShareIcon size="sm" />
             </Button>
             )}
             <Button
-              variant="ghost"
-              className="h-8 w-8 p-0"
+              variant="icon"
+              size="icon"
               onClick={() => extractCitationsMutation.mutate()}
-              disabled={extractCitationsMutation.isPending}
+              loading={extractCitationsMutation.isPending}
               title="Regenerate Citations"
+              aria-label="Regenerate Citations"
             >
-              <Refresh size={14} className={extractCitationsMutation.isPending ? 'animate-spin' : ''} />
+              <RefreshIcon size="sm" />
             </Button>
             {onDelete && isOwner(paper) && (
               <Button
-                variant="ghost"
-                className="h-8 w-8 p-0 text-(--destructive) hover:bg-(--destructive)/10"
+                variant="icon"
+                size="icon"
+                className="text-(--destructive) hover:bg-(--destructive)/10"
                 onClick={onDelete}
                 title="Delete Paper"
+                aria-label="Delete Paper"
               >
-                <Trash2 size={14} />
+                <TrashIcon size="sm" />
               </Button>
             )}
           </div>
@@ -146,11 +150,11 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
                 autoFocus
               />
               <div className="flex gap-1">
-                <Button variant="ghost" className="h-8 w-8 p-0" onClick={handleSaveTitle}>
-                  <Check size={14} />
+                <Button variant="icon" size="icon" onClick={handleSaveTitle} aria-label="Save title">
+                  <CheckIcon size="sm" />
                 </Button>
-                <Button variant="ghost" className="h-8 w-8 p-0" onClick={handleCancelTitle}>
-                  <X size={14} />
+                <Button variant="icon" size="icon" onClick={handleCancelTitle} aria-label="Cancel editing">
+                  <CloseIcon size="sm" />
                 </Button>
               </div>
             </div>
@@ -159,11 +163,13 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
               <h1 className="text-body-lg font-bold leading-snug text-(--foreground) flex-1">{paper.title}</h1>
               {isOwner(paper) && (
               <Button
-                variant="ghost"
-                className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                variant="icon"
+                size="icon-sm"
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={() => setIsEditingTitle(true)}
+                aria-label="Edit title"
               >
-                <Pencil size={13} />
+                <EditIcon size="sm" />
               </Button>
               )}
             </div>
@@ -244,7 +250,7 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
           {publishedDate && (
             <div className="space-y-1.5">
               <h4 className="flex items-center gap-1.5 text-caption font-bold uppercase tracking-wider text-(--muted-foreground)">
-                <Calendar size={12} /> Published
+                <CalendarIcon size="xs" /> Published
               </h4>
               <p className="text-code text-(--foreground)">{publishedDate}</p>
             </div>
@@ -255,7 +261,7 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
             {paper.doi && (
               <div className="space-y-1.5">
                 <h4 className="flex items-center gap-1.5 text-caption font-bold uppercase tracking-wider text-(--muted-foreground)">
-                  <Fingerprint size={12} /> DOI
+                  <FingerprintIcon size="xs" /> DOI
                 </h4>
                 <a
                   href={`https://doi.org/${paper.doi}`}
@@ -276,7 +282,7 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
                 return (
                   <div className="space-y-1.5">
                     <h4 className="flex items-center gap-1.5 text-caption font-bold uppercase tracking-wider text-(--muted-foreground)">
-                      <LinkIcon size={12} /> URL
+                      <LinkIcon size="xs" /> URL
                     </h4>
                     <a
                       href={paper.url}
@@ -284,7 +290,7 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
                       rel="noopener noreferrer"
                       className="text-code text-(--foreground) hover:text-(--sky-blue) truncate block"
                     >
-                      Source <ExternalLink size={10} className="inline ml-1" />
+                      Source <ExternalLinkIcon size="xs" className="inline ml-1" />
                     </a>
                   </div>
                 );
@@ -293,7 +299,7 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
                 return (
                   <div className="space-y-1.5">
                     <h4 className="flex items-center gap-1.5 text-caption font-bold uppercase tracking-wider text-(--muted-foreground)">
-                      <DocumentDownload size={12} /> File
+                      <DownloadIcon size="xs" /> File
                     </h4>
                     <button
                       type="button"
@@ -306,7 +312,7 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
                       }}
                       className="text-code text-(--foreground) hover:text-(--sky-blue) truncate block text-left"
                     >
-                      Download <DocumentDownload size={10} className="inline ml-1" />
+                      Download <DownloadIcon size="xs" className="inline ml-1" />
                     </button>
                   </div>
                 );

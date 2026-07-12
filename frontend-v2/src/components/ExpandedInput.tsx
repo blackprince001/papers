@@ -3,21 +3,22 @@ import {
   useEffect,
   useRef,
   useCallback,
+  type ComponentType,
   type ReactNode,
 } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { annotationsApi } from "@/lib/api/annotations";
 import { papersApi } from "@/lib/api/papers";
 import {
-  DocumentText as FileText,
-  Book1 as BookOpen,
-  Stickynote as StickyNote,
-  TickCircle as Check,
-  ArrowDown2 as ChevronDown,
-  DocumentText,
-  Note1,
-  Edit,
-} from "iconsax-reactjs";
+  AnnotationIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  EditIcon,
+  FileTextIcon,
+  LibraryIcon,
+  NoteIcon,
+  type IconProps,
+} from "@/components/icons";
 import {
   Popover,
   PopoverTrigger,
@@ -34,14 +35,14 @@ interface MentionItem {
 }
 
 interface SuggestionPrompt {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: ComponentType<IconProps>;
   text: string;
   prompt: string;
 }
 
 export interface PromptGroup {
   label: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: ComponentType<IconProps>;
   prompts: SuggestionPrompt[];
 }
 
@@ -69,10 +70,10 @@ export interface ExpandedInputProps {
 
 // Same icon/tint convention as ReferenceChip, so an in-progress mention
 // reads as the same "reference" affordance once it's sent and rendered.
-const MENTION_ICONS: Record<string, typeof DocumentText> = {
-  note: Note1,
-  annotation: Edit,
-  paper: DocumentText,
+const MENTION_ICONS: Record<string, ComponentType<IconProps>> = {
+  note: AnnotationIcon,
+  annotation: EditIcon,
+  paper: FileTextIcon,
 };
 
 const MENTION_TINT: Record<string, string> = {
@@ -107,8 +108,8 @@ function highlightContent(value: string): ReactNode[] {
       nodes.push(
         <span key={key++} className="relative">
           <Icon
-            size={11}
-            variant="Bold"
+            size="xs"
+            filled
             className={cn(
               "absolute -left-3.5 top-1/2 -translate-y-1/2",
               MENTION_TINT[type],
@@ -402,11 +403,11 @@ export function ExpandedInput({
   const getMentionIcon = (type: MentionItem["type"]) => {
     switch (type) {
       case "note":
-        return <StickyNote size={14} />;
+        return <NoteIcon size="sm" />;
       case "annotation":
-        return <FileText size={14} />;
+        return <FileTextIcon size="sm" />;
       case "paper":
-        return <BookOpen size={14} />;
+        return <LibraryIcon size="sm" />;
     }
   };
 
@@ -558,7 +559,7 @@ export function ExpandedInput({
                     )}
                   </div>
                   {index === selectedMentionIndex && (
-                    <Check size={12} className="shrink-0 text-(--primary)" />
+                    <CheckIcon size="xs" className="shrink-0 text-(--primary)" />
                   )}
                 </button>
               ))}
@@ -614,7 +615,7 @@ export function ExpandedInput({
                 <Popover>
                   <PopoverTrigger className="inline-flex items-center gap-1 text-caption text-(--muted-foreground) hover:text-(--foreground) transition-colors px-2 py-1 rounded-lg hover:bg-(--muted)">
                     <span>Prompts</span>
-                    <ChevronDown size={12} />
+                    <ChevronDownIcon size="xs" />
                   </PopoverTrigger>
                   <PopoverContent
                     side="top"

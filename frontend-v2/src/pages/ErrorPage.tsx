@@ -1,6 +1,6 @@
 import { useRouteError, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
-import { Home } from 'iconsax-reactjs';
+import { HomeIcon } from '@/components/icons';
 
 export default function ErrorPage() {
   const error = useRouteError() as { statusText?: string; message?: string };
@@ -12,7 +12,7 @@ export default function ErrorPage() {
         {error?.statusText || error?.message || 'An unexpected error occurred'}
       </p>
       <Link to="/">
-        <Button variant="primary" icon={<Home size={14} />}>Back to Home</Button>
+        <Button variant="primary" icon={<HomeIcon size="sm" />}>Back to Home</Button>
       </Link>
     </div>
   );

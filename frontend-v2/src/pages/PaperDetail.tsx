@@ -7,7 +7,7 @@ import { ReaderShell } from '@/components/reader/ReaderShell';
 import { ProcessingProgressPanel } from '@/components/ProcessingProgressPanel';
 import { useTabs } from '@/contexts/TabContext';
 import { useReadingSession } from '@/hooks/use-reading-session';
-import { Warning2 as AlertCircle, DocumentText as FileText } from 'iconsax-reactjs';
+import { WarningIcon, FileTextIcon } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 
@@ -51,7 +51,7 @@ export default function PaperDetail() {
   if (!paperId) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-(--white)">
-        <AlertCircle size={48} className="text-(--destructive) opacity-20 mb-4" />
+        <WarningIcon size={48} className="text-(--destructive) opacity-20 mb-4" />
         <h2 className="text-subheading font-bold mb-2">Paper not found</h2>
         <p className="text-body text-(--muted-foreground) mb-6">The paper ID provided is invalid or missing.</p>
         <Button onClick={() => navigate('/')}>Return Home</Button>
@@ -74,7 +74,7 @@ export default function PaperDetail() {
   if (paperError || !paper) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-(--white)">
-        <FileText size={48} className="text-(--destructive) opacity-20 mb-4" />
+        <FileTextIcon size={48} className="text-(--destructive) opacity-20 mb-4" />
         <h2 className="text-subheading font-bold mb-2">Error loading paper</h2>
         <p className="text-body text-(--muted-foreground) mb-6">
           {paperError instanceof Error ? paperError.message : 'We could not load the paper data at this time.'}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Note1 as NoteIcon, CloseCircle as CloseIcon } from 'iconsax-reactjs';
+import { AnnotationIcon, CloseIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { highlightTheme } from './highlight-colors';
 import { AnnotationCard } from './AnnotationCard';
@@ -67,7 +67,7 @@ export function AnnotationMarker({
           color: `var(--theme-${theme}-text)`,
         }}
       >
-        <NoteIcon size={11} variant="Bold" />
+        <AnnotationIcon size="xs" filled />
       </button>
 
       {open && (
@@ -98,7 +98,7 @@ export function AnnotationMarker({
               }}
               className="absolute -right-2 -top-2 flex size-5 items-center justify-center rounded-full border border-(--border) bg-(--popover) text-(--muted-foreground) shadow-(--shadow-subtle) transition-colors hover:text-(--foreground)"
             >
-              <CloseIcon size={12} />
+              <CloseIcon size="xs" />
             </button>
           </div>
         </div>

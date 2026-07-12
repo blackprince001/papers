@@ -1,4 +1,4 @@
-import { Send, Eye, Microscope, Lamp as Lightbulb } from 'iconsax-reactjs';
+import { EyeIcon, InsightIcon, MicroscopeIcon, SendIcon } from '@/components/icons';
 import { ExpandedInput, type PromptGroup } from '@/components/ExpandedInput';
 import { ProviderPicker } from '@/components/ai/ProviderPicker';
 import { defaultPrompts } from '@/lib/constants/defaultPrompts';
@@ -8,21 +8,21 @@ import type { ChatController } from '@/hooks/use-chat-controller';
 const CHAT_PROMPT_GROUPS: PromptGroup[] = [
   {
     label: 'Comprehension',
-    icon: Eye,
+    icon: EyeIcon,
     prompts: defaultPrompts
       .filter(p => ['summarize', 'eli5', 'initial-screen'].includes(p.id))
       .map(p => ({ icon: p.icon, text: p.label, prompt: p.content })),
   },
   {
     label: 'Scrutiny',
-    icon: Microscope,
+    icon: MicroscopeIcon,
     prompts: defaultPrompts
       .filter(p => ['critique', 'deep-dive', 'figures-breakdown', 'landscape'].includes(p.id))
       .map(p => ({ icon: p.icon, text: p.label, prompt: p.content })),
   },
   {
     label: 'Deep Knowledge',
-    icon: Lightbulb,
+    icon: InsightIcon,
     prompts: defaultPrompts
       .filter(p => ['claims-evidence', 'citation-radar', 'reproducibility', 'future-work', 'synthesis'].includes(p.id))
       .map(p => ({ icon: p.icon, text: p.label, prompt: p.content })),
@@ -72,7 +72,7 @@ export function ChatComposer({ controller, centered = false }: ChatComposerProps
               onSubmit={handleSend}
               placeholder="Ask about this paper... (use @ to mention notes/annotations/papers)"
               submitLabel="Send"
-              submitIcon={<Send size={14} />}
+              submitIcon={<SendIcon size="sm" />}
               bordered={false}
               disabled={stream.isActive}
               mentionPaperId={paperId}

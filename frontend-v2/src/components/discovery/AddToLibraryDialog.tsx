@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Folder, TickCircle as Check, Refresh as Loader2 } from 'iconsax-reactjs';
+import { CheckCircleIcon, FolderIcon } from '@/components/icons';
+import { Button } from '@/components/ui/Button';
 import { groupsApi } from '@/lib/api/groups';
 import { papersApi } from '@/lib/api/papers';
 import type { DiscoveredPaperPreview } from '@/lib/api/discovery';
@@ -103,9 +104,9 @@ export function AddToLibraryDialog({ paper, onClose }: AddToLibraryDialogProps) 
                         : 'hover:bg-(--muted) text-(--foreground)'
                     )}
                   >
-                    <Folder size={14} className="shrink-0" />
+                    <FolderIcon size="sm" className="shrink-0" />
                     <span className="flex-1 truncate">{group.name}</span>
-                    {selected && <Check size={14} />}
+                    {selected && <CheckCircleIcon size="sm" />}
                   </button>
                 );
               })}
@@ -120,14 +121,14 @@ export function AddToLibraryDialog({ paper, onClose }: AddToLibraryDialogProps) 
           >
             Cancel
           </button>
-          <button
+          <Button
+            variant="primary"
             onClick={() => mutation.mutate()}
-            disabled={mutation.isPending}
-            className="flex-1 h-9 rounded-lg bg-(--foreground) text-(--white) text-body font-medium hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+            loading={mutation.isPending}
+            className="flex-1 h-9"
           >
-            {mutation.isPending && <Loader2 size={14} className="animate-spin" />}
             Add to Library
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -4,7 +4,7 @@ import { papersApi, type Bookmark } from '@/lib/api/papers';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { ConfirmDialog, useConfirmDialog } from '@/components/ConfirmDialog';
-import { Bookmark as BookmarkIcon, Trash as Trash2, Stickynote as StickyNote } from 'iconsax-reactjs';
+import { BookmarkIcon, NoteIcon, TrashIcon } from '@/components/icons';
 import { format } from 'date-fns';
 
 interface BookmarksTabProps {
@@ -98,7 +98,7 @@ export function BookmarksTab({ paperId, onJumpToPage }: BookmarksTabProps) {
                 className="flex-1 text-left group"
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <BookmarkIcon size={14} className="text-(--muted-foreground) group-hover:text-(--primary)" />
+                  <BookmarkIcon size="sm" className="text-(--muted-foreground) group-hover:text-(--primary)" />
                   <span className="text-code font-medium text-(--foreground) group-hover:text-(--primary)">
                     Page {bookmark.page_number}
                   </span>
@@ -110,20 +110,23 @@ export function BookmarksTab({ paperId, onJumpToPage }: BookmarksTabProps) {
 
               <div className="flex items-center gap-1">
                 <Button
-                  variant="ghost"
-                  className="h-7! w-7! p-0!"
+                  variant="icon"
+                  size="icon-sm"
                   onClick={() => startEdit(bookmark)}
                   title="Add note"
+                  aria-label="Add note"
                 >
-                  <StickyNote size={14} />
+                  <NoteIcon size="sm" />
                 </Button>
                 <Button
-                  variant="ghost"
-                  className="h-7! w-7! p-0! text-(--destructive)"
+                  variant="icon"
+                  size="icon-sm"
+                  className="text-(--destructive)"
                   onClick={() => handleDelete(bookmark.id)}
                   title="Delete"
+                  aria-label="Delete"
                 >
-                  <Trash2 size={14} />
+                  <TrashIcon size="sm" />
                 </Button>
               </div>
             </div>

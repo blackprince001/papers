@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Magicpen as Highlighter, Refresh as RefreshCw, Warning2 as AlertCircle, TickCircle as CheckCircle2 } from 'iconsax-reactjs';
+import { CheckCircleIcon, HighlighterIcon, WarningIcon } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { aiFeaturesApi } from '@/lib/api/aiFeatures';
 import { toastInfo } from '@/lib/utils/toast';
@@ -45,23 +45,16 @@ export function AutoHighlights({ paperId }: AutoHighlightsProps) {
     <div className="p-5 bg-(--sky-blue)/5 border border-(--sky-blue)/20 rounded-2xl">
       <div className="flex items-start justify-between gap-4 mb-3">
         <div className="flex items-center gap-2">
-          <Highlighter size={16} className="text-(--sky-blue)" />
+          <HighlighterIcon size="md" className="text-(--sky-blue)" />
           <h4 className="text-body font-bold">Auto-Highlights</h4>
         </div>
         <Button
           variant="outlined"
           className="h-8 text-caption px-3 border-(--sky-blue)/30 hover:bg-(--sky-blue)/10 text-(--sky-blue)"
           onClick={() => generateMutation.mutate()}
-          disabled={generateMutation.isPending}
+          loading={generateMutation.isPending}
         >
-          {generateMutation.isPending ? (
-            <>
-              <RefreshCw size={14} className="animate-spin" />
-              Agent running…
-            </>
-          ) : (
-            "Run AI Agent"
-          )}
+          Run AI Agent
         </Button>
       </div>
 
@@ -73,14 +66,14 @@ export function AutoHighlights({ paperId }: AutoHighlightsProps) {
 
       {generateMutation.isSuccess && generateMutation.data && (
         <div className="mt-4 flex items-center gap-2 text-caption text-(--success-green) font-medium animate-in fade-in slide-in-from-top-1 duration-300">
-          <CheckCircle2 size={14} />
+          <CheckCircleIcon size="sm" />
           <span>Success! {generateMutation.data.count} highlights identified and added.</span>
         </div>
       )}
 
       {generateMutation.isError && (
         <div className="mt-4 p-3 bg-(--destructive)/5 border border-(--destructive)/20 rounded-xl flex items-start gap-3">
-          <AlertCircle size={14} className="text-(--destructive) shrink-0 mt-0.5" />
+          <WarningIcon size="sm" className="text-(--destructive) shrink-0 mt-0.5" />
           <div>
             <p className="text-caption font-bold text-(--destructive) uppercase tracking-tight">AI Agent Failed</p>
             <p className="text-caption text-(--destructive)/80 mt-0.5">

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, subDays, addDays, subMonths, addMonths, isToday, isFuture, parseISO, startOfMonth } from 'date-fns';
 import { motion } from 'motion/react';
-import { ExportSquare as ExternalLink, Like1 as ThumbsUp, Message as MessageSquare, Refresh as RefreshCw, ArrowLeft2 as ChevronLeft, ArrowRight2 as ChevronRight, ArrowDown2 as ChevronDown, ArrowUp2 as ChevronUp, MagicStar as Sparkles, Notepad2 as Newspaper, Bookmark2 as BookmarkPlus, Calendar } from 'iconsax-reactjs';
+import { ExternalLinkIcon, ThumbsUpIcon, ChatIcon, RefreshIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon, SparklesIcon, BookmarkPlusIcon, CalendarIcon } from '@/components/icons';
 import { PaperCoverPlaceholder } from '@/components/ui/PaperCoverPlaceholder';
 import { huggingfaceApi, type HFPaperItem } from '@/lib/api/huggingface';
 import { Button } from '@/components/ui/Button';
@@ -44,11 +44,11 @@ function HFPaperCard({ paper, index = 0 }: { paper: HFPaperItem; index?: number 
       <div className="flex items-center justify-between gap-1.5 px-4 pt-3 pb-2.5">
         <div className="flex items-center gap-1.5">
           <span className="px-2 py-0.5 rounded text-caption font-semibold flex items-center gap-1" style={{ backgroundColor: theme.accent, color: theme.text }}>
-            <ThumbsUp size={11} />{paper.paper.upvotes}
+            <ThumbsUpIcon size="xs" />{paper.paper.upvotes}
           </span>
           {paper.numComments > 0 && (
             <span className="px-2 py-0.5 rounded text-caption font-semibold flex items-center gap-1" style={{ backgroundColor: theme.accent, color: theme.text }}>
-              <MessageSquare size={11} />{paper.numComments}
+              <ChatIcon size="xs" />{paper.numComments}
             </span>
           )}
         </div>
@@ -58,7 +58,7 @@ function HFPaperCard({ paper, index = 0 }: { paper: HFPaperItem; index?: number 
           title="Add to library"
           style={{ color: theme.text }}
         >
-          <BookmarkPlus size={13} />
+          <BookmarkPlusIcon size="sm" />
         </button>
       </div>
 
@@ -103,7 +103,7 @@ function HFPaperCard({ paper, index = 0 }: { paper: HFPaperItem; index?: number 
                 className="flex items-center gap-1 mt-1 text-caption font-medium opacity-50 hover:opacity-80 transition-opacity"
                 style={{ color: theme.text }}
               >
-                {isExpanded ? <><ChevronUp size={11} />Show less</> : <><ChevronDown size={11} />Read more</>}
+                {isExpanded ? <><ChevronUpIcon size="xs" />Show less</> : <><ChevronDownIcon size="xs" />Read more</>}
               </button>
             )}
           </div>
@@ -113,7 +113,7 @@ function HFPaperCard({ paper, index = 0 }: { paper: HFPaperItem; index?: number 
           <div className="flex flex-wrap gap-1 mb-3">
             {paper.paper.ai_keywords.slice(0, 3).map((kw, i) => (
               <span key={i} className="inline-flex items-center gap-1 px-1.5 py-0.5 text-micro font-semibold rounded" style={{ backgroundColor: theme.bg, color: theme.text }}>
-                <Sparkles size={9} />{kw}
+                <SparklesIcon size="xs" />{kw}
               </span>
             ))}
             {paper.paper.ai_keywords.length > 3 && (
@@ -131,7 +131,7 @@ function HFPaperCard({ paper, index = 0 }: { paper: HFPaperItem; index?: number 
             )}
             {paper.paper.projectPage && (
               <a href={paper.paper.projectPage} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 hover:opacity-100 transition-opacity">
-                <ExternalLink size={11} />Project
+                <ExternalLinkIcon size="xs" />Project
               </a>
             )}
           </div>
@@ -187,14 +187,13 @@ export default function HuggingFacePapers() {
       <div className="flex items-start justify-between gap-3 mb-6 sm:mb-8">
         <div className="min-w-0">
           <div className="flex items-center gap-2.5 mb-1">
-            <Newspaper size={22} className="text-(--muted-foreground) shrink-0" />
             <h1 className="tracking-tight">Daily Papers</h1>
           </div>
           <p className="text-body text-(--muted-foreground)">Community-curated research from Hugging Face</p>
         </div>
         <Button
           variant="secondary"
-          icon={<ExternalLink size={14} />}
+          icon={<ExternalLinkIcon size="sm" />}
           className="h-9! text-code px-2.5 sm:px-3 shrink-0"
           onClick={() => window.open('https://huggingface.co/papers', '_blank')}
           aria-label="View on Hugging Face"
@@ -218,7 +217,7 @@ export default function HuggingFacePapers() {
                   : 'bg-transparent text-(--muted-foreground) border-(--border) hover:text-(--foreground)'
               )}
             >
-              <Calendar size={13} />
+              <CalendarIcon size="sm" />
               {mode.charAt(0).toUpperCase() + mode.slice(1)}
             </button>
           ))}
@@ -236,7 +235,7 @@ export default function HuggingFacePapers() {
             <Button
               variant="secondary"
               className="h-8! px-2! sm:px-3! text-caption!"
-              icon={<ChevronLeft size={13} />}
+              icon={<ChevronLeftIcon size="sm" />}
               onClick={viewMode === 'daily' ? goBack : goMonthBack}
               aria-label={viewMode === 'daily' ? 'Previous day' : 'Previous month'}
             >
@@ -255,7 +254,7 @@ export default function HuggingFacePapers() {
               aria-label={viewMode === 'daily' ? 'Next day' : 'Next month'}
             >
               <span className="hidden sm:inline">{viewMode === 'daily' ? 'Next' : 'Next Month'}</span>
-              <ChevronRight size={13} />
+              <ChevronRightIcon size="sm" />
             </Button>
           </div>
         </div>
@@ -287,7 +286,7 @@ export default function HuggingFacePapers() {
           <div className="inline-block px-6 py-4 bg-red-50 border border-red-200 rounded-xl">
             <p className="text-body font-semibold text-red-800 mb-1">Failed to load papers</p>
             <p className="text-caption text-red-600 mb-4">{error instanceof Error ? error.message : 'An error occurred'}</p>
-            <Button variant="secondary" icon={<RefreshCw size={14} />} onClick={() => refetch()}>Try Again</Button>
+            <Button variant="secondary" icon={<RefreshIcon size="sm" />} onClick={() => refetch()}>Try Again</Button>
           </div>
         </div>
       )}
@@ -300,7 +299,7 @@ export default function HuggingFacePapers() {
               <span className="font-semibold text-(--foreground)">{data.total_count}</span> paper{data.total_count !== 1 ? 's' : ''}
             </p>
             <button onClick={() => refetch()} className="flex items-center gap-1 text-caption text-(--muted-foreground) hover:text-(--foreground) transition-colors">
-              <RefreshCw size={13} />Refresh
+              <RefreshIcon size="sm" />Refresh
             </button>
           </div>
 

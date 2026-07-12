@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CloseCircle as X, ArrowRight, Refresh as Loader2, ExportSquare as ExternalLink } from 'iconsax-reactjs';
+import { ArrowRightIcon, CloseIcon, ExternalLinkIcon } from '@/components/icons';
+import { Spinner } from '@/components/ui/Spinner';
 import { discoveryApi, type DiscoveredPaperPreview } from '@/lib/api/discovery';
 
 interface CitationExplorerProps {
@@ -32,10 +33,10 @@ function PaperItem({ paper, onClick }: { paper: DiscoveredPaperPreview; onClick:
               onClick={(e) => e.stopPropagation()}
               className="p-1 text-(--muted-foreground) hover:text-(--foreground) opacity-0 group-hover:opacity-100 transition-all"
             >
-              <ExternalLink size={12} />
+              <ExternalLinkIcon size="xs" />
             </a>
           )}
-          <ArrowRight size={12} className="text-(--muted-foreground) group-hover:translate-x-0.5 transition-transform" />
+          <ArrowRightIcon size="xs" className="text-(--muted-foreground) group-hover:translate-x-0.5 transition-transform" />
         </div>
       </div>
     </button>
@@ -73,14 +74,14 @@ export function CitationExplorer({ paper, isOpen, onClose, onSelectPaper }: Cita
             </p>
           </div>
           <button onClick={onClose} className="p-2 text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) rounded-xl transition-colors shrink-0">
-            <X size={20} />
+            <CloseIcon size="lg" />
           </button>
         </div>
 
         {/* Body */}
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center py-16">
-            <Loader2 size={24} className="animate-spin text-(--muted-foreground)" />
+            <Spinner size="lg" className="text-(--muted-foreground)" />
           </div>
         ) : error ? (
           <div className="flex-1 flex items-center justify-center py-16">

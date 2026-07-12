@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Trash, InfoCircle, Hierarchy3 as Network, QuoteDown as Quote } from 'iconsax-reactjs';
+import { TrashIcon, InfoCircleIcon, CitationGraphIcon, QuoteIcon } from '@/components/icons';
 import { citationMapApi, type CitationMapResponse, type MapNode } from '@/lib/api/citationMap';
 import { CitationMap } from '@/components/citation-map/CitationMap';
 import { FocalPaperPicker } from '@/components/citation-map/FocalPaperPicker';
@@ -77,7 +77,7 @@ export default function Citations() {
             <Button
               variant="secondary"
               className="h-8! text-caption!"
-              icon={<Trash size={13} />}
+              icon={<TrashIcon size="sm" />}
               onClick={() => clearMutation.mutate()}
               disabled={clearMutation.isPending}
             >
@@ -87,7 +87,7 @@ export default function Citations() {
         </div>
 
         <div className="flex items-center gap-1 mt-4 border-b border-(--border)">
-          {([['map', 'Citation Map', Network], ['cited-by', 'Cited by', Quote]] as const).map(
+          {([['map', 'Citation Map', CitationGraphIcon], ['cited-by', 'Cited by', QuoteIcon]] as const).map(
             ([id, label, Icon]) => (
               <button
                 key={id}
@@ -99,7 +99,7 @@ export default function Citations() {
                     : 'border-transparent text-(--muted-foreground) hover:text-(--foreground)'
                 )}
               >
-                <Icon size={13} />
+                <Icon size="sm" />
                 {label}
               </button>
             )
@@ -113,7 +113,7 @@ export default function Citations() {
             </div>
             {unresolved.length > 0 && (
               <div className="mt-3 flex items-start gap-2 rounded-lg border border-(--border) bg-(--muted) px-3 py-2 text-caption text-(--muted-foreground)">
-                <InfoCircle size={14} className="shrink-0 mt-0.5" />
+                <InfoCircleIcon size="sm" className="shrink-0 mt-0.5" />
                 <span>
                   Couldn’t find {unresolved.length} paper{unresolved.length !== 1 ? 's' : ''} on Semantic Scholar
                   {': '}

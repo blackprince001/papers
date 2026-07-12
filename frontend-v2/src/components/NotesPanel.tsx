@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { DocumentText as FileText, Book1 as BookOpen, Stickynote as StickyNote, Trash as Trash2, Edit as Edit2, Save2 as Save, CloseCircle as X } from 'iconsax-reactjs';
+import { BookOpenIcon, CloseIcon, EditIcon, FileTextIcon, NoteIcon, SaveIcon, TrashIcon } from '@/components/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -153,7 +153,7 @@ export function NotesPanel({ paperId, currentPage, annotations, isLoading }: Not
                 : 'text-(--muted-foreground) hover:text-(--foreground)',
             )}
           >
-            <StickyNote size={12} />
+            <NoteIcon size="xs" />
             All
             {notes.length > 0 && <span className="text-micro opacity-60">{notes.length}</span>}
           </button>
@@ -166,7 +166,7 @@ export function NotesPanel({ paperId, currentPage, annotations, isLoading }: Not
                 : 'text-(--muted-foreground) hover:text-(--foreground)',
             )}
           >
-            <FileText size={12} />
+            <FileTextIcon size="xs" />
             Pg {currentPage}
           </button>
           <button
@@ -178,7 +178,7 @@ export function NotesPanel({ paperId, currentPage, annotations, isLoading }: Not
                 : 'text-(--muted-foreground) hover:text-(--foreground)',
             )}
           >
-            <BookOpen size={12} />
+            <BookOpenIcon size="xs" />
             Document
           </button>
         </div>
@@ -217,7 +217,7 @@ export function NotesPanel({ paperId, currentPage, annotations, isLoading }: Not
                         : 'text-(--muted-foreground) hover:text-(--foreground)',
                     )}
                   >
-                    {s === 'page' ? <FileText size={11} /> : <BookOpen size={11} />}
+                    {s === 'page' ? <FileTextIcon size="xs" /> : <BookOpenIcon size="xs" />}
                     {s}
                   </button>
                 ))}
@@ -247,9 +247,10 @@ export function NotesPanel({ paperId, currentPage, annotations, isLoading }: Not
             <Button
               size="sm"
               onClick={() => createMutation.mutate({ content: newContent, noteScope: newScope })}
-              disabled={!newContent.trim() || createMutation.isPending}
+              disabled={!newContent.trim()}
+              loading={createMutation.isPending}
             >
-              {createMutation.isPending ? 'Creating…' : 'Create Note'}
+              Create Note
             </Button>
           </div>
         </div>
@@ -296,7 +297,7 @@ export function NotesPanel({ paperId, currentPage, annotations, isLoading }: Not
                                 : 'text-(--muted-foreground) hover:text-(--foreground)',
                             )}
                           >
-                            {s === 'page' ? <FileText size={11} /> : <BookOpen size={11} />}
+                            {s === 'page' ? <FileTextIcon size="xs" /> : <BookOpenIcon size="xs" />}
                             {s}
                           </button>
                         ))}
@@ -315,16 +316,17 @@ export function NotesPanel({ paperId, currentPage, annotations, isLoading }: Not
 
                     <div className="flex items-center justify-end gap-2 pt-2 border-t border-(--border)">
                       <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={updateMutation.isPending}>
-                        <X size={13} className="mr-1" />
+                        <CloseIcon size="sm" className="mr-1" />
                         Cancel
                       </Button>
                       <Button
                         size="sm"
                         onClick={saveEdit}
-                        disabled={!editContent.trim() || updateMutation.isPending}
+                        disabled={!editContent.trim()}
+                        loading={updateMutation.isPending}
                       >
-                        <Save size={13} className="mr-1" />
-                        {updateMutation.isPending ? 'Saving…' : 'Save'}
+                        <SaveIcon size="sm" className="mr-1" />
+                        Save
                       </Button>
                     </div>
                   </div>
@@ -343,22 +345,23 @@ export function NotesPanel({ paperId, currentPage, annotations, isLoading }: Not
 
                       <div className="flex items-center gap-1">
                         <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
+                          variant="icon"
+                          size="icon-xs"
                           onClick={() => startEdit(note)}
                           disabled={deleteMutation.isPending || editingId !== null}
+                          aria-label="Edit note"
                         >
-                          <Edit2 size={12} />
+                          <EditIcon size="xs" />
                         </Button>
                         <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0 text-(--destructive) hover:bg-(--destructive)/10"
+                          variant="icon"
+                          size="icon-xs"
+                          className="text-(--destructive) hover:bg-(--destructive)/10"
                           onClick={() => handleDelete(note.id)}
                           disabled={deleteMutation.isPending || editingId !== null}
+                          aria-label="Delete note"
                         >
-                          <Trash2 size={12} />
+                          <TrashIcon size="xs" />
                         </Button>
                       </div>
                     </div>
@@ -370,7 +373,7 @@ export function NotesPanel({ paperId, currentPage, annotations, isLoading }: Not
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-12 px-6 text-center bg-(--muted)/10 rounded-2xl border border-dashed border-(--border)">
-          <StickyNote size={32} className="mb-4 text-(--muted-foreground) opacity-30" />
+          <NoteIcon size={32} className="mb-4 text-(--muted-foreground) opacity-30" />
           <p className="text-code text-(--muted-foreground)">
             {scope === 'all' ? 'No notes yet' : scope === 'page' ? `No notes for page ${currentPage}` : 'No document notes yet'}
           </p>

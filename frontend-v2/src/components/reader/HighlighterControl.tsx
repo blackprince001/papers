@@ -1,4 +1,4 @@
-import { Magicpen as HighlighterIcon } from 'iconsax-reactjs';
+import { HighlighterIcon } from '@/components/icons';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/Popover';
 import { cn } from '@/lib/utils';
 import type { ThemeName } from '@/lib/paper-themes';
@@ -32,7 +32,7 @@ export function HighlighterControl({
         )}
         style={active ? { backgroundColor: `var(--theme-${color}-action)` } : undefined}
       >
-        <HighlighterIcon size={18} />
+        <HighlighterIcon size="md" />
       </PopoverTrigger>
       <PopoverContent side="top" align="end" className="w-auto p-2">
         <button

@@ -2,11 +2,10 @@ import type * as React from "react"
 import { mergeProps } from "@base-ui/react/merge-props"
 import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { useRender } from "@base-ui/react/use-render"
-import { ChevronDown, ChevronUp } from "@hugeicons/core-free-icons"
-import { HugeiconsIcon } from "@hugeicons/react"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
+import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "@/components/icons"
 
 export const Select: typeof SelectPrimitive.Root = SelectPrimitive.Root
 
@@ -48,10 +47,7 @@ export function SelectButton({
         <span className="flex-1 truncate in-data-placeholder:text-muted-foreground/72">
           {children}
         </span>
-        <HugeiconsIcon
-          className={selectTriggerIconClassName}
-          icon={ChevronDown}
-        />
+        <ChevronDownIcon className={selectTriggerIconClassName} />
       </>
     ),
     className: cn(selectTriggerVariants({ size }), "min-w-0", className),
@@ -81,10 +77,7 @@ export function SelectTrigger({
     >
       {children}
       <SelectPrimitive.Icon data-slot="select-icon">
-        <HugeiconsIcon
-          className={selectTriggerIconClassName}
-          icon={ChevronDown}
-        />
+        <ChevronDownIcon className={selectTriggerIconClassName} />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   )
@@ -147,10 +140,7 @@ export function SelectPopup({
             className="top-0 z-50 flex h-6 w-full cursor-default items-center justify-center before:pointer-events-none before:absolute before:inset-x-px before:top-px before:h-[200%] before:rounded-t-[calc(var(--radius-lg)-1px)] before:bg-linear-to-b before:from-popover before:from-50%"
             data-slot="select-scroll-up-arrow"
           >
-            <HugeiconsIcon
-              className="relative size-4.5 sm:size-4"
-              icon={ChevronUp}
-            />
+            <ChevronUpIcon className="relative size-4.5 sm:size-4" />
           </SelectPrimitive.ScrollUpArrow>
           <div className="relative h-full min-w-(--anchor-width) rounded-lg border bg-popover shadow-lg/5 not-dark:bg-clip-padding before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] dark:before:shadow-[0_-1px_--theme(--color-white/6%)]">
             <SelectPrimitive.List
@@ -167,10 +157,7 @@ export function SelectPopup({
             className="bottom-0 z-50 flex h-6 w-full cursor-default items-center justify-center before:pointer-events-none before:absolute before:inset-x-px before:bottom-px before:h-[200%] before:rounded-b-[calc(var(--radius-lg)-1px)] before:bg-linear-to-t before:from-popover before:from-50%"
             data-slot="select-scroll-down-arrow"
           >
-            <HugeiconsIcon
-              className="relative size-4.5 sm:size-4"
-              icon={ChevronDown}
-            />
+            <ChevronDownIcon className="relative size-4.5 sm:size-4" />
           </SelectPrimitive.ScrollDownArrow>
         </SelectPrimitive.Popup>
       </SelectPrimitive.Positioner>
@@ -193,20 +180,7 @@ export function SelectItem({
       {...props}
     >
       <SelectPrimitive.ItemIndicator className="col-start-1">
-        <svg
-          aria-hidden="true"
-          fill="none"
-          height="24"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-          viewBox="0 0 24 24"
-          width="24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path d="M5.252 12.7 10.2 18.63 18.748 5.37" />
-        </svg>
+        <CheckIcon strokeWidth={2.5} />
       </SelectPrimitive.ItemIndicator>
       <SelectPrimitive.ItemText className="col-start-2 min-w-0">
         {children}

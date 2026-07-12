@@ -8,7 +8,7 @@ import { SessionPills } from '@/components/chat/SessionPills';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/Button';
-import { ArrowLeft2, Warning2 as AlertCircle, Message as MessageSquare } from 'iconsax-reactjs';
+import { ChevronLeftIcon, WarningIcon, ChatIcon } from '@/components/icons';
 
 export default function PaperChat() {
   const { id } = useParams<{ id: string }>();
@@ -24,7 +24,7 @@ export default function PaperChat() {
   if (!paperId) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-8 text-center">
-        <AlertCircle size={48} className="text-(--destructive) opacity-20 mb-4" />
+        <WarningIcon size={48} className="text-(--destructive) opacity-20 mb-4" />
         <h2 className="text-subheading font-bold mb-2">Paper not found</h2>
         <Button onClick={() => navigate('/')}>Return Home</Button>
       </div>
@@ -47,9 +47,9 @@ function PaperChatInner({ paperId, paperTitle }: { paperId: number; paperTitle?:
             className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-lg text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) transition-colors"
             title="Back to paper"
           >
-            <ArrowLeft2 size={14} />
+            <ChevronLeftIcon size="sm" />
           </Link>
-          <MessageSquare size={14} className="shrink-0 text-(--muted-foreground)" />
+          <ChatIcon size="sm" className="shrink-0 text-(--muted-foreground)" />
           <div className="min-w-0 flex-1">
             <h1 className="text-code font-semibold leading-tight truncate" title={paperTitle}>
               {paperTitle ?? 'Paper chat'}

@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import {
-  Warning2 as AlertCircle,
-  Maximize4 as MaximizeIcon,
-  CloseSquare as MinimizeIcon,
-} from "iconsax-reactjs";
+  MaximizeIcon,
+  MinimizeIcon,
+  WarningIcon,
+} from "@/components/icons";
 import { annotationsApi, type Annotation } from "@/lib/api/annotations";
 import { aiFeaturesApi, type AIActionKind } from "@/lib/api/aiFeatures";
 import { type Paper } from "@/lib/api/papers";
@@ -541,7 +541,7 @@ export function ReaderShell({
   if (fileError) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-        <AlertCircle
+        <WarningIcon
           size={40}
           className="mb-3 text-(--destructive) opacity-30"
         />
@@ -626,7 +626,7 @@ export function ReaderShell({
             "shadow-(--shadow-elevated) transition-colors hover:text-(--foreground)",
           )}
         >
-          {zen ? <MinimizeIcon size={18} /> : <MaximizeIcon size={18} />}
+          {zen ? <MinimizeIcon size="md" /> : <MaximizeIcon size="md" />}
         </button>
       )}
 

@@ -1,6 +1,6 @@
 import { useLocation, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { HamburgerMenu as Menu, SidebarRight as PanelRightOpen } from 'iconsax-reactjs';
+import { MenuIcon, PanelRightOpenIcon } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { Breadcrumb, type BreadcrumbItem } from '@/components/Breadcrumb';
 import { papersApi } from '@/lib/api/papers';
@@ -93,12 +93,13 @@ export default function Navbar({ onMenuToggle, showChatToggle, onChatToggle }: N
       <div className="flex h-12 items-center justify-between gap-4 px-4">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <Button
-            variant="ghost"
-            className="md:hidden shrink-0 h-8! w-8! p-0!"
+            variant="icon"
+            size="icon"
+            className="md:hidden shrink-0"
             onClick={onMenuToggle}
             aria-label="Toggle menu"
           >
-            <Menu size={20} />
+            <MenuIcon size="lg" />
           </Button>
           <Breadcrumb items={breadcrumbs} />
         </div>
@@ -106,12 +107,12 @@ export default function Navbar({ onMenuToggle, showChatToggle, onChatToggle }: N
         <div className="flex items-center gap-1">
           {showChatToggle && (
             <Button
-              variant="ghost"
-              className="h-8! w-8! p-0!"
+              variant="icon"
+              size="icon"
               onClick={onChatToggle}
               aria-label="Open chat panel"
             >
-              <PanelRightOpen size={18} />
+              <PanelRightOpenIcon size="md" />
             </Button>
           )}
         </div>

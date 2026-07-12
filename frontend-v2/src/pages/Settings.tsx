@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react';
 import {
-  User,
-  Brush as Palette,
-  Moon,
-  Sun,
-  Monitor,
-  ArrowRight2 as ChevronRight,
-  Shield,
-  Logout as LogOut,
-  Trash as Trash2,
-  Cpu,
-  Add as Plus,
-  Edit2 as Pencil,
-  TickCircle,
-} from 'iconsax-reactjs';
+  UserIcon,
+  PaletteIcon,
+  MoonIcon,
+  SunIcon,
+  MonitorIcon,
+  ChevronRightIcon,
+  ShieldIcon,
+  LogoutIcon,
+  TrashIcon,
+  ChipIcon,
+  PlusIcon,
+  EditIcon,
+  CheckCircleIcon,
+} from '@/components/icons';
 import { useTheme } from '@/lib/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
@@ -29,10 +29,10 @@ import {
 import { cn } from '@/lib/utils';
 
 const SECTIONS = [
-  { id: 'profile', label: 'Profile', icon: User },
-  { id: 'ai', label: 'AI', icon: Cpu },
-  { id: 'appearance', label: 'Appearance', icon: Palette },
-  { id: 'security', label: 'Security', icon: Shield },
+  { id: 'profile', label: 'Profile', icon: UserIcon },
+  { id: 'ai', label: 'AI', icon: ChipIcon },
+  { id: 'appearance', label: 'Appearance', icon: PaletteIcon },
+  { id: 'security', label: 'Security', icon: ShieldIcon },
 ] as const;
 
 type SectionId = typeof SECTIONS[number]['id'];
@@ -48,9 +48,9 @@ function ThemeCard({
   onSelect: (m: ThemeMode) => void;
 }) {
   const LABELS: Record<ThemeMode, { label: string; icon: React.ElementType }> = {
-    light: { label: 'Light', icon: Sun },
-    dark: { label: 'Dark', icon: Moon },
-    system: { label: 'System', icon: Monitor },
+    light: { label: 'Light', icon: SunIcon },
+    dark: { label: 'Dark', icon: MoonIcon },
+    system: { label: 'System', icon: MonitorIcon },
   };
   const { label, icon: Icon } = LABELS[mode];
   const active = mode === current;
@@ -94,7 +94,7 @@ function ThemeCard({
     >
       <Preview />
       <div className="flex items-center gap-1.5">
-        <Icon size={14} className={active ? 'text-(--foreground)' : 'text-(--muted-foreground)'} />
+        <Icon size="sm" className={active ? 'text-(--foreground)' : 'text-(--muted-foreground)'} />
         <span className={cn('text-code font-medium', active ? 'text-(--foreground)' : 'text-(--muted-foreground)')}>
           {label}
         </span>
@@ -224,8 +224,8 @@ function ProfileSection() {
         </p>
       )}
 
-      <Button variant="primary" onClick={handleSave} disabled={saving}>
-        {saving ? 'Saving…' : 'Save changes'}
+      <Button variant="primary" onClick={handleSave} loading={saving}>
+        Save changes
       </Button>
     </div>
   );
@@ -299,12 +299,12 @@ function SecuritySection() {
           </div>
           <Button
             variant="ghost"
-            icon={<LogOut size={14} />}
+            icon={<LogoutIcon size="sm" />}
             className="text-(--destructive)!"
             onClick={handleSignOut}
-            disabled={signingOut}
+            loading={signingOut}
           >
-            {signingOut ? 'Signing out…' : 'Sign out'}
+            Sign out
           </Button>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 opacity-60">
@@ -312,7 +312,7 @@ function SecuritySection() {
             <p className="text-body font-medium text-(--foreground)">Delete account</p>
             <p className="text-caption text-(--muted-foreground)">Contact an administrator</p>
           </div>
-          <Button variant="ghost" icon={<Trash2 size={14} />} className="text-(--destructive)!" disabled>
+          <Button variant="ghost" icon={<TrashIcon size="sm" />} className="text-(--destructive)!" disabled>
             Delete
           </Button>
         </div>
@@ -498,9 +498,10 @@ function ProviderForm({
         <Button
           variant="ghost"
           onClick={handleTest}
-          disabled={testing || !draft.provider || !draft.model}
+          loading={testing}
+          disabled={!draft.provider || !draft.model}
         >
-          {testing ? 'Testing…' : 'Test connection'}
+          Test connection
         </Button>
         {testResult && (
           <span className={cn(
@@ -523,8 +524,8 @@ function ProviderForm({
       </label>
 
       <div className="flex items-center gap-3 pt-1">
-        <Button variant="primary" onClick={onSave} disabled={saving || !draft.provider || (needsTest && !testResult?.ok)}>
-          {saving ? 'Saving…' : editing ? 'Save changes' : 'Add provider'}
+        <Button variant="primary" onClick={onSave} loading={saving} disabled={!draft.provider || (needsTest && !testResult?.ok)}>
+          {editing ? 'Save changes' : 'Add provider'}
         </Button>
         <Button variant="ghost" onClick={onCancel}>Cancel</Button>
       </div>
@@ -652,7 +653,7 @@ function AiSettingsSection() {
           </p>
         </div>
         {editingId === null && (
-          <Button variant="primary" icon={<Plus size={14} />} onClick={startAdd}>
+          <Button variant="primary" icon={<PlusIcon size="sm" />} onClick={startAdd}>
             Add
           </Button>
         )}
@@ -703,7 +704,7 @@ function AiSettingsSection() {
                 </p>
                 {p.is_default && (
                   <span className="inline-flex items-center gap-1 text-caption text-(--success-green) font-medium">
-                    <TickCircle size={12} variant="Bold" /> Default
+                    <CheckCircleIcon size="xs" filled /> Default
                   </span>
                 )}
                 {!p.is_active && (
@@ -726,14 +727,14 @@ function AiSettingsSection() {
                 variant="ghost"
                 size="icon"
                 aria-label="Edit provider"
-                icon={<Pencil size={14} />}
+                icon={<EditIcon size="sm" />}
                 onClick={() => startEdit(p)}
               />
               <Button
                 variant="ghost"
                 size="icon"
                 aria-label="Delete provider"
-                icon={<Trash2 size={14} />}
+                icon={<TrashIcon size="sm" />}
                 className="text-(--destructive)!"
                 onClick={() => handleDelete(p.id)}
               />
@@ -779,7 +780,7 @@ export default function Settings() {
                   : 'bg-(--card) text-(--muted-foreground) border-(--border) hover:text-(--foreground) hover:border-(--foreground)/30',
               )}
             >
-              <Icon size={13} />
+              <Icon size="sm" />
               <span>{label}</span>
             </button>
           ))}
@@ -798,9 +799,9 @@ export default function Settings() {
                   : 'text-(--muted-foreground) hover:bg-(--muted) hover:text-(--foreground)',
               )}
             >
-              <Icon size={15} className="shrink-0" />
+              <Icon size="sm" className="shrink-0" />
               <span>{label}</span>
-              {active === id && <ChevronRight size={13} className="ml-auto opacity-50" />}
+              {active === id && <ChevronRightIcon size="sm" className="ml-auto opacity-50" />}
             </button>
           ))}
         </nav>

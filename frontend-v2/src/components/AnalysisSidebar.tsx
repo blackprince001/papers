@@ -9,7 +9,7 @@ import { PaperAnnotationsPanel } from './PaperAnnotationsPanel';
 import { RelatedPapers } from './RelatedPapers';
 import { type Paper } from '@/lib/api/papers';
 import { type Annotation } from '@/lib/api/annotations';
-import { DocumentText as FileText, MagicStar as Sparkles, Magicpen as Highlighter, Link } from 'iconsax-reactjs';
+import { FileTextIcon, HighlighterIcon, LinkIcon, SparklesIcon } from '@/components/icons';
 // import { cn } from '@/lib/utils';
 
 interface AnalysisSidebarProps {
@@ -44,15 +44,15 @@ export function AnalysisSidebar({
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
         <TabsList className="px-4 gap-2 border-b border-(--border) bg-(--white) shrink-0">
           <TabsTrigger value="details" className="h-12 gap-2 border-b-2 rounded-none">
-            <FileText size={14} />
+            <FileTextIcon size="sm" />
             <span className="hidden lg:inline">Details</span>
           </TabsTrigger>
           <TabsTrigger value="ai" className="h-12 gap-2 border-b-2 rounded-none">
-            <Sparkles size={14} />
+            <SparklesIcon size="sm" />
             <span className="hidden lg:inline">AI Analytics</span>
           </TabsTrigger>
           <TabsTrigger value="annotations" className="h-12 gap-2 border-b-2 rounded-none">
-            <Highlighter size={14} />
+            <HighlighterIcon size="sm" />
             <span className="hidden lg:inline">Notes</span>
             {annotations.length > 0 && (
               <span className="text-micro bg-(--muted) px-1.5 py-0.5 rounded-full">
@@ -61,7 +61,7 @@ export function AnalysisSidebar({
             )}
           </TabsTrigger>
           <TabsTrigger value="related" className="h-12 gap-2 border-b-2 rounded-none">
-            <Link size={14} />
+            <LinkIcon size="sm" />
             <span className="hidden lg:inline">Related</span>
           </TabsTrigger>
         </TabsList>

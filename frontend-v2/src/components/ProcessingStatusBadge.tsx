@@ -1,4 +1,4 @@
-import { Refresh as Loader2 } from 'iconsax-reactjs';
+import { Spinner } from '@/components/ui/Spinner';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
 import { useProcessingProgress } from '@/hooks/use-processing-progress';
@@ -41,7 +41,7 @@ export function ProcessingStatusBadge({ status, paperId, className }: Processing
   if (!progress.isActive) {
     return (
       <Badge className={cn('bg-[rgba(60,145,230,0.12)] text-(--sky-blue)', className)}>
-        <Loader2 size={10} className="mr-1 animate-spin" />
+        <Spinner size={10} className="mr-1" aria-hidden />
         Processing
       </Badge>
     );

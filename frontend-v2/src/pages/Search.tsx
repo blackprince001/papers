@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { SearchNormal as SearchIcon, SliderHorizontal as SlidersHorizontal, MagicStar as Sparkles } from 'iconsax-reactjs';
+import { SearchIcon, SlidersIcon, SparklesIcon } from '@/components/icons';
 import { searchApi, type SearchMode, type SearchRequest } from '@/lib/api/search';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -95,7 +95,7 @@ export default function Search() {
       <div className="flex items-center gap-3 mb-6">
         <div className="flex-1 relative">
           <SearchIcon
-            size={16}
+            size="md"
             className="absolute left-3.5 top-1/2 -translate-y-1/2 text-(--muted-foreground) pointer-events-none"
           />
           <input
@@ -114,7 +114,7 @@ export default function Search() {
           <PopoverTrigger>
             <Button 
               variant="secondary" 
-              icon={<SlidersHorizontal size={14} />} 
+              icon={<SlidersIcon size="sm" />}
               className={cn("h-11!", hasFilters && "bg-(--muted)")}
             >
               Filters
@@ -177,7 +177,7 @@ export default function Search() {
               : "bg-(--muted) text-(--foreground) hover:bg-(--border)"
           )}
         >
-          <SearchIcon size={13} />
+          <SearchIcon size="sm" />
           <span>Full-text</span>
         </button>
         <button 
@@ -189,7 +189,7 @@ export default function Search() {
               : "bg-(--muted) text-(--foreground) hover:bg-(--border)"
           )}
         >
-          <Sparkles size={13} />
+          <SparklesIcon size="sm" />
           <span>Semantic</span>
         </button>
       </div>

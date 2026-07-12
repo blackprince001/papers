@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { MagicStar as Sparkles, Edit as Edit2, Save2 as Save, Refresh as RefreshCw, Warning2 as AlertCircle } from 'iconsax-reactjs';
+import { EditIcon, RefreshIcon, SaveIcon, SparklesIcon, WarningIcon } from '@/components/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Textarea';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { aiFeaturesApi } from '@/lib/api/aiFeatures';
-import { cn } from '@/lib/utils';
 import { toastInfo } from '@/lib/utils/toast';
 
 interface AISummaryProps {
@@ -84,7 +83,7 @@ export function AISummary({ paperId }: AISummaryProps) {
             onClick={() => updateMutation.mutate(editedSummary)}
             disabled={updateMutation.isPending}
           >
-            <Save size={14} className="mr-1.5" />
+            <SaveIcon size="sm" className="mr-1.5" />
             Save Changes
           </Button>
           <Button
@@ -151,50 +150,41 @@ export function AISummary({ paperId }: AISummaryProps) {
                 setEditing(true);
               }}
             >
-              <Edit2 size={13} className="mr-1.5" />
+              <EditIcon size="sm" className="mr-1.5" />
               Edit
             </Button>
             <Button
               variant="outlined"
               className="h-8 text-caption px-3 ml-auto border-(--sky-blue)/30 hover:bg-(--sky-blue)/10 text-(--sky-blue)"
               onClick={() => generateMutation.mutate()}
-              disabled={generateMutation.isPending}
+              loading={generateMutation.isPending}
             >
-              <RefreshCw size={13} className={cn("mr-1.5", generateMutation.isPending && "animate-spin")} />
-              {generateMutation.isPending ? 'Generating...' : 'Regenerate'}
+              <RefreshIcon size="sm" className="mr-1.5" />
+              Regenerate
             </Button>
           </div>
         </>
       ) : (
         <div className="flex flex-col items-center justify-center py-12 px-6 text-center bg-(--muted)/20 rounded-2xl border border-dashed border-(--border)">
-          <Sparkles size={32} className="mb-4 text-(--muted-foreground) opacity-40" />
+          <SparklesIcon size={32} className="mb-4 text-(--muted-foreground) opacity-40" />
           <h3 className="text-btn font-semibold text-(--foreground) mb-2">No Summary Available</h3>
           <p className="text-code text-(--muted-foreground) mb-6 max-w-60">
             Generate an AI-powered summary to quickly understand the core message of this paper.
           </p>
           <Button
             onClick={() => generateMutation.mutate()}
-            disabled={generateMutation.isPending}
+            loading={generateMutation.isPending}
             className="px-6"
           >
-            {generateMutation.isPending ? (
-              <>
-                <RefreshCw size={16} className="mr-2 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Sparkles size={16} className="mr-2" />
-                Generate Summary
-              </>
-            )}
+            <SparklesIcon size="md" className="mr-2" />
+            Generate Summary
           </Button>
         </div>
       )}
 
       {(generateMutation.isError || error) && (
         <div className="p-4 bg-(--destructive)/5 border border-(--destructive)/20 rounded-xl flex items-start gap-3">
-          <AlertCircle size={16} className="text-(--destructive) shrink-0 mt-0.5" />
+          <WarningIcon size="md" className="text-(--destructive) shrink-0 mt-0.5" />
           <div>
             <p className="text-caption font-semibold text-(--destructive)">Something went wrong</p>
             <p className="text-caption text-(--destructive)/80 mt-1 uppercase">

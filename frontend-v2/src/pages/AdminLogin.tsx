@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Logo } from '@/components/Logo';
+import { Button } from '@/components/ui/Button';
 
 export default function AdminLogin() {
   const { loginAsAdmin } = useAuth();
@@ -61,13 +62,9 @@ export default function AdminLogin() {
             required
             className="w-full h-9 rounded-lg border border-(--border) bg-(--background) px-3 text-body text-(--foreground) placeholder:text-(--muted-foreground) focus:outline-none focus:ring-2 focus:ring-(--ring)"
           />
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full h-9 rounded-lg bg-(--foreground) text-(--background) text-body font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            {loading ? 'Signing in…' : 'Admin Login'}
-          </button>
+          <Button type="submit" variant="primary" loading={loading} className="w-full">
+            Admin Login
+          </Button>
         </form>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight2 as ChevronRight } from 'iconsax-reactjs';
+import { ChevronRightIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
 
 export interface BreadcrumbItem {
@@ -28,7 +28,7 @@ export function Breadcrumb({ items, className }: BreadcrumbProps) {
             key={item.id}
             className={cn('flex items-center gap-1 sm:gap-1.5 min-w-0', isLast ? 'flex-1 overflow-hidden' : 'shrink-0')}
           >
-            {index > 0 && <ChevronRight size={10} className="sm:size-3 opacity-40 shrink-0" />}
+            {index > 0 && <ChevronRightIcon size="xs" className="sm:size-3 opacity-40 shrink-0" />}
             {isLast ? (
               <span className="text-(--foreground) font-medium truncate text-micro sm:text-caption" title={item.label}>
                 {item.label}

@@ -1,4 +1,4 @@
-import { TickCircle as Check, Warning2 as AlertTriangle } from 'iconsax-reactjs';
+import { CheckCircleIcon, WarningIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
 
 export interface ToolCallIndicatorProps {
@@ -45,8 +45,8 @@ export function ToolCallIndicator({
         {status === 'running' && (
           <span className="inline-block w-2 h-2 rounded-full bg-current animate-pulse" />
         )}
-        {status === 'complete' && <Check size={12} variant="Bold" />}
-        {status === 'error' && <AlertTriangle size={12} variant="Bold" />}
+        {status === 'complete' && <CheckCircleIcon size="xs" filled />}
+        {status === 'error' && <WarningIcon size="xs" filled />}
       </span>
 
       <div className="flex-1 min-w-0">

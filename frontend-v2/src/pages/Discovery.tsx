@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
-import { MagicStar as Sparkles, ArrowDown2 as ChevronDown, Save2 as Save, Filter, MenuBoard as List, DocumentText as FileText, Chart as BarChart3, Warning2 as AlertCircle } from 'iconsax-reactjs';
+import { SparklesIcon, ChevronDownIcon, SaveIcon, FilterIcon, ViewListIcon, FileTextIcon, ChartBarsIcon, WarningIcon } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -22,17 +22,17 @@ import { Skeleton } from '@/components/ui/Skeleton';
 
 const DISCOVERY_PROMPTS = [
   {
-    icon: FileText,
+    icon: FileTextIcon,
     text: 'Latest Breakthroughs',
     prompt: 'Find the latest breakthroughs and recent advances in',
   },
   {
-    icon: BarChart3,
+    icon: ChartBarsIcon,
     text: 'Survey Papers',
     prompt: 'Find comprehensive survey and review papers covering the state of the art in',
   },
   {
-    icon: AlertCircle,
+    icon: WarningIcon,
     text: 'Open Challenges',
     prompt: 'Identify open challenges, research gaps, and underexplored areas in',
   },
@@ -194,9 +194,9 @@ export default function Discovery() {
               onClick={() => setShowFilters(!showFilters)}
               className="flex items-center gap-2 text-code text-(--muted-foreground) hover:text-(--foreground) transition-colors"
             >
-              <Filter size={14} />
+              <FilterIcon size="sm" />
               <span>Advanced Filters</span>
-              <ChevronDown size={14} className={cn('transition-transform', showFilters && 'rotate-180')} />
+              <ChevronDownIcon size="sm" className={cn('transition-transform', showFilters && 'rotate-180')} />
             </button>
             {showFilters && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t border-(--border)">
@@ -317,7 +317,7 @@ export default function Discovery() {
                           : 'text-(--muted-foreground) hover:text-(--foreground)'
                       )}
                     >
-                      {tab === 'list' ? <><List size={11} /> All</> : <><Sparkles size={11} /> By Topic</>}
+                      {tab === 'list' ? <><ViewListIcon size="xs" /> All</> : <><SparklesIcon size="xs" /> By Topic</>}
                     </button>
                   ))}
                 </div>
@@ -325,12 +325,13 @@ export default function Discovery() {
             </div>
             <Button
               variant="primary"
-              icon={<Save size={14} />}
+              icon={<SaveIcon size="sm" />}
               onClick={handleSaveSession}
-              disabled={saveSessionMutation.isPending || !!loadedSession}
+              loading={saveSessionMutation.isPending}
+              disabled={!!loadedSession}
               className="self-start shrink-0 sm:self-auto"
             >
-              {saveSessionMutation.isPending ? 'Saving...' : saveSessionMutation.isSuccess ? 'Saved!' : 'Save Session'}
+              {saveSessionMutation.isSuccess ? 'Saved!' : 'Save Session'}
             </Button>
           </div>
 
@@ -356,7 +357,7 @@ export default function Discovery() {
       {/* Empty State */}
       {!hasSearched && (
         <div className="text-center py-16">
-          <Sparkles size={48} className="text-(--muted-foreground) mx-auto mb-4 opacity-50" />
+          <SparklesIcon size={48} className="text-(--muted-foreground) mx-auto mb-4 opacity-50" />
           <p className="text-body text-(--muted-foreground) max-w-md mx-auto">
             Enter a search query above to discover research papers with AI-powered insights
           </p>

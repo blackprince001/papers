@@ -1,10 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  DocumentUpload as Upload,
-  Refresh as Loader2,
-  CloseCircle as X,
-  Eye,
-} from 'iconsax-reactjs';
+import { CloseIcon, EyeIcon, UploadIcon } from '@/components/icons';
+import { Spinner } from '@/components/ui/Spinner';
 import { renderLocalPdfCover } from '@/lib/pdf-cover';
 import { Progress } from '@/components/ui/Progress';
 import { cn } from '@/lib/utils';
@@ -62,7 +58,7 @@ function LocalCover({
             !failed && 'animate-pulse bg-(--muted)',
           )}
         >
-          {failed && <Upload size={16} />}
+          {failed && <UploadIcon size="md" />}
         </div>
       )}
     </div>
@@ -144,7 +140,7 @@ export function UploadHero({
           acceptFiles(event.dataTransfer.files);
         }}
       >
-        <Upload size={28} className="mb-2 text-(--muted-foreground)" />
+        <UploadIcon size="xl" className="mb-2 text-(--muted-foreground)" />
         <p className="mb-1 text-center text-code font-medium text-(--foreground)">
           Drop PDF files here or click to browse
         </p>
@@ -190,7 +186,7 @@ export function UploadHero({
                           className="shrink-0 rounded p-1 text-(--muted-foreground) transition-colors hover:bg-(--border) hover:text-(--foreground)"
                           aria-label={`Remove ${file.name}`}
                         >
-                          <X size={14} />
+                          <CloseIcon size="sm" />
                         </button>
                       )}
                     </div>
@@ -203,7 +199,7 @@ export function UploadHero({
                           onClick={() => onPreview(file)}
                           className="inline-flex items-center gap-1 text-caption font-medium text-(--muted-foreground) hover:text-(--foreground) transition-colors"
                         >
-                          <Eye size={12} />
+                          <EyeIcon size="xs" />
                           Preview
                         </button>
                       )}
@@ -216,7 +212,7 @@ export function UploadHero({
                           <span className="flex items-center gap-1 text-caption text-(--muted-foreground)">
                             {state === 'uploading' && (
                               <>
-                                <Loader2 size={10} className="animate-spin" /> uploading…
+                                <Spinner size="xs" /> uploading…
                               </>
                             )}
                             {state === 'processing' && 'processing…'}

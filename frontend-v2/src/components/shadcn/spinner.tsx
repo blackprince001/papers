@@ -1,21 +1,18 @@
 import type React from "react"
-import { Loading03Icon } from "@hugeicons/core-free-icons"
-import { HugeiconsIcon } from "@hugeicons/react"
 
 import { cn } from "@/lib/utils"
+import { SpinnerIcon, type IconProps } from "@/components/icons"
 
 export function Spinner({
   className,
   ...props
-}: Omit<
-  React.ComponentProps<typeof HugeiconsIcon>,
-  "icon"
->): React.ReactElement {
+}: IconProps): React.ReactElement {
   return (
-    <HugeiconsIcon
+    <SpinnerIcon
+      aria-hidden={false}
       aria-label="Loading"
       className={cn("animate-spin", className)}
-      icon={Loading03Icon}
+      data-slot="spinner"
       role="status"
       {...props}
     />

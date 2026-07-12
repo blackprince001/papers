@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Logout as LogOut, Setting2 as Settings, Shield, ArrowDown2 as ChevronUp } from 'iconsax-reactjs';
+import { ChevronUpIcon, LogoutIcon, SettingsIcon, ShieldIcon } from '@/components/icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -58,7 +58,7 @@ export default function UserMenu({ isOpen }: UserMenuProps) {
                 admin
               </span>
             )}
-            <ChevronUp size={12} className="shrink-0 opacity-50" />
+            <ChevronUpIcon size="xs" className="shrink-0 opacity-50" />
           </>
         )}
       </button>
@@ -76,7 +76,7 @@ export default function UserMenu({ isOpen }: UserMenuProps) {
             onClick={() => setMenuOpen(false)}
             className="flex items-center gap-2.5 px-3 h-8 text-body text-(--foreground) hover:bg-(--muted) transition-colors"
           >
-            <Settings size={13} /> Settings
+            <SettingsIcon size="sm" /> Settings
           </Link>
           {isAdmin && (
             <Link
@@ -84,14 +84,14 @@ export default function UserMenu({ isOpen }: UserMenuProps) {
               onClick={() => setMenuOpen(false)}
               className="flex items-center gap-2.5 px-3 h-8 text-body text-(--foreground) hover:bg-(--muted) transition-colors"
             >
-              <Shield size={13} /> User Management
+              <ShieldIcon size="sm" /> User Management
             </Link>
           )}
           <button
             onClick={handleLogout}
             className="flex items-center gap-2.5 px-3 h-8 text-body text-red-600 hover:bg-red-50 transition-colors w-full text-left"
           >
-            <LogOut size={13} /> Sign out
+            <LogoutIcon size="sm" /> Sign out
           </button>
         </div>
       )}

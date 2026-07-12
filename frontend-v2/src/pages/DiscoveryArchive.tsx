@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Archive, SearchNormal as Search, Trash as Trash2, Refresh as Loader2, Clock, DocumentText as FileText, Edit as Pencil, TickCircle as Check, CloseCircle as X } from 'iconsax-reactjs';
+import { ArchiveIcon, SearchIcon, TrashIcon, ClockIcon, FileTextIcon, EditIcon, CheckIcon, CloseIcon } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -60,7 +60,6 @@ export default function DiscoveryArchive() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Archive size={24} className="text-(--muted-foreground)" />
             <h1>Discovery Archive</h1>
           </div>
           <p className="text-btn text-(--muted-foreground) mt-1">
@@ -80,7 +79,7 @@ export default function DiscoveryArchive() {
         </div>
       ) : !sessions || sessions.length === 0 ? (
         <div className="text-center py-16">
-          <Archive size={40} className="text-(--muted-foreground) mx-auto mb-3 opacity-40" />
+          <ArchiveIcon size={40} className="text-(--muted-foreground) mx-auto mb-3 opacity-40" />
           <p className="text-body text-(--muted-foreground)">No saved discoveries yet.</p>
           <p className="text-code text-(--muted-foreground) mt-1">Search for papers and save your sessions from the Discovery page.</p>
         </div>
@@ -101,17 +100,17 @@ export default function DiscoveryArchive() {
                           onKeyDown={(e) => { if (e.key === 'Enter') commitRename(session.id); if (e.key === 'Escape') setRenamingId(null); }}
                           className="flex-1 px-2 py-1 text-code bg-(--muted) border border-(--border) rounded-lg focus:outline-none focus:border-(--foreground)"
                         />
-                        <button onClick={() => commitRename(session.id)} className="p-1 text-(--foreground) hover:opacity-70"><Check size={14} /></button>
-                        <button onClick={() => setRenamingId(null)} className="p-1 text-(--muted-foreground) hover:opacity-70"><X size={14} /></button>
+                        <button onClick={() => commitRename(session.id)} className="p-1 text-(--foreground) hover:opacity-70"><CheckIcon size="sm" /></button>
+                        <button onClick={() => setRenamingId(null)} className="p-1 text-(--muted-foreground) hover:opacity-70"><CloseIcon size="sm" /></button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 mb-1">
-                        <Search size={14} className="text-(--muted-foreground) shrink-0" />
+                        <SearchIcon size="sm" className="text-(--muted-foreground) shrink-0" />
                         <h4 className="text-code font-medium text-(--foreground) truncate">
                           "{session.name || session.query}"
                         </h4>
                         <button onClick={() => startRename(session)} className="p-0.5 text-(--muted-foreground) hover:text-(--foreground) opacity-0 group-hover:opacity-100 transition-all shrink-0">
-                          <Pencil size={12} />
+                          <EditIcon size="xs" />
                         </button>
                       </div>
                     )}
@@ -120,12 +119,12 @@ export default function DiscoveryArchive() {
                     )}
                     <div className="flex items-center gap-3 mt-2 pl-5">
                       <span className="flex items-center gap-1 text-caption text-(--muted-foreground)">
-                        <Clock size={11} />{formatDate(session.updated_at)}
+                        <ClockIcon size="xs" />{formatDate(session.updated_at)}
                       </span>
                       <Badge>{session.paper_count} results</Badge>
                       {session.sources.length > 0 && (
                         <span className="flex items-center gap-1 text-caption text-(--muted-foreground)">
-                          <FileText size={11} />{session.sources.join(', ')}
+                          <FileTextIcon size="xs" />{session.sources.join(', ')}
                         </span>
                       )}
                     </div>
@@ -133,12 +132,14 @@ export default function DiscoveryArchive() {
                   <div className="flex items-center gap-2 shrink-0">
                     <Button variant="outlined" className="h-8! text-caption!" onClick={() => handleView(session)}>View</Button>
                     <Button
-                      variant="ghost"
-                      className="h-8! w-8! p-0! text-(--muted-foreground) hover:text-red-500"
-                      disabled={deleteMutation.isPending}
+                      variant="icon"
+                      size="icon"
+                      className="text-(--muted-foreground) hover:text-red-500"
+                      loading={deleteMutation.isPending}
+                      aria-label="Delete saved discovery"
                       onClick={() => { if (confirm('Delete this saved discovery?')) deleteMutation.mutate(session.id); }}
                     >
-                      {deleteMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                      <TrashIcon size="md" />
                     </Button>
                   </div>
                 </div>

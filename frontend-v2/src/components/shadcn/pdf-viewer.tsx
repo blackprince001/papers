@@ -1,14 +1,4 @@
 import * as React from "react"
-import {
-  Download01Icon,
-  MinusSignCircleIcon,
-  PlusSignCircleIcon,
-  RotateClockwiseIcon,
-  Search01Icon,
-  SidebarLeftIcon,
-  Upload01Icon,
-} from "@hugeicons/core-free-icons"
-import { HugeiconsIcon } from "@hugeicons/react"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import type { PDFDocumentProxy } from "pdfjs-dist"
 import type * as ReactPdf from "react-pdf"
@@ -16,6 +6,16 @@ import type * as ReactPdf from "react-pdf"
 import "react-pdf/dist/Page/TextLayer.css"
 
 import { cn } from "@/lib/utils"
+import {
+  DownloadIcon,
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
+  RotateIcon,
+  SearchIcon,
+  UploadIcon,
+  ZoomInIcon,
+  ZoomOutIcon,
+} from "@/components/icons"
 import { Button } from "@/components/shadcn/button"
 import {
   DocumentViewerSidebarSkeleton,
@@ -1757,7 +1757,11 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
                     disabled={controlsDisabled}
                     onClick={() => setSidebarOpen((open) => !open)}
                   >
-                    <HugeiconsIcon icon={SidebarLeftIcon} className="size-4" />
+                    {sidebarOpen ? (
+                      <PanelLeftCloseIcon className="size-4" />
+                    ) : (
+                      <PanelLeftOpenIcon className="size-4" />
+                    )}
                   </Button>
                 </ToolbarTooltip>
               </TooltipProvider>
@@ -1782,10 +1786,7 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
                           disabled={controlsDisabled}
                           onClick={() => rotateActivePage(-90)}
                         >
-                          <HugeiconsIcon
-                            icon={RotateClockwiseIcon}
-                            className="size-4 -scale-x-100"
-                          />
+                          <RotateIcon className="size-4 -scale-x-100" />
                         </Button>
                       </ToolbarTooltip>
                       <ToolbarTooltip label="Rotate page clockwise">
@@ -1797,10 +1798,7 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
                           disabled={controlsDisabled}
                           onClick={() => rotateActivePage(90)}
                         >
-                          <HugeiconsIcon
-                            icon={RotateClockwiseIcon}
-                            className="size-4"
-                          />
+                          <RotateIcon className="size-4" />
                         </Button>
                       </ToolbarTooltip>
                     </div>
@@ -1825,10 +1823,7 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
                         )
                       }}
                     >
-                      <HugeiconsIcon
-                        icon={MinusSignCircleIcon}
-                        className="size-4"
-                      />
+                      <ZoomOutIcon className="size-4" />
                     </Button>
                   </ToolbarTooltip>
                   <Select
@@ -1869,10 +1864,7 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
                         )
                       }}
                     >
-                      <HugeiconsIcon
-                        icon={PlusSignCircleIcon}
-                        className="size-4"
-                      />
+                      <ZoomInIcon className="size-4" />
                     </Button>
                   </ToolbarTooltip>
                 </div>
@@ -1890,7 +1882,7 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
                         aria-label="Search text"
                         disabled={controlsDisabled}
                       >
-                        <HugeiconsIcon icon={Search01Icon} className="size-4" />
+                        <SearchIcon className="size-4" />
                       </Button>
                     </PopoverTrigger>
                   </ToolbarTooltip>
@@ -1924,10 +1916,7 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
                         {isPreparingDownload ? (
                           <Spinner className="size-4" />
                         ) : (
-                          <HugeiconsIcon
-                            icon={Download01Icon}
-                            className="size-4"
-                          />
+                          <DownloadIcon className="size-4" />
                         )}
                       </Button>
                     </ToolbarTooltip>
@@ -1960,10 +1949,7 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
                                 }
                               }}
                             />
-                            <HugeiconsIcon
-                              icon={Upload01Icon}
-                              className="size-4"
-                            />
+                            <UploadIcon className="size-4" />
                           </label>
                         }
                       />

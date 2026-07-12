@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { DocumentText as FileText, Book1 as BookOpen, Clock, TrendUp as TrendingUp, Tag as TagIcon, ArrowRight2 as ChevronRight } from 'iconsax-reactjs';
+import { FileTextIcon, BookOpenIcon, ClockIcon, TrendingUpIcon, TagIcon, ChevronRightIcon } from '@/components/icons';
 import { statisticsApi } from '@/lib/api/statistics';
 import { papersApi } from '@/lib/api/papers';
 import { tagsApi } from '@/lib/api/tags';
@@ -149,10 +149,10 @@ export default function Dashboard() {
           ))
         ) : (
           <>
-            <StatCard label="Total Papers" value={totalPapers.toString()} icon={FileText} change={`${totalPapers} items`} />
-            <StatCard label="Read This Week" value={readPapers.toString()} icon={BookOpen} change={`${papersReadThisWeek} this week`} />
-            <StatCard label="Reading Time" value={readingTimeLabel} icon={Clock} change="Total minutes" />
-            <StatCard label="Current Streak" value={currentStreak.toString()} icon={TrendingUp} change={`Best: ${longestStreak}`} />
+            <StatCard label="Total Papers" value={totalPapers.toString()} icon={FileTextIcon} change={`${totalPapers} items`} />
+            <StatCard label="Read This Week" value={readPapers.toString()} icon={BookOpenIcon} change={`${papersReadThisWeek} this week`} />
+            <StatCard label="Reading Time" value={readingTimeLabel} icon={ClockIcon} change="Total minutes" />
+            <StatCard label="Current Streak" value={currentStreak.toString()} icon={TrendingUpIcon} change={`Best: ${longestStreak}`} />
           </>
         )}
       </div>
@@ -299,7 +299,7 @@ export default function Dashboard() {
                     variant="secondary"
                     className="text-caption font-medium"
                   >
-                    <TagIcon size={11} className="mr-1" />
+                    <TagIcon size="xs" className="mr-1" />
                     {tag.name}
                   </Badge>
                 ))}
@@ -347,7 +347,7 @@ function PaperRow({ paper }: { paper: import('@/lib/api/papers').Paper }) {
         <span className="text-caption text-(--muted-foreground) shrink-0">{publicationYear}</span>
       )}
 
-      <ChevronRight size={13} className="shrink-0 text-(--muted-foreground) opacity-40" />
+      <ChevronRightIcon size="sm" className="shrink-0 text-(--muted-foreground) opacity-40" />
     </Link>
   );
 }
@@ -372,7 +372,7 @@ function StatCard({ label, value, icon: Icon, change }: {
             <p className="text-caption text-(--muted-foreground)">{change}</p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-(--muted) flex items-center justify-center">
-            <Icon size={22} className="text-(--muted-foreground)" />
+            <Icon size="lg" className="text-(--muted-foreground)" />
           </div>
         </div>
       </div>

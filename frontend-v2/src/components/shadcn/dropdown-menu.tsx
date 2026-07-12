@@ -2,10 +2,9 @@
 
 import * as React from "react"
 import { Menu as DropdownMenuPrimitive } from "@base-ui/react/menu"
-import { ArrowRight01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
-import { HugeiconsIcon } from "@hugeicons/react"
 
 import { cn } from "@/lib/utils"
+import { CheckIcon, ChevronRightIcon } from "@/components/icons"
 
 function childContent(
   asChild: boolean | undefined,
@@ -162,7 +161,7 @@ function DropdownMenuCheckboxItem({
     >
       <span className="pointer-events-none absolute inset-s-2 flex size-4 items-center justify-center">
         <DropdownMenuPrimitive.CheckboxItemIndicator>
-          <HugeiconsIcon icon={Tick02Icon} />
+          <CheckIcon />
         </DropdownMenuPrimitive.CheckboxItemIndicator>
       </span>
       {children}
@@ -284,7 +283,7 @@ function DropdownMenuSubTrigger({
       {...props}
     >
       {children}
-      <HugeiconsIcon icon={ArrowRight01Icon} className="ms-auto size-4" />
+      <ChevronRightIcon className="ms-auto size-4" />
     </DropdownMenuPrimitive.SubmenuTrigger>
   )
 }

@@ -4,7 +4,7 @@ import { Dialog } from './ui/Dialog';
 import { Button } from './ui/Button';
 import { Select } from './ui/Select';
 import { paperSharingApi, groupSharingApi, type SharePermission, type ShareRecipient } from '@/lib/api/sharing';
-import { Trash, UserAdd } from 'iconsax-reactjs';
+import { TrashIcon, UserPlusIcon } from '@/components/icons';
 
 interface ShareDialogProps {
   open: boolean;
@@ -97,8 +97,8 @@ export function ShareDialog({ open, onClose, resourceId, resourceType, resourceT
                 <option value="editor">Editor</option>
               </Select>
             </div>
-            <Button onClick={handleShare} disabled={shareMutation.isPending || !emailInput.trim()}>
-              <UserAdd size={16} />
+            <Button onClick={handleShare} loading={shareMutation.isPending} disabled={!emailInput.trim()}>
+              <UserPlusIcon size="md" />
               Share
             </Button>
           </div>
@@ -137,7 +137,7 @@ export function ShareDialog({ open, onClose, resourceId, resourceType, resourceT
                     className="p-1 rounded-interactive text-(--muted-foreground) hover:text-(--destructive) hover:bg-(--destructive)/10 transition-colors"
                     aria-label={`Remove ${share.display_name}`}
                   >
-                    <Trash size={14} />
+                    <TrashIcon size="sm" />
                   </button>
                 </div>
               </div>

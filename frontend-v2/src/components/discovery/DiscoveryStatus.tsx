@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { TickCircle as Check, Refresh as Loader2 } from 'iconsax-reactjs';
+import { CheckCircleIcon } from '@/components/icons';
+import { Spinner } from '@/components/ui/Spinner';
 import { cn } from '@/lib/utils';
 import type { SearchStatus, TimelineEntry } from '@/hooks/use-ai-search-stream';
 
@@ -55,9 +56,9 @@ export function DiscoveryStatus({ status, timeline, isSearching }: DiscoveryStat
         <div className="flex items-baseline justify-between gap-4 mb-2">
           <div className="flex items-center gap-2 min-w-0">
             {isSearching ? (
-              <Loader2 size={13} className="text-(--muted-foreground) animate-spin shrink-0" />
+              <Spinner size="xs" className="text-(--muted-foreground) shrink-0" />
             ) : (
-              <Check size={13} className="text-(--foreground) shrink-0" />
+              <CheckCircleIcon size="sm" className="text-(--foreground) shrink-0" />
             )}
             <span className="text-caption uppercase tracking-wider text-(--muted-foreground) font-medium shrink-0">
               {stageLabel}

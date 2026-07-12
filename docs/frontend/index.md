@@ -17,4 +17,5 @@ Zustand/Redux), PWA via `vite-plugin-pwa`. Package manager: bun or npm.
 * [Components](components.md) - directory layout by category; in-house `ui/` + shadcn `shadcn/` layers share CSS vars.
 * [Hooks](hooks.md) - 11 custom hooks.
 * [Styling](styling.md) - Tailwind v4 `@theme` tokens, near-monochrome + forest-green palette, 8 paper themes, dark mode.
+* [Icon system](icon-system.md) - in-house hand-drawn icon set (109 glyphs), createIcon factory, sizing/naming conventions.
 * [Build & config](build-config.md) - Vite + PWA, strict tsconfig, ESLint, env vars.

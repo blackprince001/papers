@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bookmark, Share, Message as MessageSquare } from 'iconsax-reactjs';
+import { BookmarkIcon, ChatIcon, ShareIcon } from '@/components/icons';
 import { papersApi, type Paper } from '@/lib/api/papers';
 import { Select } from '@/components/ui/Select';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -95,7 +95,7 @@ export function ReaderToolbarActions({
           aria-label="Open full chat view"
           className="flex size-7 items-center justify-center rounded-md text-(--muted-foreground) transition-colors hover:bg-(--secondary) hover:text-(--foreground)"
         >
-          <MessageSquare size={15} />
+          <ChatIcon size="sm" />
         </Link>
       </Tooltip>
       {canAnnotate(paper) && (
@@ -106,7 +106,7 @@ export function ReaderToolbarActions({
             aria-label="Bookmark current page"
             className="flex size-7 items-center justify-center rounded-md text-(--muted-foreground) transition-colors hover:bg-(--secondary) hover:text-(--foreground)"
           >
-            <Bookmark size={15} />
+            <BookmarkIcon size="sm" />
           </button>
         </Tooltip>
       )}
@@ -118,7 +118,7 @@ export function ReaderToolbarActions({
             aria-label="Share paper"
             className="flex size-7 items-center justify-center rounded-md text-(--muted-foreground) transition-colors hover:bg-(--secondary) hover:text-(--foreground)"
           >
-            <Share size={15} />
+            <ShareIcon size="sm" />
           </button>
         </Tooltip>
       )}

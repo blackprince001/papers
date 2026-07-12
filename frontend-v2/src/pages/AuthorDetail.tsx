@@ -2,17 +2,17 @@ import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Buildings2,
-  Book1,
-  QuoteUp,
-  Hashtag,
-  MedalStar,
-  ExportSquare,
-  SearchNormal1,
-  Global,
-  Calendar,
-  ArrowRight,
-} from 'iconsax-reactjs';
+  BuildingIcon,
+  LibraryIcon,
+  QuoteIcon,
+  HashtagIcon,
+  AwardIcon,
+  ExternalLinkIcon,
+  SearchIcon,
+  GlobeIcon,
+  CalendarIcon,
+  ArrowRightIcon,
+} from '@/components/icons';
 import { discoveryApi, type AuthorProfile, type AuthorWork } from '@/lib/api/discovery';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { cn } from '@/lib/utils';
@@ -62,7 +62,7 @@ export default function AuthorDetail() {
 
       {!isLoading && !works.length && !displayName && (
         <div className="flex flex-col items-center gap-3 py-24 text-center text-(--muted-foreground)">
-          <SearchNormal1 size={32} className="opacity-30" />
+          <SearchIcon size={32} className="opacity-30" />
           <p className="text-body">
             No author found for ID <code className="text-code">{id}</code>
           </p>
@@ -79,7 +79,7 @@ export default function AuthorDetail() {
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-caption text-(--muted-foreground)">
                 {profile?.institutions?.[0]?.name && (
                   <span className="flex items-center gap-1.5">
-                    <Buildings2 size={14} />
+                    <BuildingIcon size="sm" />
                     {profile.institutions[0].name}
                     {profile.institutions[0].country && (
                       <span className="text-(--muted-foreground)/70">· {profile.institutions[0].country}</span>
@@ -93,7 +93,7 @@ export default function AuthorDetail() {
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5 transition-colors hover:text-(--foreground)"
                   >
-                    <ExportSquare size={14} />
+                    <ExternalLinkIcon size="sm" />
                     ORCID
                   </a>
                 )}
@@ -104,7 +104,7 @@ export default function AuthorDetail() {
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5 transition-colors hover:text-(--foreground)"
                   >
-                    <Global size={14} />
+                    <GlobeIcon size="sm" />
                     OpenAlex
                   </a>
                 )}
@@ -131,11 +131,11 @@ export default function AuthorDetail() {
           {/* ── Stats ────────────────────────────────────────────────── */}
           {profile && (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <StatCard icon={Book1} label="Publications" value={profile.works_count} />
-              <StatCard icon={QuoteUp} label="Citations" value={profile.cited_by_count} />
-              {profile.h_index != null && <StatCard icon={Hashtag} label="h-index" value={profile.h_index} />}
+              <StatCard icon={LibraryIcon} label="Publications" value={profile.works_count} />
+              <StatCard icon={QuoteIcon} label="Citations" value={profile.cited_by_count} />
+              {profile.h_index != null && <StatCard icon={HashtagIcon} label="h-index" value={profile.h_index} />}
               {profile.i10_index != null && (
-                <StatCard icon={MedalStar} label="i10-index" value={profile.i10_index} />
+                <StatCard icon={AwardIcon} label="i10-index" value={profile.i10_index} />
               )}
             </div>
           )}
@@ -159,7 +159,7 @@ export default function AuthorDetail() {
             <section className="space-y-4">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="flex items-center gap-2 text-subheading">
-                  <Book1 size={18} />
+                  <LibraryIcon size="md" />
                   Selected Works
                   <span className="text-caption font-normal text-(--muted-foreground)">
                     ({works.length})
@@ -240,13 +240,13 @@ function WorkRow({ work, rank }: { work: AuthorWork; rank?: number }) {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-(--muted-foreground)">
           {work.publication_year && (
             <span className="flex items-center gap-1">
-              <Calendar size={11} />
+              <CalendarIcon size="xs" />
               {work.publication_year}
             </span>
           )}
           {work.cited_by_count != null && (
             <span className="flex items-center gap-1">
-              <QuoteUp size={11} />
+              <QuoteIcon size="xs" />
               {work.cited_by_count.toLocaleString()} citations
             </span>
           )}
@@ -269,7 +269,7 @@ function WorkRow({ work, rank }: { work: AuthorWork; rank?: number }) {
           aria-label="Open work"
           className="mt-0.5 shrink-0 text-(--muted-foreground) opacity-0 transition-opacity group-hover:opacity-100 hover:text-(--foreground)"
         >
-          <ArrowRight size={16} />
+          <ArrowRightIcon size="md" />
         </a>
       )}
     </div>

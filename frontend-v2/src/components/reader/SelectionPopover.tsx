@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Refresh as Loader2 } from 'iconsax-reactjs';
+import { Spinner } from '@/components/ui/Spinner';
 import { cn } from '@/lib/utils';
 import type { ThemeName } from '@/lib/paper-themes';
 import type { AIActionKind } from '@/lib/api/aiFeatures';
@@ -93,7 +93,7 @@ export function SelectionPopover({
               pendingAction !== null && pendingAction !== kind && 'opacity-40',
             )}
           >
-            {pendingAction === kind && <Loader2 size={11} className="animate-spin" />}
+            {pendingAction === kind && <Spinner size="xs" />}
             {label}
           </button>
         ))}

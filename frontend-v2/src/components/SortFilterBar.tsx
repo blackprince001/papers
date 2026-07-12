@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Filter, CloseCircle as X } from 'iconsax-reactjs';
+import { CloseIcon, FilterIcon } from '@/components/icons';
 import { groupsApi } from '@/lib/api/groups';
 import { tagsApi } from '@/lib/api/tags';
 import { Select } from '@/components/ui/Select';
@@ -86,7 +86,7 @@ export function SortFilterBar({ filters, onFiltersChange, onReset }: SortFilterB
       {/* Filter popover */}
       <Popover>
         <PopoverTrigger className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-(--border) text-caption font-medium transition-colors ${hasActive ? 'bg-(--muted) text-(--foreground)' : 'bg-(--card) text-(--muted-foreground) hover:bg-(--muted)'}`}>
-          <Filter size={12} />
+          <FilterIcon size="xs" />
           Filters
           {hasActive && <span className="w-1.5 h-1.5 rounded-full bg-(--foreground)" />}
         </PopoverTrigger>
@@ -184,7 +184,7 @@ export function SortFilterBar({ filters, onFiltersChange, onReset }: SortFilterB
             />
           )}
           <button onClick={reset} className="inline-flex items-center gap-1 text-caption text-(--muted-foreground) hover:text-(--foreground) transition-colors">
-            <X size={11} /> Clear
+            <CloseIcon size="xs" /> Clear
           </button>
         </div>
       )}

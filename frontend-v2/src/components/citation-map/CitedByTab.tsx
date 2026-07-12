@@ -2,11 +2,11 @@ import { useMemo, useState } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  SearchNormal as Search,
-  ExportSquare as ExternalLink,
-  QuoteDown as Quote,
-  InfoCircle,
-} from 'iconsax-reactjs';
+  ExternalLinkIcon,
+  InfoCircleIcon,
+  QuoteIcon,
+  SearchIcon,
+} from '@/components/icons';
 import { papersApi, type Paper } from '@/lib/api/papers';
 import { citationMapApi, type CitedByPaper } from '@/lib/api/citationMap';
 import { cn } from '@/lib/utils';
@@ -37,7 +37,7 @@ function CitedByRow({ c }: { c: CitedByPaper }) {
             className="shrink-0 mt-0.5 text-(--muted-foreground) hover:text-(--foreground) transition-colors"
             aria-label="Open"
           >
-            <ExternalLink size={14} />
+            <ExternalLinkIcon size="sm" />
           </a>
         )}
       </div>
@@ -83,7 +83,7 @@ export function CitedByTab() {
     return (
       <div className="max-w-2xl mx-auto">
         <div className="relative mb-4">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-(--muted-foreground)" />
+          <SearchIcon size="md" className="absolute left-3 top-1/2 -translate-y-1/2 text-(--muted-foreground)" />
           <input
             type="text"
             value={query}
@@ -143,7 +143,7 @@ export function CitedByTab() {
         </div>
       ) : !resolved ? (
         <div className="flex items-start gap-2 rounded-xl border border-(--border) bg-(--muted) px-4 py-3 text-caption text-(--muted-foreground)">
-          <InfoCircle size={14} className="shrink-0 mt-0.5" />
+          <InfoCircleIcon size="sm" className="shrink-0 mt-0.5" />
           <span>Couldn’t find this paper on Semantic Scholar, so citing works are unavailable.</span>
         </div>
       ) : citations.length === 0 ? (
@@ -153,7 +153,7 @@ export function CitedByTab() {
       ) : (
         <>
           <p className={cn('flex items-center gap-1.5 text-caption text-(--muted-foreground) mb-2')}>
-            <Quote size={13} /> Showing {citations.length} paper{citations.length !== 1 ? 's' : ''} that cite this work
+            <QuoteIcon size="sm" /> Showing {citations.length} paper{citations.length !== 1 ? 's' : ''} that cite this work
           </p>
           <ul className="rounded-xl border border-(--border) divide-y divide-(--border) overflow-hidden bg-(--card)">
             {citations.map((c, i) => (

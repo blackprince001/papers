@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { CloseCircle, ExportSquare as ExternalLink, Trash } from 'iconsax-reactjs';
+import { CloseIcon, ExternalLinkIcon, TrashIcon } from '@/components/icons';
 import { citationMapApi, type MapNode, type CitationMapResponse } from '@/lib/api/citationMap';
 import { toastError } from '@/lib/utils/toast';
 
@@ -59,7 +59,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
           aria-label="Close"
           className="shrink-0 text-(--muted-foreground) hover:text-(--foreground) transition-colors"
         >
-          <CloseCircle size={18} />
+          <CloseIcon size="md" />
         </button>
       </div>
 
@@ -70,7 +70,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
             onClick={() => navigate(`/papers/${node.library_paper_id}`)}
             className="flex items-center gap-1.5 px-2.5 h-8 text-caption font-medium bg-(--muted) text-(--foreground) border border-(--border) rounded-lg hover:bg-(--border) transition-colors"
           >
-            <ExternalLink size={13} /> Open paper
+            <ExternalLinkIcon size="sm" /> Open paper
           </button>
         )}
         {externalUrl && (
@@ -80,7 +80,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
             rel="noreferrer"
             className="flex items-center gap-1.5 px-2.5 h-8 text-caption font-medium bg-(--muted) text-(--foreground) border border-(--border) rounded-lg hover:bg-(--border) transition-colors"
           >
-            <ExternalLink size={13} /> {node.doi ? 'View DOI' : 'Semantic Scholar'}
+            <ExternalLinkIcon size="sm" /> {node.doi ? 'View DOI' : 'Semantic Scholar'}
           </a>
         )}
         {node.is_focal && node.library_paper_id != null && (
@@ -90,7 +90,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
             disabled={removeMutation.isPending}
             className="flex items-center gap-1.5 px-2.5 h-8 text-caption font-medium text-(--coral-red) border border-(--border) rounded-lg hover:bg-(--coral-red)/10 transition-colors"
           >
-            <Trash size={13} /> Remove
+            <TrashIcon size="sm" /> Remove
           </button>
         )}
       </div>

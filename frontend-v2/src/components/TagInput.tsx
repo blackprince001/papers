@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { CloseCircle as X, Add as Plus } from 'iconsax-reactjs';
+import { CloseIcon, PlusIcon } from '@/components/icons';
 import { tagsApi, type Tag } from '@/lib/api/tags';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
@@ -90,7 +90,7 @@ export function TagInput({ selectedTags, onTagsChange, className }: TagInputProp
                 aria-label={`Remove ${tag.name}`}
                 className="hover:bg-(--border) rounded-full p-0.5 transition-colors"
               >
-                <X size={10} />
+                <CloseIcon size="xs" />
               </button>
             </span>
           ))}
@@ -129,7 +129,7 @@ export function TagInput({ selectedTags, onTagsChange, className }: TagInputProp
                     disabled={createTag.isPending}
                     className="w-full text-left px-3 py-2 text-code text-(--muted-foreground) hover:bg-(--muted) transition-colors flex items-center gap-2"
                   >
-                    <Plus size={12} />
+                    <PlusIcon size="xs" />
                     Create "{inputValue.trim()}"
                   </button>
                 )}

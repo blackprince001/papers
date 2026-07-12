@@ -1,4 +1,11 @@
-import { MagicStar as Sparkles, TrendUp as TrendingUp, MessageQuestion as HelpCircle, SearchNormal as Search, Lamp as Lightbulb, ArrowRight2 as ChevronRight } from 'iconsax-reactjs';
+import {
+  ChevronRightIcon,
+  HelpIcon,
+  InsightIcon,
+  SearchIcon,
+  SparklesIcon,
+  TrendingUpIcon,
+} from '@/components/icons';
 import { cn } from '@/lib/utils';
 
 export interface SearchOverview {
@@ -36,7 +43,7 @@ export function ResearchOverview({
       {/* Header with AI badge */}
       <div className="px-5 py-3 border-b border-(--border) flex items-center justify-between bg-[rgba(var(--primary-rgb),0.02)]">
         <div className="flex items-center gap-2">
-          <Sparkles size={16} className="text-(--primary)" />
+          <SparklesIcon size="md" className="text-(--primary)" />
           <h3 className="text-body font-semibold text-(--foreground)">AI Research Synthesis</h3>
         </div>
       </div>
@@ -46,7 +53,7 @@ export function ResearchOverview({
         {queryUnderstanding && (
           <div className="space-y-3">
             <div className="flex items-start gap-2.5">
-              <Lightbulb size={16} className="text-(--primary) shrink-0 mt-0.5" />
+              <InsightIcon size="md" className="text-(--primary) shrink-0 mt-0.5" />
               <div>
                 <p className="text-code font-medium text-(--foreground)">Understanding your search</p>
                 <p className="text-code text-(--muted-foreground) mt-0.5 leading-relaxed">
@@ -82,7 +89,7 @@ export function ResearchOverview({
           {overview.key_themes.length > 0 && (
             <div className="space-y-2.5">
               <div className="flex items-center gap-2">
-                <TrendingUp size={14} className="text-(--muted-foreground)" />
+                <TrendingUpIcon size="sm" className="text-(--muted-foreground)" />
                 <h4 className="text-caption font-semibold uppercase tracking-wider text-(--muted-foreground)">Key Themes</h4>
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -102,7 +109,7 @@ export function ResearchOverview({
           {overview.research_gaps.length > 0 && (
             <div className="space-y-2.5">
               <div className="flex items-center gap-2">
-                <HelpCircle size={14} className="text-(--coral-red)" />
+                <HelpIcon size="sm" className="text-(--coral-red)" />
                 <h4 className="text-caption font-semibold uppercase tracking-wider text-(--muted-foreground)">Research Gaps</h4>
               </div>
               <ul className="space-y-1.5">
@@ -121,7 +128,7 @@ export function ResearchOverview({
         {overview.suggested_followups.length > 0 && onSuggestedSearch && (
           <div className="pt-4 border-t border-(--border)">
             <div className="flex items-center gap-2 mb-3">
-              <Search size={14} className="text-(--muted-foreground)" />
+              <SearchIcon size="sm" className="text-(--muted-foreground)" />
               <h4 className="text-caption font-semibold uppercase tracking-wider text-(--muted-foreground)">Explore Further</h4>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -132,7 +139,7 @@ export function ResearchOverview({
                   className="flex items-center justify-between px-3 py-2 bg-(--muted) hover:bg-(--border) text-code text-(--foreground) rounded-lg border border-(--border) transition-colors text-left"
                 >
                   <span className="truncate">{query}</span>
-                  <ChevronRight size={14} className="text-(--muted-foreground) shrink-0" />
+                  <ChevronRightIcon size="sm" className="text-(--muted-foreground) shrink-0" />
                 </button>
               ))}
             </div>

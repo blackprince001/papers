@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { MagicStar as Sparkles, Warning2 as AlertCircle, Refresh as RefreshCw } from 'iconsax-reactjs';
+import { SparklesIcon, WarningIcon, RefreshIcon } from '@/components/icons';
 import { Link } from 'react-router-dom';
 import { discoveryApi } from '@/lib/api/discovery';
 import { DiscoveredPaperCard } from '@/components/discovery/DiscoveredPaperCard';
@@ -40,8 +40,8 @@ export default function Recommendations() {
         <Button
           variant="ghost"
           onClick={() => refetch()}
-          disabled={isFetching}
-          icon={<RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />}
+          loading={isFetching}
+          icon={<RefreshIcon size="sm" />}
           className="px-2.5 sm:px-3 shrink-0"
           aria-label="Refresh recommendations"
         >
@@ -75,7 +75,7 @@ export default function Recommendations() {
       {/* Error State */}
       {error && (
         <div className="text-center py-16">
-          <AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
+          <WarningIcon size={48} className="text-red-500 mx-auto mb-4" />
           <h2 className="text-body-lg font-bold mb-2">Couldn't load recommendations</h2>
           <p className="text-code text-(--muted-foreground) mb-6 max-w-md mx-auto">
             Make sure you have papers with DOIs in your library. Recommendations are generated based on your existing papers.
@@ -94,7 +94,7 @@ export default function Recommendations() {
       {/* Empty State */}
       {!isLoading && !error && recommendations.length === 0 && (
         <div className="text-center py-16">
-          <Sparkles size={48} className="text-(--muted-foreground) mx-auto mb-4" />
+          <SparklesIcon size={48} className="text-(--muted-foreground) mx-auto mb-4" />
           <h2 className="text-body-lg font-bold mb-2">No recommendations yet</h2>
           <p className="text-code text-(--muted-foreground) mb-6 max-w-md mx-auto">
             Add more papers with DOIs to your library to get personalized recommendations based on your research interests.

@@ -8,18 +8,16 @@ import {
   type DocxDocumentTheme,
   type DocxEditorController,
 } from "@extend-ai/react-docx"
-import {
-  Download01Icon,
-  MinusSignCircleIcon,
-  Moon02Icon,
-  PlusSignCircleIcon,
-  SidebarLeftIcon,
-  Sun03Icon,
-  Upload01Icon,
-} from "@hugeicons/core-free-icons"
-import { HugeiconsIcon } from "@hugeicons/react"
-
 import { cn } from "@/lib/utils"
+import {
+  DownloadIcon,
+  MoonIcon,
+  PanelLeftCloseIcon,
+  SunIcon,
+  UploadIcon,
+  ZoomInIcon,
+  ZoomOutIcon,
+} from "@/components/icons"
 import { Button } from "@/components/shadcn/button"
 import {
   DocumentViewerThumbnailSidebar,
@@ -395,7 +393,7 @@ function DocxToolbar({
               disabled={controlsDisabled}
               onClick={onToggleSidebar}
             >
-              <HugeiconsIcon icon={SidebarLeftIcon} className="size-4" />
+              <PanelLeftCloseIcon className="size-4" />
             </Button>
           </ToolbarTooltip>
           <DocxPageNumberControl
@@ -418,10 +416,11 @@ function DocxToolbar({
                 aria-label={isDark ? "Use light document" : "Use dark document"}
                 onClick={() => onIsDarkChange(!isDark)}
               >
-                <HugeiconsIcon
-                  icon={isDark ? Sun03Icon : Moon02Icon}
-                  className="size-4"
-                />
+                {isDark ? (
+                  <SunIcon className="size-4" />
+                ) : (
+                  <MoonIcon className="size-4" />
+                )}
               </Button>
             </ToolbarTooltip>
           ) : null}
@@ -440,7 +439,7 @@ function DocxToolbar({
                   )
                 }
               >
-                <HugeiconsIcon icon={MinusSignCircleIcon} className="size-4" />
+                <ZoomOutIcon className="size-4" />
               </Button>
             </ToolbarTooltip>
             <Select
@@ -477,7 +476,7 @@ function DocxToolbar({
                   )
                 }
               >
-                <HugeiconsIcon icon={PlusSignCircleIcon} className="size-4" />
+                <ZoomInIcon className="size-4" />
               </Button>
             </ToolbarTooltip>
           </div>
@@ -499,7 +498,7 @@ function DocxToolbar({
                   {isPreparingDownload ? (
                     <Spinner className="size-4" />
                   ) : (
-                    <HugeiconsIcon icon={Download01Icon} className="size-4" />
+                    <DownloadIcon className="size-4" />
                   )}
                 </Button>
               </ToolbarTooltip>
@@ -519,7 +518,7 @@ function DocxToolbar({
                   aria-label="Upload DOCX"
                   onClick={onUploadClick}
                 >
-                  <HugeiconsIcon icon={Upload01Icon} className="size-4" />
+                  <UploadIcon className="size-4" />
                 </Button>
               </ToolbarTooltip>
             </>
@@ -1038,7 +1037,7 @@ function DocxViewerContent({
                   className="mt-4"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <HugeiconsIcon icon={Upload01Icon} className="size-4" />
+                  <UploadIcon className="size-4" />
                   Upload DOCX
                 </Button>
               </div>

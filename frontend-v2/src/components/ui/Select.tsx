@@ -84,9 +84,11 @@ export function Select({
       aria-labelledby={ariaLabelledBy}
       className="w-full"
     >
-      <SelectTrigger className={cn('w-full', error && 'border-(--danger)', className)}>
-        <SelectValue />
-        <SelectIndicator />
+      <SelectTrigger
+        className={cn('w-full min-w-0 overflow-hidden', error && 'border-(--danger)', className)}
+      >
+        <SelectValue className="truncate whitespace-nowrap text-left" />
+        <SelectIndicator className="shrink-0" />
       </SelectTrigger>
       <SelectPopover>
         <ListBox>

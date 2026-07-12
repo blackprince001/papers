@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { SearchNormal as Search, Shield, ShieldSlash as ShieldOff, Trash as Trash2, ArrowDown2 as ChevronDown, ArrowUp2 as ChevronUp } from 'iconsax-reactjs';
+import { SearchIcon, ShieldIcon, ShieldOffIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon } from '@/components/icons';
 import { usersApi } from '@/lib/api/usersApi';
 import type { User } from '@/lib/api/authApi';
 import { toastSuccess as toastS, toastError as toastE } from '@/lib/utils/toast';
@@ -113,7 +113,7 @@ export default function UserManagement() {
 
   const SortIcon = ({ field }: { field: keyof User }) =>
     sortField === field
-      ? sortDir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />
+      ? sortDir === 'asc' ? <ChevronUpIcon size="xs" /> : <ChevronDownIcon size="xs" />
       : null;
 
   const sorted = [...users].sort((a, b) => {
@@ -133,7 +133,7 @@ export default function UserManagement() {
       {/* Filters */}
       <div className="flex gap-3 mb-4 flex-wrap">
         <div className="relative flex-1 min-w-48">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-(--muted-foreground)" />
+          <SearchIcon size="sm" className="absolute left-3 top-1/2 -translate-y-1/2 text-(--muted-foreground)" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -204,14 +204,14 @@ export default function UserManagement() {
                       title={user.is_active ? 'Deactivate' : 'Activate'}
                       className="p-1.5 rounded-lg hover:bg-(--border) transition-colors text-(--muted-foreground) hover:text-(--foreground)"
                     >
-                      {user.is_active ? <ShieldOff size={14} /> : <Shield size={14} />}
+                      {user.is_active ? <ShieldOffIcon size="sm" /> : <ShieldIcon size="sm" />}
                     </button>
                     <button
                       onClick={() => { if (confirm(`Delete ${user.display_name}?`)) deleteMutation.mutate(user.id); }}
                       title="Delete user"
                       className="p-1.5 rounded-lg hover:bg-red-50 transition-colors text-(--muted-foreground) hover:text-red-600"
                     >
-                      <Trash2 size={14} />
+                      <TrashIcon size="sm" />
                     </button>
                   </div>
                 </td>

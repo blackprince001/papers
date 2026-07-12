@@ -1,4 +1,4 @@
-import { CloseCircle as X } from 'iconsax-reactjs';
+import { CloseIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import type { Tag } from '@/lib/api/tags';
 
@@ -26,7 +26,7 @@ export function TagList({ tags, onRemove, showRemove = false, className }: TagLi
               aria-label={`Remove ${tag.name}`}
               className="hover:bg-(--border) rounded-full p-0.5 transition-colors"
             >
-              <X size={10} />
+              <CloseIcon size="xs" />
             </button>
           )}
         </span>
