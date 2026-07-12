@@ -9,6 +9,8 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { annotationsApi, type Annotation } from '@/lib/api/annotations';
 import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Textarea } from '@/components/ui/Textarea';
 import { ConfirmDialog, useConfirmDialog } from '@/components/ConfirmDialog';
 import { cn } from '@/lib/utils';
@@ -260,7 +262,7 @@ export function NotesPanel({ paperId, currentPage, annotations, isLoading }: Not
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2].map((i) => (
-            <div key={i} className="h-24 bg-(--muted)/40 rounded-xl animate-pulse" />
+            <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
         </div>
       ) : displayed.length > 0 ? (
@@ -315,17 +317,22 @@ export function NotesPanel({ paperId, currentPage, annotations, isLoading }: Not
                     />
 
                     <div className="flex items-center justify-end gap-2 pt-2 border-t border-(--border)">
-                      <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={updateMutation.isPending}>
-                        <CloseIcon size="sm" className="mr-1" />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<CloseIcon size="sm" />}
+                        onClick={cancelEdit}
+                        disabled={updateMutation.isPending}
+                      >
                         Cancel
                       </Button>
                       <Button
                         size="sm"
+                        icon={<SaveIcon size="sm" />}
                         onClick={saveEdit}
                         disabled={!editContent.trim()}
                         loading={updateMutation.isPending}
                       >
-                        <SaveIcon size="sm" className="mr-1" />
                         Save
                       </Button>
                     </div>
@@ -372,11 +379,12 @@ export function NotesPanel({ paperId, currentPage, annotations, isLoading }: Not
           })}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-12 px-6 text-center bg-(--muted)/10 rounded-2xl border border-dashed border-(--border)">
-          <NoteIcon size={32} className="mb-4 text-(--muted-foreground) opacity-30" />
-          <p className="text-code text-(--muted-foreground)">
-            {scope === 'all' ? 'No notes yet' : scope === 'page' ? `No notes for page ${currentPage}` : 'No document notes yet'}
-          </p>
+        <div className="bg-(--muted)/10 rounded-2xl border border-dashed border-(--border)">
+          <EmptyState
+            size="panel"
+            icon={NoteIcon}
+            title={scope === 'all' ? 'No notes yet' : scope === 'page' ? `No notes for page ${currentPage}` : 'No document notes yet'}
+          />
         </div>
       )}
 
