@@ -14,6 +14,9 @@ type ButtonSize = 'sm' | 'md' | 'lg' | 'icon-xs' | 'icon-sm' | 'icon' | 'icon-lg
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
+  /** The button's mobile representation. Buttons never render icon AND
+   * label together: with both `icon` and `children`, the label shows from
+   * `sm:` up and collapses to the icon alone below it. */
   icon?: ReactNode;
   /** Disables the button and overlays a centered spinner; the label stays
    * mounted (invisible) so the button keeps its width. */
@@ -53,6 +56,17 @@ const spinnerPx: Record<ButtonSize, number> = {
   'icon-lg': 20,
 };
 
+/* Below sm, an icon+label button collapses to a square icon button. */
+const collapsedSquare: Record<ButtonSize, string> = {
+  sm: 'max-sm:w-7 max-sm:min-w-0 max-sm:px-0',
+  md: 'max-sm:w-8 max-sm:min-w-0 max-sm:px-0',
+  lg: 'max-sm:w-10 max-sm:min-w-0 max-sm:px-0',
+  'icon-xs': '',
+  'icon-sm': '',
+  icon: '',
+  'icon-lg': '',
+};
+
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
     { variant = 'primary', size, icon, loading = false, className, children, disabled, type, ...props },
@@ -61,6 +75,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const resolvedSize: ButtonSize =
       size ?? (variant === 'icon' ? 'icon' : variant === 'primary-lg' ? 'lg' : 'md');
     const sz = sizeConfig[resolvedSize];
+    const responsive = Boolean(icon && children);
+    // The label leaves the accessibility tree when hidden below sm; a
+    // string label doubles as the accessible name for the icon-only state.
+    const accessibleName =
+      props['aria-label'] ?? (responsive && typeof children === 'string' ? children : undefined);
     return (
       <HeroButton
         ref={ref}
@@ -71,18 +90,32 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         type={type ?? 'button'}
         aria-busy={loading || undefined}
         data-loading={loading || undefined}
-        className={cn('relative shrink-0', sz.className, className)}
+        className={cn(
+          'relative shrink-0',
+          sz.className,
+          responsive && collapsedSquare[resolvedSize],
+          className,
+        )}
         {...(props as Partial<HeroButtonProps>)}
+        aria-label={accessibleName}
       >
         {loading && (
           <span className="absolute inset-0 grid place-items-center">
             <Spinner size={spinnerPx[resolvedSize]} aria-hidden />
           </span>
         )}
-        <span className={cn('inline-flex items-center justify-center gap-1.5', loading && 'invisible')}>
-          {icon && <span className="shrink-0">{icon}</span>}
-          {children}
-        </span>
+        {responsive ? (
+          <span className={cn('contents', loading && 'invisible')}>
+            <span className="inline-flex shrink-0 sm:hidden">{icon}</span>
+            <span className="hidden sm:inline-flex items-center justify-center gap-1.5">
+              {children}
+            </span>
+          </span>
+        ) : (
+          <span className={cn('inline-flex items-center justify-center gap-1.5', loading && 'invisible')}>
+            {icon ? <span className="shrink-0">{icon}</span> : children}
+          </span>
+        )}
       </HeroButton>
     );
   },

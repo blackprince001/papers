@@ -82,7 +82,7 @@ export default function KitchenSink() {
           <Button size="sm">Small</Button>
           <Button size="md">Medium</Button>
           <Button size="lg">Large</Button>
-          <Button icon={<PlusIcon size="sm" />}>With icon</Button>
+          <Button icon={<PlusIcon size="sm" />}>Label on desktop, icon on mobile</Button>
           <Button loading>Saving…</Button>
           <Button variant="secondary" loading>
             Loading

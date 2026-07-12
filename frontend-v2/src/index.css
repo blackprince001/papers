@@ -351,6 +351,9 @@ html {
     --field-foreground: var(--charcoal);
     --field-placeholder: var(--muted-foreground);
     --field-border: var(--border-gray);
+    /* HeroUI defaults fields to borderless (0px); Lumen fields keep their
+     * 1px outline. */
+    --field-border-width: 1px;
     --separator: var(--border-gray);
     --focus: var(--ring);
     --link: var(--info);
@@ -626,6 +629,16 @@ html {
  * rounded-lg. BEM-level override keeps every button on the Lumen radius. */
 .button {
   border-radius: var(--radius-interactive);
+}
+
+/* Dropdown surfaces sit flat on the page: border only, no drop shadow. */
+.popover,
+.select__popover,
+.dropdown__popover,
+.combo-box__popover,
+.autocomplete__popover {
+  box-shadow: none;
+  border: 1px solid var(--border);
 }
 
 /* ===== NATIVE DIALOG ===== */

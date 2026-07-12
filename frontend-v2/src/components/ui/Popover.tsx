@@ -98,7 +98,7 @@ export function PopoverContent({
       className={cn(
         'absolute z-50 min-w-48',
         'bg-(--popover) border border-(--border) rounded-card',
-        'shadow-elevated p-1',
+        'p-1',
         sideMap[side][align],
         className,
       )}
