@@ -27,6 +27,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } else {
       root.classList.remove('dark');
     }
+    // HeroUI binds its themes to data-theme; keep it in lockstep with .dark.
+    root.dataset.theme = theme;
     localStorage.setItem('papers-theme', theme);
   }, [theme]);
 

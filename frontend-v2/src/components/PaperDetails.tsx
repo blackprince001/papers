@@ -231,7 +231,7 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
                   <Link
                     key={i}
                     to={`/author/search?name=${encodeURIComponent(author)}`}
-                    className="text-code px-2 py-0.5 bg-(--muted)/50 rounded text-(--foreground) hover:bg-(--accent)/20 hover:text-(--accent) transition-colors no-underline"
+                    className="text-code px-2 py-0.5 bg-(--muted)/50 rounded text-(--foreground) hover:bg-(--mint-green)/20 hover:text-(--deep-forest) transition-colors no-underline"
                   >
                     {author}
                   </Link>

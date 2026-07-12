@@ -44,8 +44,13 @@ Or set `DATABASE_URL` directly (`postgresql+asyncpg://…`).
 | Variable | Purpose |
 |---|---|
 | `JWT_SECRET_KEY` / `JWT_ALGORITHM` / `ACCESS_TOKEN_EXPIRE_MINUTES` / `REFRESH_TOKEN_EXPIRE_DAYS` | JWT auth config (HS256, 30-min access, 7-day refresh) |
+| `AI_KEY_ENCRYPTION_KEY` | Fernet key source for user AI-provider keys at rest; falls back to a `JWT_SECRET_KEY`-derived key (decrypt-only legacy path) when unset — must be identical across API + Celery processes |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | Admin credentials (base64-encoded) |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID |
+
+Note: `Settings` loads `env_file=".env"` **relative to the process cwd** — the
+backend run from `backend/` does not see the repo-root `.env`; see
+[setup](/infra/setup.md) for the source-and-override preamble.
 
 # URLs
 

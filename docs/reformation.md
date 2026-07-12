@@ -271,9 +271,9 @@ with backend improvements and feature considerations below.
 
 # Follow-up tracking
 
-- **ADR candidates**: backend pitfalls #1, #3, #5, #9 → add to
++ **ADR candidates**: backend pitfalls #1, #3, #5, #9 → add to
   [/decisions/](/decisions/index.md) when acted on.
-- **Feature plans**: deep-research is tracked at
++ **Feature plans**: deep-research is tracked at
   [/features/deep-research.md](/features/deep-research.md); features #1–9
   above can graduate into their own `Feature Plan` concepts as they're taken
   up.

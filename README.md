@@ -1,6 +1,8 @@
-# Papers
+# Papers (Lumen)
 
-A modern research paper management platform with AI-powered reading assistance, full-text search, and semantic discovery. Organize academic literature with intelligent tagging, threaded discussions, and automatic paper relationship discovery through citations.
+A modern, self-hosted research paper management platform with AI-powered reading assistance, full-text + semantic search, and multi-source paper discovery. Organize academic literature with intelligent tagging, threaded discussions, and citation-graph exploration. The web app ships under the product name **Lumen**; a standalone marketing site lives in `landing/`.
+
+AI generation is **bring-your-own-key**: each user connects their own provider (Google Gemini, OpenAI, Anthropic, DeepSeek, or any OpenAI-compatible endpoint) in the app's AI settings, and keys are encrypted at rest. The only server-side AI key is a Google API key used strictly for embeddings.
 
 ## Features
 
@@ -14,7 +16,9 @@ A modern research paper management platform with AI-powered reading assistance, 
 
 ### AI-Powered Reading
 
-- **Chat with Papers**: Ask context-aware questions about any paper and get detailed responses powered by Google Gemini
+- **Bring Your Own AI Provider**: Connect your own Gemini, OpenAI, Anthropic, DeepSeek, or OpenAI-compatible key (custom base URL + model) in the app's AI settings — keys are encrypted at rest, and there is no shared server key for generation
+- **Chat with Papers**: Ask context-aware questions about any paper — agentic chat (OpenAI Agents SDK) with tools that read the paper, search your chat history, and pull related context from your library
+- **Multi-paper & Group Chat**: Chat across several papers or an entire group at once, streamed over SSE
 - **Threaded Conversations**: Create follow-up threads on responses for deeper exploration of specific topics
 - **Auto-generated Summaries**: Receive AI-generated summaries upon paper ingestion for quick understanding
 - **Key Findings Extraction**: Automatically extract main contributions, methodology, and conclusions
@@ -30,8 +34,11 @@ A modern research paper management platform with AI-powered reading assistance, 
 
 ### Search & Discovery
 
-- **Full-text Search**: Search across all paper content, metadata, and annotations — scoped to your library
+- **Full-text Search**: Search across all paper content, metadata, and annotations — scoped to your library, with saved searches
 - **Semantic Search**: Find papers by meaning using vector embeddings (768-dimensional vectors)
+- **Multi-source Discovery**: Search arXiv, Semantic Scholar, OpenAlex, and Google Scholar from one place, with AI-enhanced streaming search and resumable discovery sessions
+- **Recommendations & Citation Explorer**: "For You" paper recommendations, author search, and citation exploration for any discovered paper
+- **HuggingFace Daily Papers**: Browse the daily trending-papers feed and add papers straight to your library
 - **Paper Relationships**: Discover related papers through citation extraction and analysis
 - **Advanced Filters**: Filter by tags, groups, reading status, publication date, and more
 
@@ -54,23 +61,26 @@ Papers is a full-stack polyglot application designed for self-hosting.
 
 ### Backend
 
-- **Framework**: FastAPI (Python 3.13+) — modern, performant async web framework
+- **Framework**: FastAPI (Python 3.13+) — 21 domain routers mounted under `/api/v1`, Scalar API docs at `/api-docs`
 - **Database**: PostgreSQL 16 with pgvector extension for vector embeddings
-- **ORM**: SQLAlchemy 2.0 with async support for database operations
-- **Task Queue**: Celery with Redis broker for background AI tasks and paper processing
+- **ORM**: SQLAlchemy 2.0 — async engine (asyncpg) for the API, sync engine (psycopg2) for Celery workers
+- **Task Queue**: Celery with Redis broker — `ai`, `processing`, and `discovery` queues plus a dead-letter queue and a beat scheduler that retries incomplete AI processing
+- **AI Orchestration**: OpenAI Agents SDK for agentic chat (function tools + SSE streaming) over per-user BYO providers; Fernet-encrypted provider keys
 - **Vector Search**: pgvector for semantic similarity search using embeddings
-- **Auth**: JWT access tokens + httpOnly refresh token cookies; Google OAuth + local admin login
+- **Auth**: JWT access tokens + httpOnly refresh token cookies; Google OAuth + local admin login; per-user rate limiting
 - **Caching**: Redis for session management and task status tracking
 
 ### Frontend
 
-- **Framework**: React 19 with TypeScript for type-safe UI development
-- **Build Tool**: Vite for fast development and optimized production builds
-- **Styling**: TailwindCSS with a near-monochrome design system (forest-green undertones, mint accent)
+- **Framework**: React 19 with TypeScript (strict) for type-safe UI development
+- **Build Tool**: Vite 7 for fast development and optimized production builds; installable PWA via `vite-plugin-pwa`
+- **Routing**: React Router v7 with protected and public route groups
+- **Styling**: TailwindCSS v4 (CSS-based config) with a near-monochrome design system (forest-green undertones, mint accent)
 - **Data Management**: TanStack Query (React Query) for efficient server state management
-- **PDF Viewer**: Integrated PDF.js for in-browser PDF reading
-- **Rich Editor**: TipTap for text editing with markdown support and math rendering
+- **PDF Viewer**: Virtualized react-pdf/PDF.js viewer with an annotation overlay for in-browser reading
+- **Citation Graph**: Interactive citation-map visualization (`@xyflow/react` + `react-force-graph-2d`)
 - **Theming**: Light and dark mode with adaptive logo and paper card color themes
+- **Marketing Site**: Standalone landing app in `landing/` (React + Vite, no router) — built and deployed separately from the compose stack
 
 ### Infrastructure
 
@@ -83,15 +93,20 @@ Papers is a full-stack polyglot application designed for self-hosting.
 
 Papers relies on several third-party services and libraries that need to be configured.
 
-### AI Model Provider
+### AI Model Providers
 
-**Google Gemini API** (required for AI features)
+**Server-side: Google Gemini API** (required for semantic search)
 
-- Used for: Paper summaries, key findings extraction, reading guides, smart highlights, threaded conversations
+- Used for: **embeddings only** (`gemini-embedding-001`, 768-dimensional) — the corpus needs one consistent embedding model, so this key stays on the server
 - Configuration: Set `GOOGLE_API_KEY` environment variable
 - Get your key: <https://ai.google.dev/>
 - Cost: Free tier available with usage limits; pay-as-you-go for higher volumes
-- Models used: `gemini-3-flash-preview` for generation, `gemini-embedding-001` for embeddings
+
+**Per-user: bring your own provider** (required for chat and AI features)
+
+- Used for: Chat, paper summaries, key findings extraction, reading guides, smart highlights, AI-enhanced discovery
+- Configuration: Each user connects a provider in the app's AI settings after signing in — Google Gemini, OpenAI, Anthropic, DeepSeek, or any OpenAI-compatible endpoint (custom base URL + model), with a built-in connection test
+- Storage: Keys are Fernet-encrypted at rest using `AI_KEY_ENCRYPTION_KEY`; there is no server-side fallback key for generation
 
 ### Auth
 
@@ -111,9 +126,18 @@ Papers relies on several third-party services and libraries that need to be conf
   - Configuration: Set `SEMANTIC_SCHOLAR_API_KEY` (optional — falls back to arXiv)
   - Cost: Free tier available
 
-- **SerpAPI**: General-purpose web search for paper discovery
+- **OpenAlex API**: Open catalog of scholarly works for paper and author discovery
+  - Configuration: Set `OPENALEX_API_KEY` (optional)
+  - Cost: Free
+
+- **SerpAPI**: Google Scholar search for paper discovery
   - Configuration: Set `SERPAPI_KEY` (optional)
   - Cost: Free tier with limited queries; paid plans available
+
+### Email (Optional)
+
+- **Resend**: Transactional email, off by default
+  - Configuration: Set `RESEND_API_KEY`, `EMAIL_FROM`, and `EMAIL_ENABLED=true`
 
 ### Database (PostgreSQL)
 
@@ -151,9 +175,10 @@ Papers relies on several third-party services and libraries that need to be conf
 ### Prerequisites
 
 1. **Get API Keys**
-   - Google API Key: <https://ai.google.dev/> (required for AI features)
+   - Google API Key: <https://ai.google.dev/> (server-side, used for embeddings/semantic search only)
    - Google Client ID: <https://console.cloud.google.com/> (required for Google sign-in)
-   - Optional: Semantic Scholar API, SerpAPI
+   - Optional: Semantic Scholar API, OpenAlex, SerpAPI (paper discovery); Resend (email)
+   - Chat and AI generation use each user's own provider key, added in the app's AI settings after sign-in — no server key required
 
 2. **Install Dependencies**
    - Python 3.13+: <https://www.python.org/downloads/>
@@ -186,24 +211,29 @@ docker compose -f docker-compose.dev.yml up -d postgres redis
 # Redis: redis-server
 ```
 
-**Backend:**
+**Environment preamble** — the backend reads `.env` from its working directory (`backend/.env`), *not* the repo root, so the root `.env` is not picked up automatically. Create the root `.env` once (`cp .env.example .env`, fill in your keys), then in **every** backend terminal (API, Celery worker, Celery beat) load it and override the Docker-oriented values for a local run:
 
 ```bash
 cd backend
-uv sync                           # Install dependencies
-export GOOGLE_API_KEY=your_key
-export GOOGLE_CLIENT_ID=your_client_id
-export JWT_SECRET_KEY=$(openssl rand -hex 32)
-export AI_KEY_ENCRYPTION_KEY=$(openssl rand -hex 32)   # encrypts user-provided AI keys
-export ADMIN_USERNAME=$(echo -n "admin" | base64)
-export ADMIN_PASSWORD=$(echo -n "yourpassword" | base64)
+set -a; source ../.env; set +a    # load the root .env into the shell
 export DB_HOST=localhost
-export DB_PORT=5433               # 5432 if running PostgreSQL natively
-export DB_NAME=papers
+export DB_PORT=5433               # dev compose maps postgres to 5433; use 5432 for native PostgreSQL
+export REDIS_HOST=localhost
+export STORAGE_PATH=./storage/papers   # the .env value is the container path /app/storage/papers
 export FRONTEND_URL=http://localhost:5173
+export APP_URL=http://localhost:5173
 export DEBUG=true
+```
+
+> Keep `REDIS_PASSWORD` empty in `.env` — the compose Redis runs without `--requirepass`, so any password fails authentication. And don't generate fresh random values for `JWT_SECRET_KEY` / `AI_KEY_ENCRYPTION_KEY` per terminal: the Celery worker decrypts user AI keys with the same secrets the API encrypted them with, so all processes must share the values from `.env`.
+
+**Backend (API):**
+
+```bash
+cd backend                        # then run the environment preamble above
+uv sync                           # Install dependencies
 uv run alembic upgrade head      # Run migrations
-uv run fastapi dev app/main.py   # Start dev server (localhost:8000)
+uv run fastapi dev --reload app/main.py   # Start dev server (localhost:8000)
 ```
 
 **Frontend:**
@@ -219,21 +249,26 @@ bun run dev                       # or: npm run dev (localhost:5173)
 
 **Celery Worker (needed for paper ingestion and AI background tasks):**
 
-```bash
-cd backend
-uv run celery -A app.celery_app worker -l info -Q ai,processing,discovery,dead_letter
+The worker and beat need the same environment as the API — they connect to the same database and Redis, use `GOOGLE_API_KEY` for embeddings, and decrypt user AI-provider keys. Run the environment preamble in each terminal first.
 
-# Optional: beat scheduler for periodic retry sweeps
+```bash
+cd backend                        # then run the environment preamble above
+uv run celery -A app.celery_app worker -l info -Q ai,processing,discovery,dead_letter
+```
+
+```bash
+# Optional (separate terminal, same preamble): beat scheduler for periodic retry sweeps
+cd backend
 uv run celery -A app.celery_app beat -l info
 ```
 
 ### Docker Dev
 
-`docker-compose.dev.yml` runs the full 7-service stack (Traefik, PostgreSQL, Redis, backend, 2 Celery workers, Celery beat, frontend) behind Traefik on port 80, HTTP only. The hostnames are **hardcoded** to `*.testing.maurc.org`, so point them at localhost first:
+`docker-compose.dev.yml` runs the full 7-service stack (Traefik, PostgreSQL, Redis, backend, 2 Celery workers, Celery beat, frontend) behind Traefik on port 80, HTTP only. The hostnames are **hardcoded** in the compose file's Traefik `Host()` labels — check `docker-compose.dev.yml` for the current values and replace `testing.yourdomain.com` below with them (or edit the labels to your own domain). The `/etc/hosts` entries and the dev URLs in `.env` must match the labels. Point the hostnames at localhost first:
 
 ```bash
 # Add the dev hostnames to /etc/hosts
-echo "127.0.0.1 testing.maurc.org api.testing.maurc.org traefik.testing.maurc.org" | sudo tee -a /etc/hosts
+echo "127.0.0.1 testing.yourdomain.com api.testing.yourdomain.com traefik.testing.yourdomain.com" | sudo tee -a /etc/hosts
 ```
 
 ```bash
@@ -256,9 +291,9 @@ ADMIN_USERNAME=YWRtaW4=              # base64("admin")
 ADMIN_PASSWORD=your_base64_password
 
 # Dev URLs (must match the /etc/hosts entries above)
-FRONTEND_URL=http://testing.maurc.org
-APP_URL=http://testing.maurc.org
-VITE_API_URL=http://api.testing.maurc.org/api/v1
+FRONTEND_URL=http://testing.yourdomain.com
+APP_URL=http://testing.yourdomain.com
+VITE_API_URL=http://api.testing.yourdomain.com/api/v1
 VITE_GOOGLE_CLIENT_ID=your_google_client_id_here
 ```
 
@@ -272,9 +307,9 @@ Database migrations run automatically when the backend container starts (`alembi
 
 Once up:
 
-- App: <http://testing.maurc.org>
-- API: <http://api.testing.maurc.org> (health check at `/health`)
-- Traefik dashboard: <http://traefik.testing.maurc.org/dashboard/>
+- App: `http://testing.yourdomain.com`
+- API: `http://api.testing.yourdomain.com` (health check at `/health`)
+- Traefik dashboard: `http://traefik.testing.yourdomain.com/dashboard/`
 - PostgreSQL is exposed on host port **5433** and Redis on **6379** for debugging.
 
 ## Production Deployment

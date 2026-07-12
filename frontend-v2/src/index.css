@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import '@heroui/styles';
 @import 'tw-animate-css';
 
 /* Inter variable font, self-hosted. The opsz axis is pinned to 32 (Inter Display) on body. */
@@ -326,13 +327,43 @@ html {
     --secondary-foreground: var(--charcoal);
     --muted: var(--light-gray);
     --muted-foreground: var(--mid-gray);
-    --accent: var(--mint-green);
-    --accent-foreground: var(--charcoal);
+    /* --accent is HeroUI's primary-action color; Lumen's brand mint stays
+     * available as --mint-green. */
+    --accent: var(--forest-black);
+    --accent-foreground: var(--white);
     --destructive: var(--error-red);
     --destructive-foreground: var(--white);
     --border: var(--border-gray);
     --input: var(--border-gray);
     --ring: var(--forest-black);
+
+    /* ===== HEROUI v3 THEME BRIDGE =====
+     * HeroUI reads these contract vars; every value derives from Lumen
+     * primitives above, so `.dark` flips them automatically. Only vars whose
+     * primitives don't flip get explicit .dark overrides. */
+    --surface: var(--card-surface);
+    --surface-foreground: var(--foreground);
+    --overlay: var(--white);
+    --overlay-foreground: var(--foreground);
+    --default: var(--light-gray);
+    --default-foreground: var(--charcoal);
+    --field-background: var(--white);
+    --field-foreground: var(--charcoal);
+    --field-placeholder: var(--muted-foreground);
+    --field-border: var(--border-gray);
+    --separator: var(--border-gray);
+    --focus: var(--ring);
+    --link: var(--info);
+    --radius: 0.5rem;
+    --field-radius: 0.5rem;
+    --success-foreground: var(--white);
+    --warning-foreground: var(--white);
+    --danger-foreground: var(--white);
+    --segment: var(--white);
+    --segment-foreground: var(--foreground);
+    --surface-shadow: var(--shadow-subtle);
+    --overlay-shadow: var(--shadow-elevated);
+    --disabled-opacity: 0.4;
 
     /* ===== PAPER THEMES (Default/Light) ===== */
     --theme-olive-bg: #f4f1e0;
@@ -438,13 +469,18 @@ html {
     --secondary-foreground: var(--charcoal);
     --muted: var(--light-gray);
     --muted-foreground: var(--mid-gray);
-    --accent: var(--mid-gray);
+    --accent: #e2e2e2;
     --accent-foreground: #111111;
     --destructive: var(--error-red);
     --destructive-foreground: #111111;
     --border: var(--border-gray);
     --input: var(--border-gray);
     --ring: #d0d0d0;
+
+    /* HeroUI bridge — dark overrides for values that don't derive */
+    --success-foreground: #111111;
+    --warning-foreground: #111111;
+    --danger-foreground: #111111;
 
     /* ===== PAPER THEMES (Dark) ===== */
     --theme-olive-bg: #1c1d12;
@@ -583,6 +619,13 @@ html {
   * {
     border-color: var(--border-gray);
   }
+}
+
+/* ===== HEROUI SHAPE OVERRIDES =====
+ * HeroUI defaults buttons to pill (radius × 3); Lumen controls are
+ * rounded-lg. BEM-level override keeps every button on the Lumen radius. */
+.button {
+  border-radius: var(--radius-interactive);
 }
 
 /* ===== NATIVE DIALOG ===== */
