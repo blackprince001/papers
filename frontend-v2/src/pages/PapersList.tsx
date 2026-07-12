@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { PlusIcon, ViewGridIcon, ViewListIcon, TrashIcon, RefreshIcon, LayersIcon, CheckSquareIcon, CheckIcon, CloseIcon, FolderPlusIcon } from '@/components/icons';
+import { PlusIcon, ViewGridIcon, ViewListIcon, TrashIcon, RefreshIcon, LayersIcon, CheckSquareIcon, CheckIcon, CloseIcon, FolderPlusIcon, LibraryIcon, SearchIcon } from '@/components/icons';
 import { Spinner } from '@/components/ui/Spinner';
 import { Link } from 'react-router-dom';
 
@@ -16,8 +16,12 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Pagination } from '@/components/ui/Pagination';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { Select } from '@/components/ui/Select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { PageContainer } from '@/components/layout/PageContainer';
 
-import { PaperCard } from '@/components/PaperCard';
+import { PaperCard, PaperCardSkeleton } from '@/components/PaperCard';
 import { PaperTable } from '@/components/PaperTable';
 import { SortFilterBar } from '@/components/SortFilterBar';
 import { ConfirmDialog, useConfirmDialog } from '@/components/ConfirmDialog';
@@ -27,28 +31,9 @@ import type { PaperListFilters } from '@/lib/api/papers';
 
 type ViewMode = 'grid' | 'table';
 
-/* ===== Skeleton helpers ===== */
-function PaperCardSkeleton() {
-  return (
-    <div className="rounded-2xl border border-(--border) overflow-hidden">
-      {/* Header skeleton */}
-      <div className="flex items-center justify-between px-4 py-3.5">
-        <div className="flex items-center gap-1.5">
-          <Skeleton className="h-5 w-16 rounded" />
-        </div>
-        <Skeleton className="h-4 w-10" />
-      </div>
-      {/* Inset content skeleton */}
-      <div className="rounded-t-xl border-t border-(--border) bg-(--card) px-4 pt-3.5 pb-4 space-y-2">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-3 w-1/2" />
-        <Skeleton className="h-3 w-full mt-1" />
-        <Skeleton className="h-3 w-2/3" />
-      </div>
-    </div>
-  );
-}
+/* One card grid, shared by the loading state, the Continue Reading strip,
+ * and the main grid view. */
+const CARD_GRID = 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6';
 
 /* ===== Main component ===== */
 export default function PapersList() {
@@ -73,7 +58,7 @@ export default function PapersList() {
   const { confirm, dialogProps } = useConfirmDialog();
 
   /* ---- Queries ---- */
-  const { data, isLoading, isError, error } = useQuery({
+  const { data, isLoading, isError, error, refetch, isRefetching } = useQuery({
     queryKey: ['papers', page, pageSize, searchQuery, filters, ownership],
     queryFn: () => papersApi.list(page, pageSize, searchQuery || undefined, { ...filters, ownership }),
     placeholderData: keepPreviousData,
@@ -209,60 +194,208 @@ export default function PapersList() {
   /* Loading skeleton */
   if (isLoading && !data) {
     return (
-      <div className="max-w-content mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <Skeleton className="h-8 w-40 mb-2" />
-        <Skeleton className="h-4 w-56 mb-8" />
-        <Skeleton className="h-9 w-full mb-6" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <PageContainer width="wide" className="space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-56" />
+        </div>
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-10 min-w-0 flex-1 sm:max-w-sm" />
+          <Skeleton className="h-10 w-10 sm:w-32 sm:ml-auto" />
+        </div>
+        <div className={CARD_GRID}>
           {Array.from({ length: 6 }).map((_, i) => <PaperCardSkeleton key={i} />)}
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
   /* Error state */
   if (isError) {
     return (
-      <div className="max-w-content mx-auto px-6 py-16 text-center">
-        <p className="text-(--muted-foreground) mb-4">
-          {error instanceof Error ? error.message : 'Failed to load papers'}
-        </p>
-        <Button variant="outlined" onClick={() => queryClient.invalidateQueries({ queryKey: ['papers'] })}>
-          Retry
-        </Button>
-      </div>
+      <PageContainer width="wide">
+        <ErrorState
+          title="Couldn't load your library"
+          description={error instanceof Error ? error.message : undefined}
+          onRetry={() => refetch()}
+          retrying={isRefetching}
+        />
+      </PageContainer>
     );
   }
 
   return (
-    <div className="max-w-content mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+    <PageContainer width="wide" className="space-y-6">
       {/* ===== Page header ===== */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="tracking-tight mb-0.5">Library</h1>
-          <p className="text-body text-(--muted-foreground)">
-            {total > 0
-              ? <><span className="font-semibold text-(--foreground)">{total}</span> papers in your collection</>
-              : 'Your library is empty'}
-          </p>
-        </div>
-        <Link to="/ingest" aria-label="Add paper">
-          <Button variant="primary" icon={<PlusIcon size="sm" />} className="px-2.5 sm:px-5">
-            <span className="hidden sm:inline">Add Paper</span>
-          </Button>
-        </Link>
+      <div>
+        <h1 className="tracking-tight mb-0.5">Library</h1>
+        <p className="text-body text-(--muted-foreground)">
+          {total > 0
+            ? <><span className="font-semibold text-(--foreground)">{total}</span> papers in your collection</>
+            : 'Your library is empty'}
+        </p>
       </div>
 
-      {/* ===== Search bar ===== */}
-      <SearchInput
-        placeholder="Search papers…"
-        value={searchInput}
-        onChange={(e) => setSearchInput(e.target.value)}
-        onSearch={handleSearch}
-        onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(searchInput); }}
-        className="w-full"
-        id="papers-search"
-      />
+      {/* ===== Toolbar ===== */}
+      <div className="space-y-3">
+        {/* Row 1: search + primary action */}
+        <div className="flex items-center gap-3">
+          <SearchInput
+            placeholder="Search papers…"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onSearch={handleSearch}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(searchInput); }}
+            className="min-w-0 flex-1 sm:max-w-sm"
+            id="papers-search"
+          />
+          <Link to="/ingest" className="shrink-0 sm:ml-auto">
+            <Button variant="primary" icon={<PlusIcon size="sm" />}>Add papers</Button>
+          </Link>
+        </div>
+
+        {/* Row 2: scope + sort/filters + view & actions — wraps freely on mobile */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Ownership scope */}
+          <Tabs
+            value={ownership}
+            onValueChange={(v) => { setOwnership(v as typeof ownership); setPage(1); }}
+            variant="segmented"
+            className="shrink-0"
+          >
+            <TabsList>
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="mine">My Papers</TabsTrigger>
+              <TabsTrigger value="shared">Shared with me</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {/* Sort selects + filter popover + active chips */}
+          <SortFilterBar
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            onReset={() => setPage(1)}
+          />
+
+          {/* View toggle + selection & page actions */}
+          {papers.length > 0 && (
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+              {/* Selection mode toggle / selection controls */}
+              {!selectionMode ? (
+                <Tooltip content="Select papers" side="bottom">
+                  <button
+                    id="btn-select-mode"
+                    onClick={() => setSelectionMode(true)}
+                    className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-(--border) text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) transition-colors"
+                  >
+                    <CheckSquareIcon size="sm" />
+                  </button>
+                </Tooltip>
+              ) : (
+                <>
+                  {/* Selection count + select all */}
+                  <button
+                    onClick={selectAll}
+                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-(--border) text-caption font-medium hover:bg-(--muted) transition-colors"
+                  >
+                    <div className={cn(
+                      'w-3.5 h-3.5 rounded border-2 flex items-center justify-center',
+                      selectedIds.length === papers.length
+                        ? 'bg-(--foreground) border-(--foreground)'
+                        : 'border-current',
+                    )}>
+                      {selectedIds.length === papers.length && (
+                        <CheckIcon size="xs" strokeWidth={3} className="w-2 h-2 text-(--background)" />
+                      )}
+                    </div>
+                    {selectedIds.length > 0 ? `${selectedIds.length} selected` : 'Select all'}
+                  </button>
+
+                  {/* Move to group */}
+                  {selectedIds.length > 0 && (
+                    <Tooltip content={`Move ${selectedIds.length} paper${selectedIds.length !== 1 ? 's' : ''} to group`} side="bottom">
+                      <button
+                        id="btn-move-group"
+                        onClick={() => setMoveDialogOpen(true)}
+                        className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-(--border) text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) transition-colors"
+                      >
+                        <FolderPlusIcon size="sm" />
+                      </button>
+                    </Tooltip>
+                  )}
+
+                  {/* Export selected */}
+                  {selectedIds.length > 0 && (
+                    <Tooltip content="Export selected" side="bottom">
+                      <button
+                        id="btn-export-selected"
+                        onClick={() => navigate('/export', { state: { paperIds: selectedIds } })}
+                        className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-(--border) text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) transition-colors"
+                      >
+                        <LayersIcon size="sm" />
+                      </button>
+                    </Tooltip>
+                  )}
+
+                  {/* Delete selected */}
+                  {selectedIds.length > 0 && (
+                    <Tooltip content="Delete selected" side="bottom">
+                      <button
+                        id="btn-delete-selected"
+                        onClick={handleDeleteSelected}
+                        disabled={deleteMutation.isPending}
+                        className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-(--border) text-(--muted-foreground) hover:text-(--destructive) hover:border-(--destructive)/30 hover:bg-(--destructive)/5 transition-colors disabled:opacity-40"
+                      >
+                        <TrashIcon size="sm" />
+                      </button>
+                    </Tooltip>
+                  )}
+
+                  {/* Exit selection mode */}
+                  <Tooltip content="Cancel selection" side="bottom">
+                    <button
+                      id="btn-cancel-select"
+                      onClick={exitSelection}
+                      className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-(--border) text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) transition-colors"
+                    >
+                      <CloseIcon size="sm" />
+                    </button>
+                  </Tooltip>
+                </>
+              )}
+
+              {/* Regenerate metadata */}
+              <Tooltip content="Regenerate metadata for papers with PDFs" side="bottom">
+                <button
+                  id="btn-regen-meta"
+                  onClick={handleRegenerate}
+                  disabled={regenMutation.isPending}
+                  className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-(--border) text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) transition-colors disabled:opacity-40"
+                >
+                  {regenMutation.isPending ? <Spinner size={14} /> : <RefreshIcon size="sm" />}
+                </button>
+              </Tooltip>
+
+              {/* Grid / table view toggle */}
+              <Tabs
+                value={viewMode}
+                onValueChange={(v) => setViewMode(v as ViewMode)}
+                variant="segmented"
+                className="shrink-0"
+              >
+                <TabsList>
+                  <TabsTrigger value="grid" id="view-grid" aria-label="Grid view" className="px-2.5">
+                    <ViewGridIcon size="sm" />
+                  </TabsTrigger>
+                  <TabsTrigger value="table" id="view-table" aria-label="Table view" className="px-2.5">
+                    <ViewListIcon size="sm" />
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* ===== Continue reading strip (page 1, no search) ===== */}
       {page === 1 && !searchQuery && recentPapers.length > 0 && (
@@ -270,7 +403,7 @@ export default function PapersList() {
           <h2 className="text-code font-semibold text-(--muted-foreground) uppercase tracking-widest mb-3">
             Continue Reading
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className={CARD_GRID}>
             {recentPapers.map((paper) => (
               <PaperCard
                 key={`recent-${paper.id}`}
@@ -287,179 +420,28 @@ export default function PapersList() {
         </section>
       )}
 
-      {/* ===== Sort / Filter bar ===== */}
-      <SortFilterBar
-        filters={filters}
-        onFiltersChange={handleFiltersChange}
-        onReset={() => setPage(1)}
-      />
-
-      {/* ===== Ownership filter tabs ===== */}
-      <div className="flex gap-1.5 mb-3">
-        {(['all', 'mine', 'shared'] as const).map(tab => (
-          <button
-            key={tab}
-            onClick={() => { setOwnership(tab); setPage(1); }}
-            className={`px-3 py-1 text-caption rounded-full transition-colors ${ownership === tab
-                ? 'bg-(--foreground) text-(--white)'
-                : 'bg-(--muted) text-(--muted-foreground) hover:bg-(--border)'
-              }`}
-          >
-            {tab === 'all' ? 'All' : tab === 'mine' ? 'My Papers' : 'Shared with me'}
-          </button>
-        ))}
-      </div>
-
-      {/* ===== Toolbar row (view toggle + selection + actions) ===== */}
-      {papers.length > 0 && (
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          {/* View toggle */}
-          <div className="flex items-center gap-1 border border-(--border) rounded-lg p-0.5">
-            <Tooltip content="Grid view" side="bottom">
-              <button
-                id="view-grid"
-                onClick={() => setViewMode('grid')}
-                className={cn(
-                  'inline-flex items-center justify-center h-7 w-7 rounded-md transition-colors',
-                  viewMode === 'grid'
-                    ? 'bg-(--foreground) text-(--background)'
-                    : 'text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted)',
-                )}
-              >
-                <ViewGridIcon size="sm" />
-              </button>
-            </Tooltip>
-            <Tooltip content="Table view" side="bottom">
-              <button
-                id="view-table"
-                onClick={() => setViewMode('table')}
-                className={cn(
-                  'inline-flex items-center justify-center h-7 w-7 rounded-md transition-colors',
-                  viewMode === 'table'
-                    ? 'bg-(--foreground) text-(--background)'
-                    : 'text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted)',
-                )}
-              >
-                <ViewListIcon size="sm" />
-              </button>
-            </Tooltip>
-          </div>
-
-          {/* Right-side actions */}
-          <div className="flex items-center gap-2">
-            {/* Selection mode toggle / selection controls */}
-            {!selectionMode ? (
-              <Tooltip content="Select papers" side="bottom">
-                <button
-                  id="btn-select-mode"
-                  onClick={() => setSelectionMode(true)}
-                  className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-(--border) text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) transition-colors"
-                >
-                  <CheckSquareIcon size="sm" />
-                </button>
-              </Tooltip>
-            ) : (
-              <>
-                {/* Selection count + select all */}
-                <button
-                  onClick={selectAll}
-                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-(--border) text-caption font-medium hover:bg-(--muted) transition-colors"
-                >
-                  <div className={cn(
-                    'w-3.5 h-3.5 rounded border-2 flex items-center justify-center',
-                    selectedIds.length === papers.length
-                      ? 'bg-(--foreground) border-(--foreground)'
-                      : 'border-current',
-                  )}>
-                    {selectedIds.length === papers.length && (
-                      <CheckIcon size="xs" strokeWidth={3} className="w-2 h-2 text-(--background)" />
-                    )}
-                  </div>
-                  {selectedIds.length > 0 ? `${selectedIds.length} selected` : 'Select all'}
-                </button>
-
-                {/* Move to group */}
-                {selectedIds.length > 0 && (
-                  <Tooltip content={`Move ${selectedIds.length} paper${selectedIds.length !== 1 ? 's' : ''} to group`} side="bottom">
-                    <button
-                      id="btn-move-group"
-                      onClick={() => setMoveDialogOpen(true)}
-                      className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-(--border) text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) transition-colors"
-                    >
-                      <FolderPlusIcon size="sm" />
-                    </button>
-                  </Tooltip>
-                )}
-
-                {/* Export selected */}
-                {selectedIds.length > 0 && (
-                  <Tooltip content="Export selected" side="bottom">
-                    <button
-                      id="btn-export-selected"
-                      onClick={() => navigate('/export', { state: { paperIds: selectedIds } })}
-                      className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-(--border) text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) transition-colors"
-                    >
-                      <LayersIcon size="sm" />
-                    </button>
-                  </Tooltip>
-                )}
-
-                {/* Delete selected */}
-                {selectedIds.length > 0 && (
-                  <Tooltip content="Delete selected" side="bottom">
-                    <button
-                      id="btn-delete-selected"
-                      onClick={handleDeleteSelected}
-                      disabled={deleteMutation.isPending}
-                      className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-(--border) text-(--muted-foreground) hover:text-(--destructive) hover:border-(--destructive)/30 hover:bg-(--destructive)/5 transition-colors disabled:opacity-40"
-                    >
-                      <TrashIcon size="sm" />
-                    </button>
-                  </Tooltip>
-                )}
-
-                {/* Exit selection mode */}
-                <Tooltip content="Cancel selection" side="bottom">
-                  <button
-                    id="btn-cancel-select"
-                    onClick={exitSelection}
-                    className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-(--border) text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) transition-colors"
-                  >
-                    <CloseIcon size="sm" />
-                  </button>
-                </Tooltip>
-              </>
-            )}
-
-            {/* Regenerate metadata */}
-            <Tooltip content="Regenerate metadata for papers with PDFs" side="bottom">
-              <button
-                id="btn-regen-meta"
-                onClick={handleRegenerate}
-                disabled={regenMutation.isPending}
-                className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-(--border) text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) transition-colors disabled:opacity-40"
-              >
-                {regenMutation.isPending ? <Spinner size={14} /> : <RefreshIcon size="sm" />}
-              </button>
-            </Tooltip>
-          </div>
-        </div>
-      )}
-
       {/* ===== Papers content ===== */}
       {papers.length === 0 ? (
-        <div className="py-20 text-center">
-          <p className="text-(--muted-foreground) text-btn mb-2">
-            {searchQuery ? `No papers matching "${searchQuery}"` : 'Your library is empty'}
-          </p>
-          {!searchQuery && (
-            <Link to="/ingest">
-              <Button variant="outlined" className="mt-3">Add your first paper</Button>
-            </Link>
-          )}
-        </div>
+        searchQuery ? (
+          <EmptyState
+            icon={SearchIcon}
+            title={`No papers matching "${searchQuery}"`}
+            description="Try a different search term or clear your filters."
+          />
+        ) : (
+          <EmptyState
+            icon={LibraryIcon}
+            title="Your library is empty"
+            description="Add your first paper to start building your collection."
+            actions={
+              <Link to="/ingest">
+                <Button variant="primary">Add papers</Button>
+              </Link>
+            }
+          />
+        )
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className={CARD_GRID}>
           {papers.map((paper) => (
             <PaperCard
               key={paper.id}
@@ -472,16 +454,33 @@ export default function PapersList() {
           ))}
         </div>
       ) : (
-        <PaperTable
-          papers={papers}
-          sortBy={filters.sort_by}
-          sortOrder={filters.sort_order}
-          onSort={handleSort}
-          onDelete={!selectionMode ? handleDeleteOne : undefined}
-          selectionMode={selectionMode}
-          selectedIds={selectedIds}
-          onSelect={selectionMode ? toggleSelect : undefined}
-        />
+        <>
+          {/* The table needs desktop width; below md fall back to the card list */}
+          <div className="hidden md:block">
+            <PaperTable
+              papers={papers}
+              sortBy={filters.sort_by}
+              sortOrder={filters.sort_order}
+              onSort={handleSort}
+              onDelete={!selectionMode ? handleDeleteOne : undefined}
+              selectionMode={selectionMode}
+              selectedIds={selectedIds}
+              onSelect={selectionMode ? toggleSelect : undefined}
+            />
+          </div>
+          <div className="md:hidden grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {papers.map((paper) => (
+              <PaperCard
+                key={paper.id}
+                paper={paper}
+                onDelete={handleDeleteOne}
+                selectionMode={selectionMode}
+                selected={selectedIds.includes(paper.id)}
+                onSelect={selectionMode ? toggleSelect : undefined}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {/* ===== Pagination + page-size ===== */}
@@ -531,6 +530,6 @@ export default function PapersList() {
         paperCount={selectedIds.length}
         isMoving={moveMutation.isPending}
       />
-    </div>
+    </PageContainer>
   );
 }

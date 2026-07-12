@@ -7,6 +7,7 @@ import { getPaperTheme } from '@/lib/paper-themes';
 import { paperAuthors, paperYear } from '@/lib/paper-display';
 import { usePaperThumbnail } from '@/hooks/use-paper-thumbnail';
 import { PaperCoverPlaceholder } from '@/components/ui/PaperCoverPlaceholder';
+import { Skeleton, SkeletonText } from '@/components/ui/Skeleton';
 import { ReadingStatusBadge } from '@/components/ReadingStatusBadge';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { ProcessingStatusBadge } from '@/components/ProcessingStatusBadge';
@@ -222,5 +223,31 @@ export function PaperCard({
     <Link to={`/papers/${paper.id}`} className="block h-full">
       {cardInner}
     </Link>
+  );
+}
+
+/** Loading placeholder mirroring the PaperCard anatomy: badge/year header row
+ * over the inset cover-and-details area. */
+export function PaperCardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-(--border) overflow-hidden">
+      {/* Header: status badge + year */}
+      <div className="flex items-center justify-between px-4 pt-3.5 pb-2.5">
+        <Skeleton className="h-5 w-16 rounded-full" />
+        <Skeleton className="h-4 w-10" />
+      </div>
+      {/* Inset content: cover thumbnail + details */}
+      <div className="flex gap-3.5 rounded-t-xl border-t border-(--border) bg-(--card) px-4 pt-3.5 pb-4">
+        <Skeleton className="w-20 shrink-0 self-start aspect-[0.7727] rounded-lg" />
+        <div className="min-w-0 flex-1">
+          {/* Title (2-line clamp) */}
+          <SkeletonText lines={2} lastLineWidth="w-3/4" />
+          {/* Authors */}
+          <Skeleton className="mt-2.5 h-3 w-1/2" />
+          {/* Summary preview */}
+          <SkeletonText lines={2} lastLineWidth="w-2/3" className="mt-3" />
+        </div>
+      </div>
+    </div>
   );
 }
