@@ -53,98 +53,44 @@ const ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
   },
 };
 
-export function toastChatError(
-  code: string,
-  customMessage?: string,
-): string | number {
+/** Codes that signal a recoverable/transient condition — warning intent;
+ * everything else is an error. */
+const WARNING_CODES = new Set(['rate_limit', 'insufficient_balance', 'timeout']);
+
+export function toastChatError(code: string, customMessage?: string): string | number {
   // Detect balance/quota issues from the message regardless of error code
   // (backend can send them under rate_limit or auth codes).
   const isBalanceIssue =
     customMessage &&
-    /402|insufficient.*(balance|quota)|quota|billing|insufficient_quota/i.test(
-      customMessage,
-    );
+    /402|insufficient.*(balance|quota)|quota|billing|insufficient_quota/i.test(customMessage);
 
   if (isBalanceIssue) {
-    return customToast(
-      'Insufficient credits',
-      'Your AI provider key does not have enough credits for this operation. Add credits or switch providers in Settings.',
-      'balance',
-    );
+    return toastInsufficientBalance();
   }
 
   const mapped = ERROR_MESSAGES[code];
   if (!mapped) {
     return toast.error(customMessage ?? 'Chat error');
   }
-  return customToast(mapped.title, mapped.description, 'error');
+  const show = WARNING_CODES.has(code) ? toast.warning : toast.error;
+  return show(mapped.title, { description: mapped.description, duration: 8000 });
 }
 
 /* ── Error-type-specific helpers ──────────────────────────────────────── */
 
 export function toastInsufficientBalance(description?: string): string | number {
-  return customToast(
-    'Insufficient credits',
-    description ??
+  return toast.warning('Insufficient credits', {
+    description:
+      description ??
       'Your AI provider key does not have enough credits for this operation. Add credits or switch providers in Settings.',
-    'error',
-  );
+    duration: 8000,
+  });
 }
 
 export function toastProcessingFailed(description?: string): string | number {
-  return customToast(
-    'AI processing failed',
-    description ?? 'Some AI steps could not complete. Check your provider settings and try again.',
-    'error',
-  );
-}
-
-/* ── Custom click-to-dismiss toast ────────────────────────────────────── */
-
-type IntentVariant = 'error' | 'balance';
-
-function customToast(title: string, description: string, variant: IntentVariant): string | number {
-  return toast.custom(
-    (id) => (
-      <button
-        type="button"
-        onClick={() => toast.dismiss(id)}
-        className={`
-          flex items-start gap-2.5 w-full
-          rounded-[0.625rem] border p-3
-          shadow-[var(--shadow-elevated)]
-          bg-[var(--white)] text-left
-          cursor-pointer
-          transition-opacity duration-200
-          hover:opacity-85
-          ${variant === 'balance' ? 'border-[#f59e0b40]' : 'border-[var(--border)]'}
-        `}
-      >
-        <span
-          className="mt-0.5 shrink-0 size-[1.125rem] rounded-full flex items-center justify-center text-[0.625rem] font-bold leading-none"
-          style={{
-            background:
-              variant === 'balance' ? '#f59e0b18' : 'rgba(209,46,62,0.12)',
-            color: variant === 'balance' ? '#d97706' : 'var(--destructive)',
-          }}
-        >
-          {variant === 'balance' ? '!' : '✕'}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p
-            className="text-[0.875rem] font-semibold leading-tight"
-            style={{
-              color: variant === 'balance' ? '#d97706' : 'var(--destructive)',
-            }}
-          >
-            {title}
-          </p>
-          <p className="text-[0.8125rem] font-normal leading-snug mt-0.5 text-[var(--muted-foreground)]">
-            {description}
-          </p>
-        </div>
-      </button>
-    ),
-    { duration: 8000 },
-  );
+  return toast.error('AI processing failed', {
+    description:
+      description ?? 'Some AI steps could not complete. Check your provider settings and try again.',
+    duration: 8000,
+  });
 }
