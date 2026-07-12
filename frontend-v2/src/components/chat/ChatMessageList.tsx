@@ -233,7 +233,7 @@ export function ChatMessageList({
                         content={msg.content}
                         referenceManifest={msg.reference_manifest}
                       />
-                      <div className="absolute -bottom-5 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-(--card) border border-(--border) p-1 rounded-md z-10">
+                      <div className="absolute -bottom-5 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-(--card) border border-(--border) p-1 rounded-lg z-10">
                         <Button
                           variant="icon"
                           size="icon-xs"

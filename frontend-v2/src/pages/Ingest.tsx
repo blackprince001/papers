@@ -182,7 +182,7 @@ export default function Ingest() {
   };
 
   return (
-    <div className="max-w-225 mx-auto px-6 py-8">
+    <div className="max-w-main mx-auto px-6 py-8">
       <div className="mb-8">
         <h1 className="text-page-title mb-1">Add Paper</h1>
         <p className="text-body text-(--muted-foreground)">

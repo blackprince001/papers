@@ -34,7 +34,7 @@ export default function AuthorSearch() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8">
+    <div className="mx-auto max-w-main px-6 py-8">
       <header className="mb-6 space-y-1">
         <h1 className="flex items-center gap-2">
           Author Search

@@ -135,7 +135,7 @@ export default function UserManagement() {
   });
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="max-w-content mx-auto px-6 py-8">
       <div className="mb-6">
         <h1 className="text-subsection font-semibold text-(--foreground)">User Management</h1>
         <p className="text-body text-(--muted-foreground) mt-0.5">{users.length} users</p>

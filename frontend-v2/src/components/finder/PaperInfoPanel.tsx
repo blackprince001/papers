@@ -81,7 +81,7 @@ export function PaperInfoPanel({ paper }: { paper: Paper }) {
             <button
               type="button"
               onClick={generate}
-              className="rounded-md border px-2 py-1 font-medium transition-colors hover:bg-accent"
+              className="rounded-lg border px-2 py-1 font-medium transition-colors hover:bg-accent"
             >
               Generate summary
             </button>

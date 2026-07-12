@@ -126,7 +126,16 @@ export function DiscoveredPaperCard({
               {paper.citation_count !== undefined && <span>{paper.citation_count} citations</span>}
               {paper.relevance_score !== undefined && (
                 <span className="font-semibold opacity-100">
-                  {Math.round(paper.relevance_score * 100)}% relevant
+                  {/* Sources disagree on scale: some send 0–1, OpenAlex sends
+                      unbounded scores — normalize and cap so it reads as a
+                      sane percentage either way. */}
+                  {Math.min(
+                    100,
+                    Math.round(
+                      paper.relevance_score <= 1 ? paper.relevance_score * 100 : paper.relevance_score,
+                    ),
+                  )}
+                  % relevant
                 </span>
               )}
             </div>

@@ -53,7 +53,7 @@ export function UrlChipsInput({
       {chips.map((chip) => (
         <span
           key={chip}
-          className="inline-flex max-w-64 items-center gap-1 rounded-md bg-(--muted) px-1.5 py-0.5 text-caption"
+          className="inline-flex max-w-64 items-center gap-1 rounded bg-(--muted) px-1.5 py-0.5 text-caption"
           title={chip}
         >
           <span className="truncate">{chip.replace(/^https?:\/\//i, '')}</span>

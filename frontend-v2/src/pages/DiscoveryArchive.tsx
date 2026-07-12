@@ -130,7 +130,7 @@ export default function DiscoveryArchive() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Button variant="outlined" className="h-8! text-caption!" onClick={() => handleView(session)}>View</Button>
+                    <Button variant="outlined" size="sm" onClick={() => handleView(session)}>View</Button>
                     <Button
                       variant="icon"
                       size="icon"

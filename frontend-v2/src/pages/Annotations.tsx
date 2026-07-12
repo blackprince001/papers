@@ -234,8 +234,7 @@ export default function Annotations() {
               <Select
                 value={citationFormat}
                 onChange={(e) => setCitationFormat(e.target.value as CitationFormat)}
-                className="h-8!"
-              >
+                >
                 <option value="apa">APA</option>
                 <option value="mla">MLA</option>
                 <option value="bibtex">BibTeX</option>
@@ -412,7 +411,7 @@ export default function Annotations() {
                             className="rounded-lg border border-(--border) bg-(--card) p-3"
                           >
                             <div className="flex items-start gap-3">
-                              <div className="w-7 h-7 rounded-md bg-(--muted) flex items-center justify-center shrink-0 mt-0.5">
+                              <div className="w-7 h-7 rounded-lg bg-(--muted) flex items-center justify-center shrink-0 mt-0.5">
                                 <Icon size="sm" className="text-(--muted-foreground)" />
                               </div>
                               <div className="flex-1 min-w-0">
@@ -469,7 +468,7 @@ export default function Annotations() {
                                     <div className="flex items-center gap-2">
                                       <Button
                                         variant="primary"
-                                        className="h-7! px-3! text-caption"
+                                        size="sm"
                                         onClick={saveEdit}
                                       >
                                         <CheckIcon size="xs" className="mr-1" />
@@ -477,7 +476,7 @@ export default function Annotations() {
                                       </Button>
                                       <Button
                                         variant="ghost"
-                                        className="h-7! px-3! text-caption"
+                                        size="sm"
                                         onClick={cancelEdit}
                                       >
                                         <CloseIcon size="xs" className="mr-1" />

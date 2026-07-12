@@ -96,7 +96,7 @@ export function ResearchOverview({
                 {overview.key_themes.map((theme, i) => (
                   <span
                     key={i}
-                    className="px-2.5 py-1 bg-[rgba(var(--primary-rgb),0.05)] text-(--primary) text-caption font-medium rounded-md border border-[rgba(var(--primary-rgb),0.1)]"
+                    className="px-2.5 py-1 bg-[rgba(var(--primary-rgb),0.05)] text-(--primary) text-caption font-medium rounded border border-[rgba(var(--primary-rgb),0.1)]"
                   >
                     {theme}
                   </span>

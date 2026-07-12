@@ -117,7 +117,7 @@ function FinderContextMenu({
               action.onSelect();
             }}
             className={
-              'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body transition-colors hover:bg-(--secondary) ' +
+              'flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-body transition-colors hover:bg-(--secondary) ' +
               (action.destructive ? 'text-(--destructive)' : 'text-(--foreground)')
             }
           >

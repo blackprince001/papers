@@ -57,7 +57,7 @@ export default function AuthorDetail() {
   }, [works, sort]);
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8">
+    <div className="mx-auto max-w-main px-6 py-8">
       {isLoading && <AuthorDetailSkeleton />}
 
       {!isLoading && !works.length && !displayName && (
@@ -281,7 +281,7 @@ function AuthorDetailSkeleton() {
         <Skeleton className="size-14 rounded-full" />
         <div className="flex-1 space-y-3">
           <Skeleton className="h-8 w-72 rounded-lg" />
-          <Skeleton className="h-4 w-96 rounded-md" />
+          <Skeleton className="h-4 w-96 max-w-full" />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

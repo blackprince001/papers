@@ -5,6 +5,8 @@ import { SparklesIcon, ChevronDownIcon, SaveIcon, FilterIcon, ViewListIcon, File
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { SourceSelector, type SourceId } from '@/components/discovery/SourceSelector';
 import { ResearchOverview } from '@/components/discovery/ResearchOverview';
 import { DiscoveredPaperCard } from '@/components/discovery/DiscoveredPaperCard';
@@ -165,7 +167,7 @@ export default function Discovery() {
   } : undefined;
 
   return (
-    <div className="max-w-240 mx-auto px-6 py-8">
+    <PageContainer width="wide">
       <div className="mb-8 text-center">
         <h1 className="text-page-title mb-1">Research Discovery</h1>
         <p className="text-body text-(--muted-foreground) max-w-2xl mx-auto">
@@ -210,7 +212,6 @@ export default function Discovery() {
                     <Select
                       value={value}
                       onChange={(e) => set(e.target.value)}
-                      className="h-8!"
                     >
                       <option value="">Any</option>
                       {Array.from({ length: new Date().getFullYear() - 1989 }, (_, i) => new Date().getFullYear() - i).map((y) => (
@@ -311,22 +312,20 @@ export default function Discovery() {
                 {loadedSession && <span className="text-caption font-normal text-(--muted-foreground) ml-2">(loaded from saved)</span>}
               </h3>
               {displayClustering && (
-                <div className="flex items-center gap-1 border border-(--border) rounded-lg overflow-hidden">
-                  {(['list', 'clustered'] as const).map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab)}
-                      className={cn(
-                        'px-3 py-1 text-caption font-medium transition-colors flex items-center gap-1',
-                        activeTab === tab
-                          ? 'bg-(--foreground) text-(--white)'
-                          : 'text-(--muted-foreground) hover:text-(--foreground)'
-                      )}
-                    >
-                      {tab === 'list' ? <><ViewListIcon size="xs" /> All</> : <><SparklesIcon size="xs" /> By Topic</>}
-                    </button>
-                  ))}
-                </div>
+                <Tabs
+                  value={activeTab}
+                  onValueChange={(v) => setActiveTab(v as 'list' | 'clustered')}
+                  variant="segmented"
+                >
+                  <TabsList>
+                    <TabsTrigger value="list" className="flex items-center gap-1">
+                      <ViewListIcon size="xs" /> All
+                    </TabsTrigger>
+                    <TabsTrigger value="clustered" className="flex items-center gap-1">
+                      <SparklesIcon size="xs" /> By Topic
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
               )}
             </div>
             <Button
@@ -379,6 +378,6 @@ export default function Discovery() {
           onSelectPaper={(paper) => setCitationPaper(paper)}
         />
       )}
-    </div>
+    </PageContainer>
   );
 }

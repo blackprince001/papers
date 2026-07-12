@@ -184,7 +184,7 @@ export default function HuggingFacePapers() {
     : format(parsedDate, 'MMMM yyyy');
 
   return (
-    <div className="max-w-240 mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <div className="max-w-content mx-auto px-4 sm:px-6 py-6 sm:py-8">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-6 sm:mb-8">
         <div className="min-w-0">
@@ -196,7 +196,7 @@ export default function HuggingFacePapers() {
         <Button
           variant="secondary"
           icon={<ExternalLinkIcon size="sm" />}
-          className="h-9! text-code px-2.5 sm:px-3 shrink-0"
+          className="shrink-0"
           onClick={() => window.open('https://huggingface.co/papers', '_blank')}
           aria-label="View on Hugging Face"
         >
@@ -236,7 +236,7 @@ export default function HuggingFacePapers() {
           <div className="flex items-center gap-2 flex-wrap">
             <Button
               variant="secondary"
-              className="h-8! px-2! sm:px-3! text-caption!"
+              size="sm"
               icon={<ChevronLeftIcon size="sm" />}
               onClick={viewMode === 'daily' ? goBack : goMonthBack}
               aria-label={viewMode === 'daily' ? 'Previous day' : 'Previous month'}
@@ -244,13 +244,13 @@ export default function HuggingFacePapers() {
               <span className="hidden sm:inline">{viewMode === 'daily' ? 'Prev' : 'Prev Month'}</span>
             </Button>
             {!isTodaySelected && (
-              <Button variant="secondary" className="h-8! px-2! sm:px-3! text-caption!" onClick={() => setSelectedDate(getTodayString())}>
+              <Button variant="secondary" size="sm" onClick={() => setSelectedDate(getTodayString())}>
                 {viewMode === 'daily' ? 'Today' : 'This Month'}
               </Button>
             )}
             <Button
               variant="secondary"
-              className="h-8! px-2! sm:px-3! text-caption!"
+              size="sm"
               disabled={isTodaySelected}
               onClick={viewMode === 'daily' ? goForward : goMonthForward}
               aria-label={viewMode === 'daily' ? 'Next day' : 'Next month'}

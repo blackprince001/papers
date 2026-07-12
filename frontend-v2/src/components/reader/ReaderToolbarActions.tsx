@@ -93,7 +93,7 @@ export function ReaderToolbarActions({
         <Link
           to={`/papers/${paper.id}/chat`}
           aria-label="Open full chat view"
-          className="flex size-7 items-center justify-center rounded-md text-(--muted-foreground) transition-colors hover:bg-(--secondary) hover:text-(--foreground)"
+          className="flex size-7 items-center justify-center rounded-lg text-(--muted-foreground) transition-colors hover:bg-(--secondary) hover:text-(--foreground)"
         >
           <ChatIcon size="sm" />
         </Link>
@@ -104,7 +104,7 @@ export function ReaderToolbarActions({
             type="button"
             onClick={() => void handleBookmark()}
             aria-label="Bookmark current page"
-            className="flex size-7 items-center justify-center rounded-md text-(--muted-foreground) transition-colors hover:bg-(--secondary) hover:text-(--foreground)"
+            className="flex size-7 items-center justify-center rounded-lg text-(--muted-foreground) transition-colors hover:bg-(--secondary) hover:text-(--foreground)"
           >
             <BookmarkIcon size="sm" />
           </button>
@@ -116,7 +116,7 @@ export function ReaderToolbarActions({
             type="button"
             onClick={() => setShareOpen(true)}
             aria-label="Share paper"
-            className="flex size-7 items-center justify-center rounded-md text-(--muted-foreground) transition-colors hover:bg-(--secondary) hover:text-(--foreground)"
+            className="flex size-7 items-center justify-center rounded-lg text-(--muted-foreground) transition-colors hover:bg-(--secondary) hover:text-(--foreground)"
           >
             <ShareIcon size="sm" />
           </button>

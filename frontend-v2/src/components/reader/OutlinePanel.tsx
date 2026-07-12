@@ -23,7 +23,7 @@ function OutlineList({
             type="button"
             onClick={() => onNavigate(item.page)}
             className={cn(
-              'flex w-full items-baseline justify-between gap-2 rounded-md px-2 py-1 text-left text-caption transition-colors hover:bg-(--secondary)',
+              'flex w-full items-baseline justify-between gap-2 rounded-lg px-2 py-1 text-left text-caption transition-colors hover:bg-(--secondary)',
               activePage === item.page
                 ? 'font-semibold text-(--foreground)'
                 : 'text-(--muted-foreground)',

@@ -89,7 +89,7 @@ export default function Export() {
   if (paperIds.length === 0) return null;
 
   return (
-    <div className="max-w-175 mx-auto px-6 py-8">
+    <div className="max-w-(--width-reading) mx-auto px-6 py-8">
       <div className="mb-8">
         <h1 className="text-page-title mb-1">Export Papers</h1>
         <p className="text-body text-(--muted-foreground)">

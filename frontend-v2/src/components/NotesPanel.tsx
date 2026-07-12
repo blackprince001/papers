@@ -149,7 +149,7 @@ export function NotesPanel({ paperId, currentPage, annotations, isLoading }: Not
           <button
             onClick={() => setScope('all')}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-caption font-medium transition-colors',
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-caption font-medium transition-colors',
               scope === 'all'
                 ? 'bg-(--white) text-(--foreground) shadow-subtle'
                 : 'text-(--muted-foreground) hover:text-(--foreground)',
@@ -162,7 +162,7 @@ export function NotesPanel({ paperId, currentPage, annotations, isLoading }: Not
           <button
             onClick={() => setScope('page')}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-caption font-medium transition-colors',
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-caption font-medium transition-colors',
               scope === 'page'
                 ? 'bg-(--white) text-(--foreground) shadow-subtle'
                 : 'text-(--muted-foreground) hover:text-(--foreground)',
@@ -174,7 +174,7 @@ export function NotesPanel({ paperId, currentPage, annotations, isLoading }: Not
           <button
             onClick={() => setScope('document')}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-caption font-medium transition-colors',
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-caption font-medium transition-colors',
               scope === 'document'
                 ? 'bg-(--white) text-(--foreground) shadow-subtle'
                 : 'text-(--muted-foreground) hover:text-(--foreground)',

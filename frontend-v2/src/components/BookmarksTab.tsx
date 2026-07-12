@@ -142,21 +142,21 @@ export function BookmarksTab({ paperId, onJumpToPage }: BookmarksTabProps) {
                   value={editNote}
                   onChange={(e) => setEditNote(e.target.value)}
                   placeholder="Add a note to this bookmark..."
-                  className="w-full px-2 py-1.5 text-caption bg-(--white) border border-(--border) rounded-md focus:outline-none focus:border-(--primary) resize-none"
+                  className="w-full px-2 py-1.5 text-caption bg-(--white) border border-(--border) rounded-lg focus:outline-none focus:border-(--primary) resize-none"
                   rows={3}
                   autoFocus
                 />
                 <div className="flex items-center gap-2">
-                  <Button variant="primary" className="h-7! px-3! text-caption" onClick={saveEdit}>
+                  <Button variant="primary" size="sm" onClick={saveEdit}>
                     Save
                   </Button>
-                  <Button variant="ghost" className="h-7! px-3! text-caption" onClick={cancelEdit}>
+                  <Button variant="ghost" size="sm" onClick={cancelEdit}>
                     Cancel
                   </Button>
                 </div>
               </div>
             ) : bookmark.note ? (
-              <div className="mt-2 p-2 bg-(--muted)/30 rounded-md">
+              <div className="mt-2 p-2 bg-(--muted)/30 rounded-lg">
                 <p className="text-caption text-(--foreground) whitespace-pre-wrap">{bookmark.note}</p>
               </div>
             ) : null}

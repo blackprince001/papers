@@ -113,10 +113,11 @@ export default function Search() {
         {/* Filters Popover */}
         <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
           <PopoverTrigger>
-            <Button 
-              variant="secondary" 
+            <Button
+              variant="secondary"
+              size="lg"
               icon={<SlidersIcon size="sm" />}
-              className={cn("h-11!", hasFilters && "bg-(--muted)")}
+              className={cn(hasFilters && 'bg-(--muted)')}
             >
               Filters
               {hasFilters && <span className="w-1.5 h-1.5 rounded-full bg-(--foreground) ml-1" />}
@@ -209,7 +210,8 @@ export default function Search() {
           </div>
           <Button
             variant="ghost"
-            className="h-6! text-caption! shrink-0"
+            size="sm"
+            className="shrink-0"
             onClick={() => handleModeChange('fulltext')}
           >
             Use full-text
