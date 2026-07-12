@@ -116,7 +116,14 @@ export default function Dashboard() {
   const statusChartData = Object.entries(statusDist).map(([name, value]) => ({
     name: name.charAt(0).toUpperCase() + name.slice(1).replace('_', ' '),
     value,
-    color: name === 'read' ? '#07BC0C' : name === 'archived' ? '#616664' : name === 'in_progress' ? '#3B82F6' : '#94A3B8'
+    color:
+      name === 'read'
+        ? 'var(--chart-2)'
+        : name === 'archived'
+          ? 'var(--chart-4)'
+          : name === 'in_progress'
+            ? 'var(--chart-1)'
+            : 'var(--chart-4)'
   }));
 
 
@@ -230,7 +237,7 @@ export default function Dashboard() {
         ) : (
           <div className="flex items-center justify-center py-8">
             <div className="text-center">
-              <div className="text-[5.25rem] font-bold text-(--foreground) leading-none mb-3">{currentStreak}</div>
+              <div className="text-display font-bold text-(--foreground) leading-none mb-3">{currentStreak}</div>
               <div className="text-body-lg text-(--muted-foreground) uppercase tracking-[0.2em] font-medium">
                 Day Reading Streak
               </div>
