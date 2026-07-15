@@ -74,11 +74,15 @@ export default function Layout() {
 
   // The right-side panel tab (Details/Insights/Chat/...) is remembered per
   // paper tab so switching tabs doesn't reset which panel you were viewing.
+  // When the paper isn't registered in the tab context (direct navigation),
+  // fall back to local state so the panel remains switchable.
+  const [fallbackPanelTab, setFallbackPanelTab] = useState("details");
   const activePaperTab = tabs.find((t) => t.id === activeTabId);
-  const activeTab = activePaperTab?.panelTab ?? "details";
+  const activeTab = activePaperTab?.panelTab ?? fallbackPanelTab;
   const setActiveTab = useCallback(
     (tab: string) => {
       if (activeTabId) updateTab(activeTabId, { panelTab: tab });
+      else setFallbackPanelTab(tab);
     },
     [activeTabId, updateTab],
   );
@@ -194,7 +198,7 @@ export default function Layout() {
         className="w-full h-dvh flex overflow-hidden bg-(--background) p-1 gap-(--panel-gap)"
         style={{
           backgroundImage:
-            "linear-gradient(180deg, rgba(60,145,230,0.05) 0%, transparent 26%)",
+            'linear-gradient(180deg, color-mix(in srgb, var(--sky-blue) 5%, transparent) 0%, transparent 26%)',
         }}
       >
         {/* === Desktop Sidebar — left column === */}
@@ -218,7 +222,7 @@ export default function Layout() {
         {/* === Mobile Sidebar Overlay (scrim) === */}
         {mobileMenuOpen && (
           <div
-            className="fixed inset-0 z-60 bg-[rgba(0,0,0,0.4)] md:hidden animate-fade-in"
+            className="fixed inset-0 z-60 bg-(--overlay-scrim) md:hidden animate-fade-in"
             onClick={() => setMobileMenuOpen(false)}
           />
         )}

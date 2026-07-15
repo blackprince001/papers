@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, type ReactNode, type HTMLAttributes } from 'react';
-import { ArrowDown2 as ChevronDown } from 'iconsax-reactjs';
 import { cn } from '@/lib/utils';
+import { ChevronDownIcon } from '../icons';
 
 // ── Context ────────────────────────────────────────────────────────────────
 
@@ -83,10 +83,10 @@ export function AccordionTrigger({ className, children, ...props }: AccordionTri
       {...props}
     >
       {children}
-      <ChevronDown
-        size={14}
+      <ChevronDownIcon
+        size="sm"
         className={cn(
-          'shrink-0 text-(--muted-foreground) transition-transform duration-200',
+          'text-(--muted-foreground) transition-transform duration-200',
           isOpen && 'rotate-180',
         )}
       />

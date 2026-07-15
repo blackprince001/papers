@@ -1,5 +1,8 @@
 import { forwardRef, type TextareaHTMLAttributes } from 'react';
+import { TextArea as HeroTextArea, type TextAreaProps as HeroTextAreaProps } from '@heroui/react';
 import { cn } from '@/lib/utils';
+
+/* Lumen facade over the HeroUI v3 TextArea (React Aria). */
 
 interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   error?: boolean;
@@ -7,20 +10,15 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ error, className, ...props }, ref) => (
-    <textarea
+    <HeroTextArea
       ref={ref}
+      aria-invalid={error || undefined}
       className={cn(
-        'w-full bg-(--card) text-(--foreground)',
-        'text-code font-normal leading-[1.225rem]',
-        'px-3 py-2 rounded-lg',
-        'border border-(--border)',
-        'placeholder:text-(--muted-foreground)',
-        'focus:outline-none focus:border-(--ring) focus:ring-2 focus:ring-(--ring)/10',
-        'resize-none transition-all duration-150',
-        error && 'border-(--destructive) focus:border-(--destructive)',
+        'w-full resize-none',
+        error && 'border-(--danger) focus:border-(--danger) focus-visible:border-(--danger)',
         className,
       )}
-      {...props}
+      {...(props as Partial<HeroTextAreaProps>)}
     />
   ),
 );

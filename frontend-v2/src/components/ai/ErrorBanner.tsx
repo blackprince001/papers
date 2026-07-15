@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import { CloseIcon, InfoCircleIcon, WarningIcon, XCircleIcon, type IconProps } from '@/components/icons';
 
 export interface ErrorBannerProps {
   message: string;
@@ -13,67 +14,27 @@ export interface ErrorBannerProps {
   onSettings?: () => void;
 }
 
-const ERROR_STYLES: Record<string, { bg: string; border: string; text: string; icon: string; action: string }> = {
-  rate_limit: {
-    bg: 'bg-amber-50 dark:bg-amber-950/20',
-    border: 'border-amber-200 dark:border-amber-800',
-    text: 'text-amber-800 dark:text-amber-200',
-    icon: '⚠',
-    action: 'Retry',
-  },
-  auth: {
-    bg: 'bg-red-50 dark:bg-red-950/20',
-    border: 'border-red-200 dark:border-red-800',
-    text: 'text-red-800 dark:text-red-200',
-    icon: '✕',
-    action: 'Settings',
-  },
-  provider_unavailable: {
-    bg: 'bg-orange-50 dark:bg-orange-950/20',
-    border: 'border-orange-200 dark:border-orange-800',
-    text: 'text-orange-800 dark:text-orange-200',
-    icon: '⚠',
-    action: 'Retry',
-  },
-  timeout: {
-    bg: 'bg-orange-50 dark:bg-orange-950/20',
-    border: 'border-orange-200 dark:border-orange-800',
-    text: 'text-orange-800 dark:text-orange-200',
-    icon: '⏱',
-    action: 'Retry',
-  },
-  network: {
-    bg: 'bg-gray-50 dark:bg-gray-950/20',
-    border: 'border-gray-200 dark:border-gray-800',
-    text: 'text-gray-800 dark:text-gray-200',
-    icon: '⇄',
-    action: 'Retry',
-  },
-  tool_error: {
-    bg: 'bg-amber-50/50 dark:bg-amber-950/10',
-    border: 'border-amber-200/50 dark:border-amber-800/50',
-    text: 'text-amber-700 dark:text-amber-300',
-    icon: '⚙',
-    action: 'Dismiss',
-  },
-  no_provider: {
-    bg: 'bg-red-50 dark:bg-red-950/20',
-    border: 'border-red-200 dark:border-red-800',
-    text: 'text-red-800 dark:text-red-200',
-    icon: '✕',
-    action: 'Settings',
-  },
-  internal: {
-    bg: 'bg-red-50 dark:bg-red-950/20',
-    border: 'border-red-200 dark:border-red-800',
-    text: 'text-red-800 dark:text-red-200',
-    icon: '✕',
-    action: 'Retry',
-  },
+type Intent = 'danger' | 'warning' | 'info';
+
+const INTENT_STYLES: Record<Intent, { surface: string; text: string }> = {
+  danger: { surface: 'bg-(--danger-soft) border-(--danger-border)', text: 'text-(--danger)' },
+  warning: { surface: 'bg-(--warning-soft) border-(--warning-border)', text: 'text-(--warning)' },
+  info: { surface: 'bg-(--info-soft) border-(--info-border)', text: 'text-(--info)' },
 };
 
-function styleForCode(code: string) {
-  return ERROR_STYLES[code] || ERROR_STYLES.internal;
+const ERROR_CONFIG: Record<string, { intent: Intent; Icon: ComponentType<IconProps>; action: string }> = {
+  rate_limit: { intent: 'warning', Icon: WarningIcon, action: 'Retry' },
+  auth: { intent: 'danger', Icon: XCircleIcon, action: 'Settings' },
+  provider_unavailable: { intent: 'warning', Icon: WarningIcon, action: 'Retry' },
+  timeout: { intent: 'warning', Icon: WarningIcon, action: 'Retry' },
+  network: { intent: 'info', Icon: InfoCircleIcon, action: 'Retry' },
+  tool_error: { intent: 'warning', Icon: WarningIcon, action: 'Dismiss' },
+  no_provider: { intent: 'danger', Icon: XCircleIcon, action: 'Settings' },
+  internal: { intent: 'danger', Icon: XCircleIcon, action: 'Retry' },
+};
+
+function configForCode(code: string) {
+  return ERROR_CONFIG[code] || ERROR_CONFIG.internal;
 }
 
 function useCountdownSeconds(target: number | null | undefined): number | null {
@@ -102,45 +63,43 @@ export function ErrorBanner({
   onDismiss,
   onSettings,
 }: ErrorBannerProps) {
-  const s = styleForCode(code);
+  const { intent, Icon, action } = configForCode(code);
+  const styles = INTENT_STYLES[intent];
   const retrySeconds = useCountdownSeconds(retryingAt);
 
   return (
     <div
-      className={cn(
-        'flex items-start gap-3 px-3 py-2 rounded-lg border text-caption',
-        s.bg,
-        s.border,
-      )}
+      role="alert"
+      className={cn('flex items-start gap-3 px-3 py-2 rounded-xl border text-caption', styles.surface)}
     >
-      <span className="mt-0.5 shrink-0 text-sm">{s.icon}</span>
+      <Icon size="sm" filled className={cn('mt-0.5', styles.text)} />
       <div className="flex-1 min-w-0">
-        <p className={cn('font-medium', s.text)}>{message}</p>
+        <p className={cn('font-medium', styles.text)}>{message}</p>
         {retrySeconds !== null && (
-          <p className="text-(--muted-foreground) mt-0.5 text-[0.6875rem]">
+          <p className="text-(--muted-foreground) mt-0.5 text-micro">
             Retrying automatically in {retrySeconds}s…
           </p>
         )}
         {!recoverable && (
-          <p className="text-(--muted-foreground) mt-0.5 text-[0.6875rem]">
+          <p className="text-(--muted-foreground) mt-0.5 text-micro">
             This error cannot be automatically retried.
           </p>
         )}
       </div>
       <div className="flex items-center gap-1 shrink-0">
         {recoverable && onRetry && code !== 'tool_error' && (
-          <Button variant="ghost" className="h-6! text-caption!" onClick={onRetry}>
-            {s.action}
+          <Button variant="ghost" size="sm" onClick={onRetry}>
+            {action}
           </Button>
         )}
         {!recoverable && onSettings && (
-          <Button variant="ghost" className="h-6! text-caption!" onClick={onSettings}>
-            {s.action}
+          <Button variant="ghost" size="sm" onClick={onSettings}>
+            {action}
           </Button>
         )}
         {(recoverable || code === 'tool_error') && onDismiss && (
-          <Button variant="ghost" className="h-6! w-6! p-0!" onClick={onDismiss}>
-            ✕
+          <Button variant="icon" size="icon-xs" aria-label="Dismiss" onClick={onDismiss}>
+            <CloseIcon size="xs" />
           </Button>
         )}
       </div>

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { multiChatApi } from '@/lib/api/multi-chat';
 import { chatStreamClient } from '@/lib/ai/chatStream';
 import type { StreamEvent } from '@/lib/ai/chatStream';
-import { CloseCircle as X, Send, MagicStar as Sparkles, DocumentText as FileText, Lamp as Lightbulb, Global } from 'iconsax-reactjs';
+import { CloseIcon, FileTextIcon, GlobeIcon, InsightIcon, SendIcon, SparklesIcon } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { MarkdownMessage } from '@/components/MarkdownMessage';
@@ -24,18 +24,18 @@ interface GroupChatPanelProps {
 const GROUP_PROMPTS = [
   {
     label: 'Analyze',
-    icon: FileText,
+    icon: FileTextIcon,
     prompts: [
-      { icon: FileText, text: 'Summarize All', prompt: 'Provide a concise summary of the key findings and contributions across all papers in this group.' },
-      { icon: FileText, text: 'Compare Methods', prompt: 'Compare and contrast the methodologies used across these papers. What are the key differences and similarities in their approaches?' },
+      { icon: FileTextIcon, text: 'Summarize All', prompt: 'Provide a concise summary of the key findings and contributions across all papers in this group.' },
+      { icon: FileTextIcon, text: 'Compare Methods', prompt: 'Compare and contrast the methodologies used across these papers. What are the key differences and similarities in their approaches?' },
     ],
   },
   {
     label: 'Synthesize',
-    icon: Lightbulb,
+    icon: InsightIcon,
     prompts: [
-      { icon: Global, text: 'Research Landscape', prompt: 'Describe how these papers fit into the broader research landscape. What are the connections and conflicts between their findings?' },
-      { icon: Lightbulb, text: 'Identify Gaps', prompt: 'Based on these papers, what are the most important open questions or underexplored areas that future research should address?' },
+      { icon: GlobeIcon, text: 'Research Landscape', prompt: 'Describe how these papers fit into the broader research landscape. What are the connections and conflicts between their findings?' },
+      { icon: InsightIcon, text: 'Identify Gaps', prompt: 'Based on these papers, what are the most important open questions or underexplored areas that future research should address?' },
     ],
   },
 ];
@@ -301,8 +301,8 @@ export function GroupChatPanel({ groupId, groupName, onClose }: GroupChatPanelPr
             {currentSession?.papers.length || 0} papers
           </p>
         </div>
-        <Button variant="ghost" className="h-8! w-8! p-0!" onClick={onClose}>
-          <X size={16} />
+        <Button variant="icon" size="icon" onClick={onClose} aria-label="Close">
+          <CloseIcon size="md" />
         </Button>
       </div>
 
@@ -314,7 +314,7 @@ export function GroupChatPanel({ groupId, groupName, onClose }: GroupChatPanelPr
           </div>
         ) : messages.length === 0 && !isStreaming && !pendingUserMessage ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-(--muted-foreground) opacity-50">
-            <Sparkles size={32} className="mb-3" />
+            <SparklesIcon size={32} className="mb-3" />
             <p className="text-code">Ask about papers in this group</p>
           </div>
         ) : (
@@ -400,7 +400,7 @@ export function GroupChatPanel({ groupId, groupName, onClose }: GroupChatPanelPr
           onSubmit={handleSend}
           placeholder="Ask about these papers... (Enter to send)"
           submitLabel="Send"
-          submitIcon={<Send size={14} />}
+          submitIcon={<SendIcon size="sm" />}
           disabled={isStreaming}
           promptsCollapsible
           promptGroups={GROUP_PROMPTS}

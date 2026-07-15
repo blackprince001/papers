@@ -3,24 +3,6 @@
 import * as React from "react"
 import { createPortal } from "react-dom"
 import {
-  ArrowDown01Icon,
-  ArrowLeft01Icon,
-  ArrowRight01Icon,
-  ArrowUp01Icon,
-  ArrowUpDownIcon,
-  Calendar03Icon,
-  Cancel01Icon,
-  File01Icon,
-  FilterIcon,
-  GalleryThumbnailsIcon,
-  GridViewIcon,
-  LayoutThreeColumnIcon,
-  LeftToRightListBulletIcon,
-  Search01Icon,
-  Tick02Icon,
-} from "@hugeicons/core-free-icons"
-import { HugeiconsIcon } from "@hugeicons/react"
-import {
   createFileTreeIconResolver,
   getBuiltInSpriteSheet,
   prepareFileTreeInput,
@@ -30,6 +12,24 @@ import {
 import { FileTree as PierreFileTree, useFileTree } from "@pierre/trees/react"
 
 import { cn } from "@/lib/utils"
+import {
+  CalendarIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronUpIcon,
+  CloseIcon,
+  FileIcon,
+  FilterIcon,
+  SearchIcon,
+  SortIcon,
+  ViewColumnsIcon,
+  ViewGalleryIcon,
+  ViewGridIcon,
+  ViewListIcon,
+  type IconProps,
+} from "@/components/icons"
 import { Button } from "@/components/shadcn/button"
 import {
   Command,
@@ -1231,7 +1231,7 @@ function FileVisual({
           onDoubleClick={(event) => event.stopPropagation()}
           className="flex size-6 items-center justify-center rounded-md bg-background/80 text-foreground shadow-xs backdrop-blur-sm transition-colors outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
         >
-          <HugeiconsIcon icon={ArrowLeft01Icon} className="size-3.5" />
+          <ChevronLeftIcon className="size-3.5" />
         </button>
         <span className="rounded-md bg-background/80 px-1.5 py-0.5 text-[0.625rem] font-medium text-muted-foreground tabular-nums shadow-xs backdrop-blur-sm">
           {clampedPageIndex + 1}/{totalPages}
@@ -1248,7 +1248,7 @@ function FileVisual({
           onDoubleClick={(event) => event.stopPropagation()}
           className="flex size-6 items-center justify-center rounded-md bg-background/80 text-foreground shadow-xs backdrop-blur-sm transition-colors outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
         >
-          <HugeiconsIcon icon={ArrowRight01Icon} className="size-3.5" />
+          <ChevronRightIcon className="size-3.5" />
         </button>
       </div>
     </div>
@@ -1256,14 +1256,14 @@ function FileVisual({
 }
 
 const VIEW_OPTIONS: Array<{
-  icon: React.ComponentProps<typeof HugeiconsIcon>["icon"]
+  icon: React.ComponentType<IconProps>
   label: string
   value: FileSystemView
 }> = [
-  { icon: GridViewIcon, label: "Grid", value: "icons" },
-  { icon: LeftToRightListBulletIcon, label: "List", value: "list" },
-  { icon: LayoutThreeColumnIcon, label: "Columns", value: "columns" },
-  { icon: GalleryThumbnailsIcon, label: "Gallery", value: "gallery" },
+  { icon: ViewGridIcon, label: "Grid", value: "icons" },
+  { icon: ViewListIcon, label: "List", value: "list" },
+  { icon: ViewColumnsIcon, label: "Columns", value: "columns" },
+  { icon: ViewGalleryIcon, label: "Gallery", value: "gallery" },
 ]
 
 export function FileSystem({
@@ -2035,7 +2035,7 @@ export function FileSystem({
       aria-label="Close preview"
       render={<Button type="button" variant="ghost" size="icon-sm" />}
     >
-      <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
+      <CloseIcon className="size-4" />
     </DialogClose>
   )
 
@@ -2060,17 +2060,20 @@ export function FileSystem({
       )}
     >
       <FileSystemIconSpriteSheet />
-      <div className="relative grid h-12 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b bg-muted/40 px-2">
-        <div className="flex min-w-0 items-center gap-0.5">
+      {/* Below `sm` the 3-column grid becomes a wrapping flex row so the
+          right-hand control cluster drops to its own line instead of
+          clipping at phone widths. */}
+      <div className="relative grid h-12 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b bg-muted/40 px-2 max-sm:flex max-sm:h-auto max-sm:min-h-12 max-sm:flex-wrap max-sm:gap-1 max-sm:px-1.5 max-sm:py-1.5">
+        <div className="flex min-w-0 items-center gap-0.5 max-sm:flex-1">
           <button
             type="button"
             aria-label="Back"
             title="Back"
             disabled={!canGoBack}
             onClick={goBack}
-            className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
+            className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none max-sm:size-10 hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
           >
-            <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4.5" />
+            <ChevronLeftIcon className="size-4.5" />
           </button>
           <button
             type="button"
@@ -2078,9 +2081,9 @@ export function FileSystem({
             title="Forward"
             disabled={!canGoForward}
             onClick={goForward}
-            className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
+            className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none max-sm:size-10 hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
           >
-            <HugeiconsIcon icon={ArrowRight01Icon} className="size-4.5" />
+            <ChevronRightIcon className="size-4.5" />
           </button>
           {headerLayout !== "minimal" ? (
             <span className="ml-1.5 truncate text-sm font-semibold">
@@ -2098,14 +2101,12 @@ export function FileSystem({
               aria-label="View"
               // Icon-only like the sort select: sheds the base min-width to
               // hug icon + chevron at the filter button's 28px height.
-              className="h-7 min-h-7 w-auto min-w-0 [&_svg]:size-4"
+              // 40px tall below `sm` for a comfortable touch target.
+              className="h-7 min-h-7 w-auto min-w-0 max-sm:h-10 max-sm:min-h-10 [&_svg]:size-4"
             >
               <SelectValue>
                 {activeViewOption ? (
-                  <HugeiconsIcon
-                    icon={activeViewOption.icon}
-                    className="size-4"
-                  />
+                  <activeViewOption.icon className="size-4" />
                 ) : null}
               </SelectValue>
             </SelectTrigger>
@@ -2113,7 +2114,7 @@ export function FileSystem({
               {VIEW_OPTIONS.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   <span className="flex items-center gap-2">
-                    <HugeiconsIcon icon={option.icon} className="size-4" />
+                    <option.icon className="size-4" />
                     {option.label}
                   </span>
                 </SelectItem>
@@ -2135,13 +2136,13 @@ export function FileSystem({
                   title={option.label}
                   className="h-7 grow-0 px-2.5 sm:h-7"
                 >
-                  <HugeiconsIcon icon={option.icon} className="size-4" />
+                  <option.icon className="size-4" />
                 </TabsTrigger>
               ))}
             </TabsList>
           </Tabs>
         )}
-        <div className="flex min-w-0 items-center justify-end gap-1">
+        <div className="flex min-w-0 items-center justify-end gap-1 max-sm:ml-auto max-sm:flex-wrap">
           {/* PAPERS-FORK: wrapper-provided toolbar controls. */}
           {toolbarExtra}
           <FileSystemSortSelect
@@ -2344,9 +2345,10 @@ export function FileSystem({
   )
 }
 
-// Shared style for the ghost icon buttons in the toolbar.
+// Shared style for the ghost icon buttons in the toolbar. 40px square
+// below `sm` so phone touch targets stay comfortable.
 const TOOLBAR_ICON_BUTTON_CLASSNAME =
-  "flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+  "flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none max-sm:size-10 hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
 
 // macOS Finder-style toolbar search. At the full layout it sits inline in
 // the header's right column; at compact widths it collapses into a ghost
@@ -2376,14 +2378,11 @@ function FileSystemSearchField({
   const input = (
     <div
       className={cn(
-        "relative flex h-7 min-w-0 flex-1 items-center rounded-lg border border-input bg-popover text-sm text-foreground shadow-xs/5 transition-shadow outline-none not-dark:bg-clip-padding before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] not-focus-within:before:shadow-[0_1px_--theme(--color-black/4%)] focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 focus-within:ring-offset-background dark:bg-input/32 dark:not-focus-within:before:shadow-[0_-1px_--theme(--color-white/6%)]",
+        "relative flex h-7 min-w-0 flex-1 items-center rounded-lg border border-input bg-popover text-sm text-foreground shadow-xs/5 transition-shadow outline-none max-sm:h-10 not-dark:bg-clip-padding before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] not-focus-within:before:shadow-[0_1px_--theme(--color-black/4%)] focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 focus-within:ring-offset-background dark:bg-input/32 dark:not-focus-within:before:shadow-[0_-1px_--theme(--color-white/6%)]",
         isInline && "max-w-56"
       )}
     >
-      <HugeiconsIcon
-        icon={Search01Icon}
-        className="pointer-events-none absolute left-2 size-3.5 text-muted-foreground"
-      />
+      <SearchIcon className="pointer-events-none absolute left-2 size-3.5 text-muted-foreground" />
       <input
         ref={inputRef}
         type="text"
@@ -2415,7 +2414,7 @@ function FileSystemSearchField({
           }}
           className="absolute right-1 flex size-5 items-center justify-center rounded-sm text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+          <CloseIcon className="size-3" />
         </button>
       ) : null}
     </div>
@@ -2440,12 +2439,16 @@ function FileSystemSearchField({
           />
         }
       >
-        <HugeiconsIcon icon={Search01Icon} className="size-4" />
+        <SearchIcon className="size-4" />
         {value ? (
           <span className="absolute top-1 right-1 size-1.5 rounded-full bg-primary" />
         ) : null}
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={6} className="w-64 p-1">
+      <PopoverContent
+        align="end"
+        sideOffset={6}
+        className="w-64 max-w-[calc(100vw-1rem)] p-1"
+      >
         {input}
       </PopoverContent>
     </Popover>
@@ -2476,11 +2479,11 @@ function FileSystemSortSelect({
         size="sm"
         aria-label="Sort by"
         title="Sort by"
-        className="h-7 min-h-7 w-auto min-w-0 shrink-0 [&_svg]:size-4"
+        className="h-7 min-h-7 w-auto min-w-0 shrink-0 max-sm:h-10 max-sm:min-h-10 [&_svg]:size-4"
       >
         <SelectValue>
           <span className="flex items-center gap-1.5">
-            <HugeiconsIcon icon={ArrowUpDownIcon} className="size-4" />
+            <SortIcon className="size-4" />
             {layout === "full" && showLabel ? activeOption?.triggerLabel : null}
           </span>
         </SelectValue>
@@ -2550,8 +2553,7 @@ function FileSystemFileTypeCommand({
                   keywords={[option.mime]}
                   onSelect={() => onToggle(option.mime, !isChecked)}
                 >
-                  <HugeiconsIcon
-                    icon={Tick02Icon}
+                  <CheckIcon
                     className={cn(
                       "size-4 text-foreground",
                       !isChecked && "opacity-0"
@@ -2600,11 +2602,11 @@ function FileSystemFilterMenu({
             size="icon-sm"
             aria-label="Filter"
             title="Filter"
-            className="relative size-7 sm:size-7"
+            className="relative size-7 max-sm:size-10 sm:size-7"
           />
         }
       >
-        <HugeiconsIcon icon={FilterIcon} className="size-4" />
+        <FilterIcon className="size-4" />
         {filters.length > 0 ? (
           <span className="absolute top-1 right-1 size-1.5 rounded-full bg-primary" />
         ) : null}
@@ -2612,10 +2614,7 @@ function FileSystemFilterMenu({
       <DropdownMenuContent align="end" className="min-w-44">
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
-            <HugeiconsIcon
-              icon={File01Icon}
-              className="size-4 text-muted-foreground"
-            />
+            <FileIcon className="size-4 text-muted-foreground" />
             File type
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-60">
@@ -2629,10 +2628,7 @@ function FileSystemFilterMenu({
         {(["dateModified", "dateCreated"] as const).map((type) => (
           <DropdownMenuSub key={type}>
             <DropdownMenuSubTrigger>
-              <HugeiconsIcon
-                icon={Calendar03Icon}
-                className="size-4 text-muted-foreground"
-              />
+              <CalendarIcon className="size-4 text-muted-foreground" />
               {FILTER_TYPE_LABELS[type]}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
@@ -2704,10 +2700,11 @@ function FileSystemFilterPill({
           "rounded-l-md border-l text-primary"
         )}
       >
-        <HugeiconsIcon
-          icon={filter.type === "fileType" ? File01Icon : Calendar03Icon}
-          className="size-3"
-        />
+        {filter.type === "fileType" ? (
+          <FileIcon className="size-3" />
+        ) : (
+          <CalendarIcon className="size-3" />
+        )}
         {FILTER_TYPE_LABELS[filter.type]}
       </span>
       <DropdownMenu>
@@ -2800,7 +2797,7 @@ function FileSystemFilterPill({
           "rounded-r-md px-1 text-muted-foreground hover:text-foreground"
         )}
       >
-        <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+        <CloseIcon className="size-3" />
       </button>
     </div>
   )
@@ -2927,7 +2924,7 @@ function FileSystemRangeCalendar({
         }
         className="absolute top-0 left-0 flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" />
+        <ChevronLeftIcon className="size-4" />
       </button>
       <button
         type="button"
@@ -2940,7 +2937,7 @@ function FileSystemRangeCalendar({
         }
         className="absolute top-0 right-0 flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <HugeiconsIcon icon={ArrowRight01Icon} className="size-4" />
+        <ChevronRightIcon className="size-4" />
       </button>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {months.map((month, monthIndex) => {
@@ -3060,10 +3057,7 @@ function FileSystemDateRangeDialog({
     <div className="flex flex-1 flex-col gap-1.5">
       <span className="text-xs font-medium">{label}</span>
       <div className="relative flex items-center">
-        <HugeiconsIcon
-          icon={Calendar03Icon}
-          className="pointer-events-none absolute left-2.5 size-3.5 text-muted-foreground"
-        />
+        <CalendarIcon className="pointer-events-none absolute left-2.5 size-3.5 text-muted-foreground" />
         <Input
           type="text"
           value={value}
@@ -3268,7 +3262,7 @@ function FileSystemEmptyState({
   return (
     <div
       className={cn(
-        "flex size-full items-center justify-center text-sm text-muted-foreground",
+        "flex size-full items-center justify-center px-4 text-center text-sm text-muted-foreground",
         isLoading && "animate-pulse motion-reduce:animate-none"
       )}
     >
@@ -3690,10 +3684,11 @@ function FileSystemListColumnHeader({
     >
       {label}
       {isActive ? (
-        <HugeiconsIcon
-          icon={sort.direction === "asc" ? ArrowUp01Icon : ArrowDown01Icon}
-          className="size-3 shrink-0"
-        />
+        sort.direction === "asc" ? (
+          <ChevronUpIcon className="size-3 shrink-0" />
+        ) : (
+          <ChevronDownIcon className="size-3 shrink-0" />
+        )
       ) : null}
     </button>
   )
@@ -4718,8 +4713,7 @@ const FileSystemColumn = React.memo(function FileSystemColumn({
                   <span className="min-w-0 flex-1 truncate">{entry.name}</span>
                   {entry.kind === "folder" &&
                   folderHasChildren(index, entry) ? (
-                    <HugeiconsIcon
-                      icon={ArrowRight01Icon}
+                    <ChevronRightIcon
                       className={cn(
                         "size-3.5 shrink-0",
                         !isSelected && "text-muted-foreground/60"

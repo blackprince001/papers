@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { toastInfo, toastError } from '@/lib/utils/toast';
-import { Trash as Trash2, Edit as Pencil, TickCircle as Check, CloseCircle as X, ExportSquare as ExternalLink, Calendar, Link as LinkIcon, FingerScan as Fingerprint, Refresh, Share, DocumentDownload } from 'iconsax-reactjs';
+import { toastInfo, toastError, toastSuccess } from '@/lib/utils/toast';
+import { CalendarIcon, CheckIcon, CloseIcon, DownloadIcon, EditIcon, ExternalLinkIcon, FingerprintIcon, HighlighterIcon, LinkIcon, RefreshIcon, ShareIcon, TrashIcon } from '@/components/icons';
+import { aiFeaturesApi } from '@/lib/api/aiFeatures';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { type Paper, papersApi } from '@/lib/api/papers';
 import { Button } from '@/components/ui/Button';
@@ -48,6 +49,22 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
       queryClient.invalidateQueries({ queryKey: ['paper', paperId] });
       setIsEditingTitle(false);
     },
+  });
+
+  // Spawns the auto-highlight AI agent (moved here from the former
+  // Insights > Highlights tab — it's a one-shot action, not a view).
+  const autoHighlightMutation = useMutation({
+    mutationFn: () => aiFeaturesApi.generateHighlights(paperId),
+    onMutate: () => {
+      toastInfo('Spawning AI agent…', 'It will highlight core methods and findings shortly.');
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['annotations', paperId] });
+      queryClient.invalidateQueries({ queryKey: ['paper', paperId] });
+      toastSuccess(`${data.count} highlights identified and added`);
+    },
+    onError: (e) =>
+      toastError('AI highlighting failed', e instanceof Error ? e.message : undefined),
   });
 
   const extractCitationsMutation = useMutation({
@@ -103,31 +120,45 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
             )}
             {isOwner(paper) && (
             <Button
-              variant="ghost"
-              className="h-8 w-8 p-0"
+              variant="icon"
+              size="icon"
               onClick={() => setShareOpen(true)}
               title="Share Paper"
+              aria-label="Share Paper"
             >
-              <Share size={14} />
+              <ShareIcon size="sm" />
             </Button>
             )}
             <Button
-              variant="ghost"
-              className="h-8 w-8 p-0"
-              onClick={() => extractCitationsMutation.mutate()}
-              disabled={extractCitationsMutation.isPending}
-              title="Regenerate Citations"
+              variant="icon"
+              size="icon"
+              onClick={() => autoHighlightMutation.mutate()}
+              loading={autoHighlightMutation.isPending}
+              title="Auto-highlight with AI"
+              aria-label="Auto-highlight with AI"
             >
-              <Refresh size={14} className={extractCitationsMutation.isPending ? 'animate-spin' : ''} />
+              <HighlighterIcon size="sm" />
+            </Button>
+            <Button
+              variant="icon"
+              size="icon"
+              onClick={() => extractCitationsMutation.mutate()}
+              loading={extractCitationsMutation.isPending}
+              title="Regenerate Citations"
+              aria-label="Regenerate Citations"
+            >
+              <RefreshIcon size="sm" />
             </Button>
             {onDelete && isOwner(paper) && (
               <Button
-                variant="ghost"
-                className="h-8 w-8 p-0 text-(--destructive) hover:bg-(--destructive)/10"
+                variant="icon"
+                size="icon"
+                className="text-(--destructive) hover:bg-(--destructive)/10"
                 onClick={onDelete}
                 title="Delete Paper"
+                aria-label="Delete Paper"
               >
-                <Trash2 size={14} />
+                <TrashIcon size="sm" />
               </Button>
             )}
           </div>
@@ -146,11 +177,11 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
                 autoFocus
               />
               <div className="flex gap-1">
-                <Button variant="ghost" className="h-8 w-8 p-0" onClick={handleSaveTitle}>
-                  <Check size={14} />
+                <Button variant="icon" size="icon" onClick={handleSaveTitle} aria-label="Save title">
+                  <CheckIcon size="sm" />
                 </Button>
-                <Button variant="ghost" className="h-8 w-8 p-0" onClick={handleCancelTitle}>
-                  <X size={14} />
+                <Button variant="icon" size="icon" onClick={handleCancelTitle} aria-label="Cancel editing">
+                  <CloseIcon size="sm" />
                 </Button>
               </div>
             </div>
@@ -159,11 +190,13 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
               <h1 className="text-body-lg font-bold leading-snug text-(--foreground) flex-1">{paper.title}</h1>
               {isOwner(paper) && (
               <Button
-                variant="ghost"
-                className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                variant="icon"
+                size="icon-sm"
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={() => setIsEditingTitle(true)}
+                aria-label="Edit title"
               >
-                <Pencil size={13} />
+                <EditIcon size="sm" />
               </Button>
               )}
             </div>
@@ -196,14 +229,11 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
                 <div className="absolute bottom-0 left-0 right-0 h-8 bg-linear-to-t from-(--white) to-transparent pointer-events-none" />
               )}
 
-              <motion.div
-                animate={{ rotate: isAbstractExpanded ? 180 : 0 }}
-                className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-(--white) border border-(--border) rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-              >
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-(--white) border border-(--border) rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                 <div className="text-micro text-(--muted-foreground) px-1">
                   {isAbstractExpanded ? 'Show less' : 'Read more'}
                 </div>
-              </motion.div>
+              </div>
             </div>
           </div>
         )}
@@ -231,7 +261,7 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
                   <Link
                     key={i}
                     to={`/author/search?name=${encodeURIComponent(author)}`}
-                    className="text-code px-2 py-0.5 bg-(--muted)/50 rounded text-(--foreground) hover:bg-(--accent)/20 hover:text-(--accent) transition-colors no-underline"
+                    className="text-code px-2 py-0.5 bg-(--muted)/50 rounded text-(--foreground) hover:bg-(--mint-green)/20 hover:text-(--deep-forest) transition-colors no-underline"
                   >
                     {author}
                   </Link>
@@ -244,7 +274,7 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
           {publishedDate && (
             <div className="space-y-1.5">
               <h4 className="flex items-center gap-1.5 text-caption font-bold uppercase tracking-wider text-(--muted-foreground)">
-                <Calendar size={12} /> Published
+                <CalendarIcon size="xs" /> Published
               </h4>
               <p className="text-code text-(--foreground)">{publishedDate}</p>
             </div>
@@ -255,7 +285,7 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
             {paper.doi && (
               <div className="space-y-1.5">
                 <h4 className="flex items-center gap-1.5 text-caption font-bold uppercase tracking-wider text-(--muted-foreground)">
-                  <Fingerprint size={12} /> DOI
+                  <FingerprintIcon size="xs" /> DOI
                 </h4>
                 <a
                   href={`https://doi.org/${paper.doi}`}
@@ -276,7 +306,7 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
                 return (
                   <div className="space-y-1.5">
                     <h4 className="flex items-center gap-1.5 text-caption font-bold uppercase tracking-wider text-(--muted-foreground)">
-                      <LinkIcon size={12} /> URL
+                      <LinkIcon size="xs" /> URL
                     </h4>
                     <a
                       href={paper.url}
@@ -284,7 +314,7 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
                       rel="noopener noreferrer"
                       className="text-code text-(--foreground) hover:text-(--sky-blue) truncate block"
                     >
-                      Source <ExternalLink size={10} className="inline ml-1" />
+                      Source <ExternalLinkIcon size="xs" className="inline ml-1" />
                     </a>
                   </div>
                 );
@@ -293,7 +323,7 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
                 return (
                   <div className="space-y-1.5">
                     <h4 className="flex items-center gap-1.5 text-caption font-bold uppercase tracking-wider text-(--muted-foreground)">
-                      <DocumentDownload size={12} /> File
+                      <DownloadIcon size="xs" /> File
                     </h4>
                     <button
                       type="button"
@@ -306,7 +336,7 @@ export function PaperDetails({ paper, onDelete }: PaperDetailsProps) {
                       }}
                       className="text-code text-(--foreground) hover:text-(--sky-blue) truncate block text-left"
                     >
-                      Download <DocumentDownload size={10} className="inline ml-1" />
+                      Download <DownloadIcon size="xs" className="inline ml-1" />
                     </button>
                   </div>
                 );

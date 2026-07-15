@@ -1,6 +1,20 @@
-import { useEffect, useRef, type ReactNode } from 'react';
-import { CloseCircle as X } from 'iconsax-reactjs';
+import type { ReactNode } from 'react';
+import {
+  ModalBackdrop,
+  ModalBody,
+  ModalContainer,
+  ModalDialog,
+  ModalHeader,
+  ModalHeading,
+  ModalRoot,
+} from '@heroui/react';
 import { cn } from '@/lib/utils';
+import { CloseIcon } from '../icons';
+import { Button } from './Button';
+
+/* Lumen facade over the HeroUI v3 Modal (React Aria). Historical API kept:
+ * open/onClose/title/description/size + DialogFooter. Focus trapping,
+ * scroll locking, and Escape/backdrop dismissal come from React Aria. */
 
 interface DialogProps {
   open: boolean;
@@ -9,71 +23,42 @@ interface DialogProps {
   description?: string;
   children: ReactNode;
   className?: string;
-  /** Max width class, defaults to max-w-md */
+  /** Max width tier, defaults to md */
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
-const sizeClass = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-2xl' };
+const heroSize = { sm: 'sm', md: 'md', lg: 'lg', xl: 'lg' } as const;
 
 export function Dialog({ open, onClose, title, description, children, className, size = 'md' }: DialogProps) {
-  const ref = useRef<HTMLDialogElement>(null);
-
-  // Sync open state with native dialog
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (open && !el.open) el.showModal();
-    else if (!open && el.open) el.close();
-  }, [open]);
-
-  // Forward native ESC / cancel to onClose
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const onCancel = (e: Event) => { e.preventDefault(); onClose(); };
-    el.addEventListener('cancel', onCancel);
-    return () => el.removeEventListener('cancel', onCancel);
-  }, [onClose]);
-
   return (
-    <dialog
-      ref={ref}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      className={cn(
-        'w-full bg-(--white) border border-(--border) rounded-card shadow-modal',
-        'fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-0 flex flex-col',
-        sizeClass[size],
-        className,
-      )}
-    >
-      {/* Header */}
-      {(title || description) && (
-        <div className="flex items-start justify-between gap-4 px-5 pt-5 pb-4 border-b border-(--border)">
-          <div className="flex flex-col gap-0.5">
-            {title && <p className="text-body font-semibold text-(--foreground)">{title}</p>}
-            {description && <p className="text-caption text-(--muted-foreground)">{description}</p>}
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="shrink-0 p-0.5 rounded-interactive text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) transition-colors"
-          >
-            <X size={15} />
-          </button>
-        </div>
-      )}
-
-      {/* Body */}
-      <div className="p-5">{children}</div>
-    </dialog>
+    <ModalRoot isOpen={open} onOpenChange={(o) => !o && onClose()}>
+      <ModalBackdrop>
+        <ModalContainer placement="center" size={heroSize[size]}>
+          <ModalDialog className={cn(size === 'xl' && 'max-w-2xl', className)}>
+            {(title || description) && (
+              <ModalHeader className="flex items-start justify-between gap-4">
+                <div className="flex flex-col gap-0.5">
+                  {title && <ModalHeading className="text-body font-semibold">{title}</ModalHeading>}
+                  {description && (
+                    <p className="text-caption text-(--muted-foreground)">{description}</p>
+                  )}
+                </div>
+                <Button variant="icon" size="icon-sm" aria-label="Close" onClick={onClose}>
+                  <CloseIcon size="sm" />
+                </Button>
+              </ModalHeader>
+            )}
+            <ModalBody>{children}</ModalBody>
+          </ModalDialog>
+        </ModalContainer>
+      </ModalBackdrop>
+    </ModalRoot>
   );
 }
 
 /** Convenience row for dialog footer actions */
 export function DialogFooter({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn('flex items-center justify-end gap-2 px-5 pb-5', className)}>
-      {children}
-    </div>
+    <div className={cn('flex items-center justify-end gap-2 pt-4', className)}>{children}</div>
   );
 }

@@ -2,11 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import {
-  Refresh as Loader2,
-  ArrowDown2,
-  ArrowRight2,
-  DocumentUpload,
-} from 'iconsax-reactjs';
+  ChevronDownIcon,
+  ChevronRightIcon,
+  UploadIcon,
+} from '@/components/icons';
 import { papersApi } from '@/lib/api/papers';
 import { groupsApi } from '@/lib/api/groups';
 import { Button } from '@/components/ui/Button';
@@ -183,7 +182,7 @@ export default function Ingest() {
   };
 
   return (
-    <div className="max-w-225 mx-auto px-6 py-8">
+    <div className="max-w-main mx-auto px-6 py-8">
       <div className="mb-8">
         <h1 className="text-page-title mb-1">Add Paper</h1>
         <p className="text-body text-(--muted-foreground)">
@@ -212,9 +211,9 @@ export default function Ingest() {
                 )}
               </div>
               {groupsExpanded ? (
-                <ArrowDown2 size={14} className="text-(--muted-foreground)" />
+                <ChevronDownIcon size="sm" className="text-(--muted-foreground)" />
               ) : (
-                <ArrowRight2 size={14} className="text-(--muted-foreground)" />
+                <ChevronRightIcon size="sm" className="text-(--muted-foreground)" />
               )}
             </button>
             {groupsExpanded && (
@@ -286,15 +285,14 @@ export default function Ingest() {
 
         <Button
           variant="primary"
-          icon={isProcessing ? <Loader2 size={14} className="animate-spin" /> : <DocumentUpload size={14} />}
+          icon={<UploadIcon size="sm" />}
           onClick={handleSubmit}
-          disabled={isProcessing || itemCount === 0}
+          disabled={itemCount === 0}
+          loading={isProcessing}
         >
-          {isProcessing
-            ? 'Processing…'
-            : itemCount > 0
-              ? `Import ${itemCount} ${itemCount === 1 ? 'paper' : 'papers'}`
-              : 'Import Papers'}
+          {itemCount > 0
+            ? `Import ${itemCount} ${itemCount === 1 ? 'paper' : 'papers'}`
+            : 'Import Papers'}
         </Button>
       </div>
 

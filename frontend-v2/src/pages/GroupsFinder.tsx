@@ -2,18 +2,18 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Add as Plus,
-  DocumentDownload,
-  Edit,
-  Eye,
-  Folder,
-  FolderOpen,
-  Message as MessageSquare,
-  ArrowRight,
-  CloseCircle,
-  Share,
-  Trash,
-} from 'iconsax-reactjs';
+  PlusIcon,
+  DownloadIcon,
+  EditIcon,
+  EyeIcon,
+  FolderIcon,
+  FolderOpenIcon,
+  ChatIcon,
+  ArrowRightIcon,
+  CloseIcon,
+  ShareIcon,
+  TrashIcon,
+} from '@/components/icons';
 import { groupsApi, type Group } from '@/lib/api/groups';
 import { papersApi } from '@/lib/api/papers';
 import { useAuth } from '@/contexts/AuthContext';
@@ -117,7 +117,7 @@ function FinderContextMenu({
               action.onSelect();
             }}
             className={
-              'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body transition-colors hover:bg-(--secondary) ' +
+              'flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-body transition-colors hover:bg-(--secondary) ' +
               (action.destructive ? 'text-(--destructive)' : 'text-(--foreground)')
             }
           >
@@ -320,12 +320,12 @@ export default function GroupsFinder() {
       const actions: MenuAction[] = [
         {
           label: 'Export papers',
-          icon: <DocumentDownload size={15} />,
+          icon: <DownloadIcon size="sm" />,
           onSelect: () => exportPapers(collectFolderPaperIds(group.id)),
         },
         {
           label: 'Chat with folder',
-          icon: <MessageSquare size={15} />,
+          icon: <ChatIcon size="sm" />,
           onSelect: () => setChatGroup(group),
         },
       ];
@@ -333,7 +333,7 @@ export default function GroupsFinder() {
         actions.unshift(
           {
             label: 'New subfolder',
-            icon: <Folder size={15} />,
+            icon: <FolderIcon size="sm" />,
             onSelect: () => {
               setNameValue('');
               setNameDialog({ mode: 'create', parentId: group.id });
@@ -341,7 +341,7 @@ export default function GroupsFinder() {
           },
           {
             label: 'Rename',
-            icon: <Edit size={15} />,
+            icon: <EditIcon size="sm" />,
             onSelect: () => {
               setNameValue(group.name);
               setNameDialog({ mode: 'rename', group });
@@ -349,13 +349,13 @@ export default function GroupsFinder() {
           },
           {
             label: 'Share',
-            icon: <Share size={15} />,
+            icon: <ShareIcon size="sm" />,
             onSelect: () => setShareGroup(group),
           }
         );
         actions.push({
           label: 'Delete',
-          icon: <Trash size={15} />,
+          icon: <TrashIcon size="sm" />,
           destructive: true,
           separatorBefore: true,
           onSelect: async () => {
@@ -382,30 +382,30 @@ export default function GroupsFinder() {
     const actions: MenuAction[] = [
       {
         label: 'Open',
-        icon: <FolderOpen size={15} />,
+        icon: <FolderOpenIcon size="sm" />,
         onSelect: () => navigate(`/papers/${meta.paperId}`),
       },
       {
         label: 'Quick Look',
-        icon: <Eye size={15} />,
+        icon: <EyeIcon size="sm" />,
         onSelect: () => void openQuickLook(item as FileSystemFileItem),
       },
       {
         label: plural ? `Move ${selectedIds.length} papers…` : 'Move to folder…',
-        icon: <ArrowRight size={15} />,
+        icon: <ArrowRightIcon size="sm" />,
         separatorBefore: true,
         onSelect: () => setMovePaperIds(selectedIds),
       },
       {
         label: plural ? `Export ${selectedIds.length} papers` : 'Export',
-        icon: <DocumentDownload size={15} />,
+        icon: <DownloadIcon size="sm" />,
         onSelect: () => exportPapers(selectedIds),
       },
       ...(!plural
         ? [
             {
               label: 'Share paper',
-              icon: <Share size={15} />,
+              icon: <ShareIcon size="sm" />,
               onSelect: () => setSharePaper({ id: meta.paperId, title: String(meta.title ?? 'Paper') }),
             } as MenuAction,
           ]
@@ -414,7 +414,7 @@ export default function GroupsFinder() {
     if (meta.groupId != null && !isSharedPath(item.path)) {
       actions.push({
         label: 'Remove from this folder',
-        icon: <CloseCircle size={15} />,
+        icon: <CloseIcon size="sm" />,
         destructive: true,
         separatorBefore: true,
         onSelect: () => void removeFromFolder(meta.paperId, meta.groupId!),
@@ -453,7 +453,8 @@ export default function GroupsFinder() {
           <Button
             variant="ghost"
             size="sm"
-            icon={<ArrowRight size={14} />}
+            className="max-sm:size-10"
+            icon={<ArrowRightIcon size="sm" />}
             onClick={() => setMovePaperIds(selectedPaperIds)}
             aria-label={`Move ${selectedPaperIds.length} selected papers`}
             title="Move selected"
@@ -463,7 +464,8 @@ export default function GroupsFinder() {
           <Button
             variant="ghost"
             size="sm"
-            icon={<DocumentDownload size={14} />}
+            className="max-sm:size-10"
+            icon={<DownloadIcon size="sm" />}
             onClick={() => exportPapers(selectedPaperIds)}
             aria-label={`Export ${selectedPaperIds.length} selected papers`}
             title="Export selected"
@@ -477,7 +479,8 @@ export default function GroupsFinder() {
         <Button
           variant="ghost"
           size="sm"
-          icon={<Folder size={14} />}
+          className="max-sm:size-10"
+          icon={<FolderIcon size="sm" />}
           onClick={() => {
             setNameValue('');
             setNameDialog({ mode: 'create', parentId: currentGroupId });
@@ -492,7 +495,8 @@ export default function GroupsFinder() {
         <Button
           variant="ghost"
           size="sm"
-          icon={<Plus size={14} />}
+          className="max-sm:size-10"
+          icon={<PlusIcon size="sm" />}
           onClick={() =>
             navigate('/ingest', { state: { preselectedGroupIds: [currentGroup.id] } })
           }
@@ -507,17 +511,17 @@ export default function GroupsFinder() {
 
   if (isLoading) {
     return (
-      <div className="max-w-content mx-auto px-6 py-8">
-        <Skeleton className="mb-2 h-8 w-48" />
-        <Skeleton className="mb-8 h-5 w-96" />
+      <div className="max-w-content mx-auto px-4 py-6 sm:px-6 sm:py-8">
+        <Skeleton className="mb-2 h-8 w-48 max-w-full" />
+        <Skeleton className="mb-8 h-5 w-96 max-w-full" />
         <Skeleton className="h-[60vh] w-full" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-content mx-auto flex h-full flex-col px-6 py-8">
-      <div className="mb-6 flex items-end justify-between">
+    <div className="max-w-content mx-auto flex h-full flex-col px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-6">
         <div>
           <h1>Groups</h1>
           <p className="text-btn mt-1 text-(--muted-foreground)">

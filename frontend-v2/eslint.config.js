@@ -19,5 +19,20 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // The in-house icon set (@/components/icons) is the only icon source.
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: 'iconsax-reactjs', message: 'Use @/components/icons (in-house set).' },
+            { name: 'lucide-react', message: 'Use @/components/icons (in-house set).' },
+          ],
+          patterns: [
+            { group: ['@hugeicons/*'], message: 'Use @/components/icons (in-house set).' },
+          ],
+        },
+      ],
+    },
   },
 ])

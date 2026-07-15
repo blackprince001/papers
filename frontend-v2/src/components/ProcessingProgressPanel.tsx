@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { TickCircle, Refresh, MinusCirlce, CloseCircle } from 'iconsax-reactjs';
+import { CheckCircleIcon, MinusCircleIcon, XCircleIcon } from '@/components/icons';
+import { Spinner } from '@/components/ui/Spinner';
 import { cn } from '@/lib/utils';
 import { useProcessingProgress, type StepState } from '@/hooks/use-processing-progress';
 
@@ -12,13 +13,13 @@ interface ProcessingProgressPanelProps {
 function StepIcon({ status }: { status: StepState['status'] }) {
   switch (status) {
     case 'completed':
-      return <TickCircle size={14} className="text-(--sky-blue)" variant="Bold" />;
+      return <CheckCircleIcon size="sm" filled className="text-(--sky-blue)" />;
     case 'running':
-      return <Refresh size={14} className="text-(--sky-blue) animate-spin" />;
+      return <Spinner size={14} className="text-(--sky-blue)" />;
     case 'skipped':
-      return <MinusCirlce size={14} className="text-(--muted-foreground) opacity-60" />;
+      return <MinusCircleIcon size="sm" className="text-(--muted-foreground) opacity-60" />;
     case 'failed':
-      return <CloseCircle size={14} className="text-(--destructive)" variant="Bold" />;
+      return <XCircleIcon size="sm" filled className="text-(--destructive)" />;
     default:
       return <span className="inline-block size-3.5 rounded-full border border-(--border)" />;
   }
@@ -59,7 +60,7 @@ export function ProcessingProgressPanel({
         )}
       >
         <div className="flex items-center gap-2 mb-2">
-          <CloseCircle size={16} className="text-(--destructive)" variant="Bold" />
+          <XCircleIcon size="md" filled className="text-(--destructive)" />
           <span className="text-caption font-medium text-(--destructive)">Processing failed</span>
         </div>
         <ul className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">

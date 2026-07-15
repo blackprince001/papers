@@ -11,7 +11,7 @@ import {
   type OnNodeDrag,
 } from '@xyflow/react';
 import { useMutation } from '@tanstack/react-query';
-import { Hierarchy3 as Network } from 'iconsax-reactjs';
+import { CitationGraphIcon } from '@/components/icons';
 import {
   citationMapApi,
   type CitationMapResponse,
@@ -126,7 +126,7 @@ function CitationMapInner({ data, isLoading, selectedKey, onSelectNode }: Citati
 
       {isEmpty && (
         <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center gap-2">
-          <Network size={36} className="text-(--border)" />
+          <CitationGraphIcon size={36} className="text-(--border)" />
           <p className="text-code text-(--foreground)">Add a paper to chart what it built on</p>
           <p className="text-caption text-(--muted-foreground)">
             Its references are pulled from Semantic Scholar

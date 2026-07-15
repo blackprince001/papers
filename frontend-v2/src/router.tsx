@@ -13,6 +13,11 @@ import GroupRedirect from './pages/GroupRedirect';
 // Lazy: the Finder pulls in the file-system block, document viewers, and
 // hugeicons — they must not join the main chunk.
 const GroupsFinder = lazy(() => import('./pages/GroupsFinder'));
+
+// Dev-only review surfaces; the conditional imports keep them out of
+// production builds entirely.
+const IconSheet = import.meta.env.DEV ? lazy(() => import('./pages/dev/IconSheet')) : null;
+const KitchenSink = import.meta.env.DEV ? lazy(() => import('./pages/dev/KitchenSink')) : null;
 import Search from './pages/Search';
 import Dashboard from './pages/Dashboard';
 import Annotations from './pages/Annotations';
@@ -32,6 +37,30 @@ import AuthorSearch from './pages/AuthorSearch';
 export const router = createBrowserRouter([
   { path: '/login', element: <Login /> },
   { path: '/admin/login', element: <AdminLogin /> },
+  ...(IconSheet
+    ? [
+        {
+          path: '/dev/icons',
+          element: (
+            <Suspense fallback={null}>
+              <IconSheet />
+            </Suspense>
+          ),
+        },
+      ]
+    : []),
+  ...(KitchenSink
+    ? [
+        {
+          path: '/dev/ui',
+          element: (
+            <Suspense fallback={null}>
+              <KitchenSink />
+            </Suspense>
+          ),
+        },
+      ]
+    : []),
   {
     path: '/',
     element: (

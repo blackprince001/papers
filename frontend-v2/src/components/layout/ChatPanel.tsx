@@ -2,13 +2,21 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTabs } from '@/contexts/TabContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { DocumentText as FileText, MagicStar as Sparkles, Magicpen as Highlighter, Link, Message as MessageSquare, Stickynote as StickyNote, SidebarRight as PanelRightClose, Bookmark } from 'iconsax-reactjs';
+import {
+  BookmarkIcon,
+  ChatIcon,
+  FileTextIcon,
+  HighlighterIcon,
+  LinkIcon,
+  NoteIcon,
+  PanelRightCloseIcon,
+  SparklesIcon,
+} from '@/components/icons';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { PaperDetails } from '@/components/PaperDetails';
 import { AISummary } from '@/components/AISummary';
 import { KeyFindings } from '@/components/KeyFindings';
 import { ReadingGuide } from '@/components/ReadingGuide';
-import { AutoHighlights } from '@/components/AutoHighlights';
 import { NotesPanel } from '@/components/NotesPanel';
 import { RelatedPapers } from '@/components/RelatedPapers';
 import { ChatTab } from '@/components/ChatTab';
@@ -58,16 +66,16 @@ export default function ChatPanel({ isOpen, onToggle, activeTab, setActiveTab }:
   const tabItems: Array<{
     value: string;
     label: string;
-    Icon: typeof FileText;
+    Icon: typeof FileTextIcon;
     badge?: number;
   }> = [
-    { value: 'details', label: 'Details', Icon: FileText },
-    { value: 'ai', label: 'Insights', Icon: Sparkles },
-    { value: 'related', label: 'Related', Icon: Link },
-    { value: 'chat', label: 'Chat', Icon: MessageSquare },
-    { value: 'notes', label: 'Notes', Icon: StickyNote, badge: noteItems.length || undefined },
-    { value: 'annotations', label: 'Annotations', Icon: Highlighter, badge: annotationItems.length || undefined },
-    { value: 'bookmarks', label: 'Bookmarks', Icon: Bookmark },
+    { value: 'details', label: 'Details', Icon: FileTextIcon },
+    { value: 'ai', label: 'Insights', Icon: SparklesIcon },
+    { value: 'related', label: 'Related', Icon: LinkIcon },
+    { value: 'chat', label: 'Chat', Icon: ChatIcon },
+    { value: 'notes', label: 'Notes', Icon: NoteIcon, badge: noteItems.length || undefined },
+    { value: 'annotations', label: 'Annotations', Icon: HighlighterIcon, badge: annotationItems.length || undefined },
+    { value: 'bookmarks', label: 'Bookmarks', Icon: BookmarkIcon },
   ];
 
   if (!isOpen) return null;
@@ -76,7 +84,7 @@ export default function ChatPanel({ isOpen, onToggle, activeTab, setActiveTab }:
     <div className="w-full h-full rounded-(--panel-radius) border border-(--panel-border) bg-(--panel-surface) shadow-(--shadow-panel) backdrop-blur-sm flex flex-col overflow-hidden">
       {!paperId || !paper ? (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-(--muted-foreground) opacity-50">
-          <FileText size={32} className="mb-3" />
+          <FileTextIcon size={32} className="mb-3" />
           <p className="text-code">Open a paper to see details</p>
         </div>
       ) : (
@@ -89,14 +97,14 @@ export default function ChatPanel({ isOpen, onToggle, activeTab, setActiveTab }:
                   key={value}
                   value={value}
                   title={label}
-                  className="group relative inline-flex items-center justify-center h-10 rounded-full text-caption overflow-hidden transition-all duration-300 ease-out data-[state=active]:bg-(--foreground) data-[state=active]:text-(--card) data-[state=inactive]:w-10 data-[state=inactive]:text-(--muted-foreground) data-[state=inactive]:hover:bg-(--muted) data-[state=inactive]:hover:text-(--foreground) data-[state=active]:px-3.5 data-[state=active]:gap-2"
+                  className="group relative inline-flex items-center justify-center h-10 rounded-full text-caption transition-all duration-300 ease-out data-[state=active]:bg-(--foreground) data-[state=active]:text-(--card) data-[state=inactive]:w-10 data-[state=inactive]:text-(--muted-foreground) data-[state=inactive]:hover:bg-(--muted) data-[state=inactive]:hover:text-(--foreground) data-[state=active]:px-3.5 data-[state=active]:gap-2"
                 >
-                  <Icon size={18} className="shrink-0" />
+                  <Icon size="md" className="shrink-0" />
                   <span className="grid grid-cols-[0fr] group-data-[state=active]:grid-cols-[1fr] transition-[grid-template-columns] duration-300 ease-out">
                     <span className="overflow-hidden whitespace-nowrap font-medium">{label}</span>
                   </span>
                   {badge ? (
-                    <span className="absolute -top-0.5 -right-0.5 text-micro bg-(--muted) text-(--foreground) px-1 py-0.5 rounded-full tabular-nums leading-none group-data-[state=active]:hidden">
+                    <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 inline-flex items-center justify-center rounded-full bg-(--foreground) text-(--background) text-micro tabular-nums leading-none group-data-[state=active]:hidden">
                       {badge}
                     </span>
                   ) : null}
@@ -109,7 +117,7 @@ export default function ChatPanel({ isOpen, onToggle, activeTab, setActiveTab }:
               className="p-1.5 mr-2 text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) rounded-lg transition-colors shrink-0"
               aria-label="Close panel"
             >
-              <PanelRightClose size={16} />
+              <PanelRightCloseIcon size="md" />
             </button>
           </div>
 
@@ -132,9 +140,6 @@ export default function ChatPanel({ isOpen, onToggle, activeTab, setActiveTab }:
                     <TabsTrigger value="guide" className="px-2.5 py-1 text-caption rounded-full transition-colors data-[state=active]:bg-(--foreground) data-[state=active]:text-(--card) data-[state=inactive]:text-(--muted-foreground) data-[state=inactive]:hover:bg-(--muted) data-[state=inactive]:hover:text-(--foreground)">
                       Guide
                     </TabsTrigger>
-                    <TabsTrigger value="highlights" className="px-2.5 py-1 text-caption rounded-full transition-colors data-[state=active]:bg-(--foreground) data-[state=active]:text-(--card) data-[state=inactive]:text-(--muted-foreground) data-[state=inactive]:hover:bg-(--muted) data-[state=inactive]:hover:text-(--foreground)">
-                      Highlights
-                    </TabsTrigger>
                   </TabsList>
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-none p-6 text-(--foreground)">
@@ -155,9 +160,6 @@ export default function ChatPanel({ isOpen, onToggle, activeTab, setActiveTab }:
                       <h3 className="text-body font-bold mb-4">Reading Guide</h3>
                       <ReadingGuide paperId={paper.id} />
                     </section>
-                  </TabsContent>
-                  <TabsContent value="highlights">
-                    <AutoHighlights paperId={paper.id} />
                   </TabsContent>
                 </div>
               </Tabs>

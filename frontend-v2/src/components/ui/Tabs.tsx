@@ -3,12 +3,14 @@ import { cn } from '@/lib/utils';
 
 /**
  * `underline` — the default scholarly look: a bottom border that fills in on
- * the active tab. `plain` — no built-in borders/padding; the consumer's
- * className fully controls the look (used for the background-pill tabs in the
- * paper view). Both variants expose `data-state="active|inactive"` so callers
- * can style with `data-[state=active]:…` utilities.
+ * the active tab. `segmented` — a muted pill track where the active segment
+ * lifts on the background surface (view switchers, mode toggles). `plain` —
+ * no built-in borders/padding; the consumer's className fully controls the
+ * look (used for the background-pill tabs in the paper view). All variants
+ * expose `data-state="active|inactive"` so callers can style with
+ * `data-[state=active]:…` utilities.
  */
-type TabsVariant = 'underline' | 'plain';
+type TabsVariant = 'underline' | 'segmented' | 'plain';
 
 interface TabsContextValue {
   value: string;
@@ -41,12 +43,14 @@ export function Tabs({ value, onValueChange, variant = 'underline', className, c
 }
 
 export function TabsList({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) {
+  const { variant } = useTabsContext();
   return (
     <div
       role="tablist"
       className={cn(
         'inline-flex items-center gap-0.5',
-        'border-b border-(--border)',
+        variant === 'underline' && 'border-b border-(--border)',
+        variant === 'segmented' && 'rounded-(--radius-interactive) bg-(--muted) p-0.5',
         className,
       )}
       {...props}
@@ -81,6 +85,12 @@ export function TabsTrigger({ value, disabled, className, children, ...props }: 
           isActive
             ? 'border-(--foreground) text-(--foreground)'
             : 'border-transparent text-(--muted-foreground) hover:text-(--foreground) hover:border-(--border)',
+        ],
+        variant === 'segmented' && [
+          'px-3 py-1.5 rounded-[calc(var(--radius-interactive)-2px)]',
+          isActive
+            ? 'bg-(--background) text-(--foreground) shadow-(--shadow-subtle)'
+            : 'text-(--muted-foreground) hover:text-(--foreground)',
         ],
         disabled && 'opacity-40 cursor-not-allowed',
         className,

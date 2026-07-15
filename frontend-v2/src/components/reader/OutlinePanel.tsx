@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { cn } from '@/lib/utils';
+import { SkeletonText } from '@/components/ui/Skeleton';
 import { extractTOC, type TOCItem } from './toc';
 
 function OutlineList({
@@ -22,7 +23,7 @@ function OutlineList({
             type="button"
             onClick={() => onNavigate(item.page)}
             className={cn(
-              'flex w-full items-baseline justify-between gap-2 rounded-md px-2 py-1 text-left text-caption transition-colors hover:bg-(--secondary)',
+              'flex w-full items-baseline justify-between gap-2 rounded-lg px-2 py-1 text-left text-caption transition-colors hover:bg-(--secondary)',
               activePage === item.page
                 ? 'font-semibold text-(--foreground)'
                 : 'text-(--muted-foreground)',
@@ -76,9 +77,9 @@ export function OutlinePanel({
 
   if (items === 'loading') {
     return (
-      <p className="px-3 py-6 text-center text-caption text-(--muted-foreground)">
-        Loading outline…
-      </p>
+      <div className="px-3 py-4">
+        <SkeletonText lines={6} lastLineWidth="w-1/2" />
+      </div>
     );
   }
   if (!items || items.length === 0) {

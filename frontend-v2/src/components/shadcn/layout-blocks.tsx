@@ -1,17 +1,6 @@
 "use client"
 
 import * as React from "react"
-import {
-  AlignBoxBottomCenterIcon,
-  Heading01Icon,
-  ImageCompositionIcon,
-  LeftToRightListBulletIcon,
-  ParagraphIcon,
-  Table01Icon,
-  TextCenterlineCenterTopIcon,
-  TextNumberSignIcon,
-} from "@hugeicons/core-free-icons"
-import { HugeiconsIcon } from "@hugeicons/react"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import ReactMarkdown from "react-markdown"
 import rehypeRaw from "rehype-raw"
@@ -19,6 +8,17 @@ import rehypeSanitize, { defaultSchema } from "rehype-sanitize"
 import remarkGfm from "remark-gfm"
 
 import { cn } from "@/lib/utils"
+import {
+  BlockCaptionIcon,
+  BlockFigureIcon,
+  BlockHeadingIcon,
+  BlockNumberIcon,
+  BlockParagraphIcon,
+  BlockTableIcon,
+  BlockTitleIcon,
+  ViewListIcon,
+  type IconProps,
+} from "@/components/icons"
 import { ScrollArea } from "@/components/shadcn/scroll-area"
 
 export type Point = {
@@ -143,7 +143,7 @@ const BLOCK_STYLES: Record<
   OcrBlockType,
   {
     label: string
-    icon: React.ComponentProps<typeof HugeiconsIcon>["icon"]
+    icon: React.ComponentType<IconProps>
     overlay: string
     mutedOverlay: string
     ring: string
@@ -152,7 +152,7 @@ const BLOCK_STYLES: Record<
 > = {
   heading: {
     label: "Heading",
-    icon: Heading01Icon,
+    icon: BlockHeadingIcon,
     overlay: "border-violet-500/70 bg-violet-500/10",
     mutedOverlay: "border-violet-500/35 bg-violet-500/5",
     ring: "border-violet-500/60 bg-violet-500/5 text-violet-600",
@@ -161,7 +161,7 @@ const BLOCK_STYLES: Record<
   },
   paragraph: {
     label: "Paragraph",
-    icon: ParagraphIcon,
+    icon: BlockParagraphIcon,
     overlay: "border-blue-500/70 bg-blue-500/10",
     mutedOverlay: "border-blue-500/35 bg-blue-500/5",
     ring: "border-blue-500/60 bg-blue-500/5 text-blue-600",
@@ -169,7 +169,7 @@ const BLOCK_STYLES: Record<
   },
   list: {
     label: "List",
-    icon: LeftToRightListBulletIcon,
+    icon: ViewListIcon,
     overlay: "border-emerald-500/70 bg-emerald-500/10",
     mutedOverlay: "border-emerald-500/35 bg-emerald-500/5",
     ring: "border-emerald-500/60 bg-emerald-500/5 text-emerald-600",
@@ -178,7 +178,7 @@ const BLOCK_STYLES: Record<
   },
   table: {
     label: "Table",
-    icon: Table01Icon,
+    icon: BlockTableIcon,
     overlay: "border-amber-500/70 bg-amber-500/10",
     mutedOverlay: "border-amber-500/35 bg-amber-500/5",
     ring: "border-amber-500/60 bg-amber-500/5 text-amber-700",
@@ -187,7 +187,7 @@ const BLOCK_STYLES: Record<
   },
   figure: {
     label: "Figure",
-    icon: ImageCompositionIcon,
+    icon: BlockFigureIcon,
     overlay: "border-rose-500/70 bg-rose-500/10",
     mutedOverlay: "border-rose-500/35 bg-rose-500/5",
     ring: "border-rose-500/60 bg-rose-500/5 text-rose-600",
@@ -195,7 +195,7 @@ const BLOCK_STYLES: Record<
   },
   header: {
     label: "Header",
-    icon: TextCenterlineCenterTopIcon,
+    icon: BlockTitleIcon,
     overlay: "border-cyan-500/70 bg-cyan-500/10",
     mutedOverlay: "border-cyan-500/35 bg-cyan-500/5",
     ring: "border-cyan-500/60 bg-cyan-500/5 text-cyan-700",
@@ -203,7 +203,7 @@ const BLOCK_STYLES: Record<
   },
   footer: {
     label: "Footer",
-    icon: AlignBoxBottomCenterIcon,
+    icon: BlockCaptionIcon,
     overlay: "border-slate-500/70 bg-slate-500/10",
     mutedOverlay: "border-slate-500/35 bg-slate-500/5",
     ring: "border-slate-500/60 bg-slate-500/5 text-slate-700",
@@ -212,7 +212,7 @@ const BLOCK_STYLES: Record<
   },
   page_number: {
     label: "Page number",
-    icon: TextNumberSignIcon,
+    icon: BlockNumberIcon,
     overlay: "border-zinc-500/70 bg-zinc-500/10",
     mutedOverlay: "border-zinc-500/35 bg-zinc-500/5",
     ring: "border-zinc-500/60 bg-zinc-500/5 text-zinc-700",
@@ -383,6 +383,7 @@ const OcrBlockButton = React.memo(function OcrBlockButton({
   onFocusBlock: (block: OcrBlock) => void
 }) {
   const style = BLOCK_STYLES[block.type]
+  const BlockIcon = style.icon
 
   return (
     <button
@@ -403,7 +404,7 @@ const OcrBlockButton = React.memo(function OcrBlockButton({
                 style.badge
               )}
             >
-              <HugeiconsIcon icon={style.icon} className="size-3.5" />
+              <BlockIcon className="size-3.5" />
               {style.label}
             </div>
             <div className="truncate text-xs text-muted-foreground">

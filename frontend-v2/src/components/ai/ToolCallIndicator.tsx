@@ -1,4 +1,4 @@
-import { TickCircle as Check, Warning2 as AlertTriangle } from 'iconsax-reactjs';
+import { CheckCircleIcon, WarningIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
 
 export interface ToolCallIndicatorProps {
@@ -37,16 +37,16 @@ export function ToolCallIndicator({
       <span
         className={cn(
           'mt-0.5 shrink-0 flex items-center justify-center w-4 h-4 rounded-full',
-          status === 'running' && 'text-blue-500',
-          status === 'complete' && 'text-emerald-500',
-          status === 'error' && 'text-amber-500',
+          status === 'running' && 'text-(--info)',
+          status === 'complete' && 'text-(--success)',
+          status === 'error' && 'text-(--warning)',
         )}
       >
         {status === 'running' && (
           <span className="inline-block w-2 h-2 rounded-full bg-current animate-pulse" />
         )}
-        {status === 'complete' && <Check size={12} variant="Bold" />}
-        {status === 'error' && <AlertTriangle size={12} variant="Bold" />}
+        {status === 'complete' && <CheckCircleIcon size="xs" filled />}
+        {status === 'error' && <WarningIcon size="xs" filled />}
       </span>
 
       <div className="flex-1 min-w-0">
@@ -56,9 +56,9 @@ export function ToolCallIndicator({
           disabled={!result}
           className={cn(
             'text-caption text-left',
-            status === 'running' && 'text-blue-500',
+            status === 'running' && 'text-(--info)',
             status === 'complete' && 'text-(--muted-foreground)',
-            status === 'error' && 'text-amber-500',
+            status === 'error' && 'text-(--warning)',
             result && 'hover:text-(--foreground) cursor-pointer',
             !result && 'cursor-default',
           )}
@@ -69,7 +69,7 @@ export function ToolCallIndicator({
         </button>
 
         {result && expanded && (
-          <pre className="mt-1 text-caption text-(--muted-foreground) bg-(--muted)/30 rounded p-2 max-h-32 overflow-y-auto whitespace-pre-wrap break-words text-[0.6875rem]">
+          <pre className="mt-1 text-(--muted-foreground) bg-(--muted)/30 rounded p-2 max-h-32 overflow-y-auto whitespace-pre-wrap break-words text-micro">
             {result.length > 500 ? `${result.slice(0, 500)}...` : result}
           </pre>
         )}

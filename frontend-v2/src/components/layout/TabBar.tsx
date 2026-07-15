@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { DocumentText as FileText, CloseCircle as X } from 'iconsax-reactjs';
+import { CloseIcon, FileTextIcon } from '@/components/icons';
 import { useTabs, type Tab } from '@/contexts/TabContext';
 import { cn } from '@/lib/utils';
 
@@ -64,14 +64,14 @@ export function TabBar() {
                   : 'bg-(--white) border-transparent text-(--muted-foreground) hover:bg-(--muted) hover:text-(--foreground)',
               )}
             >
-              <FileText size={12} className="shrink-0 opacity-60" />
+              <FileTextIcon size="xs" className="shrink-0 opacity-60" />
               <span className="truncate flex-1 text-caption font-medium">{tab.title}</span>
               <button
                 onClick={(e) => handleClose(e, tab.id)}
                 aria-label="Close tab"
                 className="p-0.5 hover:bg-(--border) rounded shrink-0"
               >
-                <X size={11} />
+                <CloseIcon size="xs" />
               </button>
             </div>
           );

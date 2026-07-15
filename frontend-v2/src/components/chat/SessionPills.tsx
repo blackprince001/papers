@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Add as Plus, Edit as Edit2, TickCircle as Check, CloseCircle as X, ArrowDown2, Maximize4 } from 'iconsax-reactjs';
+import { CheckIcon, ChevronDownIcon, CloseIcon, EditIcon, MaximizeIcon, PlusIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import type { ChatController } from '@/hooks/use-chat-controller';
 
@@ -45,7 +45,7 @@ export function SessionPills({ controller, showExpand = true }: SessionPillsProp
             className="shrink-0 flex items-center justify-center w-6 h-6 rounded-full hover:bg-(--muted) text-(--muted-foreground) transition-colors"
             title={sessionsCollapsed ? 'Show all sessions' : 'Collapse sessions'}
           >
-            <ArrowDown2 size={12} className={cn('transition-transform', sessionsCollapsed && '-rotate-90')} />
+            <ChevronDownIcon size="xs" className={cn('transition-transform', sessionsCollapsed && '-rotate-90')} />
           </button>
         )}
 
@@ -71,10 +71,10 @@ export function SessionPills({ controller, showExpand = true }: SessionPillsProp
                     }}
                   />
                   <button onClick={saveRename} className="text-(--success) hover:opacity-70 shrink-0">
-                    <Check size={12} />
+                    <CheckIcon size="xs" />
                   </button>
                   <button onClick={cancelRename} className="text-(--muted-foreground) hover:opacity-70 shrink-0">
-                    <X size={12} />
+                    <CloseIcon size="xs" />
                   </button>
                 </div>
               );
@@ -102,14 +102,14 @@ export function SessionPills({ controller, showExpand = true }: SessionPillsProp
                       onClick={(e) => { e.stopPropagation(); startRename(s.id, s.name); }}
                       className="opacity-60 hover:opacity-100 transition-opacity"
                     >
-                      <Edit2 size={10} />
+                      <EditIcon size="xs" />
                     </button>
                     {sessions.length > 1 && (
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDeleteSession(s.id); }}
                         className="opacity-60 hover:opacity-100 transition-opacity"
                       >
-                        <X size={10} />
+                        <CloseIcon size="xs" />
                       </button>
                     )}
                   </span>
@@ -125,7 +125,7 @@ export function SessionPills({ controller, showExpand = true }: SessionPillsProp
           className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full border border-dashed border-(--border) text-(--muted-foreground) hover:text-(--foreground) hover:border-(--foreground)/30 transition-colors"
           title="New session"
         >
-          <Plus size={12} />
+          <PlusIcon size="xs" />
         </button>
 
         {showExpand && (
@@ -134,7 +134,7 @@ export function SessionPills({ controller, showExpand = true }: SessionPillsProp
             className="shrink-0 ml-auto inline-flex items-center justify-center w-6 h-6 rounded-full text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) transition-colors"
             title="Open full chat view"
           >
-            <Maximize4 size={13} />
+            <MaximizeIcon size="sm" />
           </Link>
         )}
       </div>

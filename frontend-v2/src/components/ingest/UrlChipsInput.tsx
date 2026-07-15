@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CloseCircle as X, Global as Globe } from 'iconsax-reactjs';
+import { CloseIcon, GlobeIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
 
 const URL_PATTERN = /^https?:\/\/\S+$/i;
@@ -49,11 +49,11 @@ export function UrlChipsInput({
         disabled && 'pointer-events-none opacity-50',
       )}
     >
-      <Globe size={14} className="shrink-0 text-(--muted-foreground)" />
+      <GlobeIcon size="sm" className="shrink-0 text-(--muted-foreground)" />
       {chips.map((chip) => (
         <span
           key={chip}
-          className="inline-flex max-w-64 items-center gap-1 rounded-md bg-(--muted) px-1.5 py-0.5 text-caption"
+          className="inline-flex max-w-64 items-center gap-1 rounded bg-(--muted) px-1.5 py-0.5 text-caption"
           title={chip}
         >
           <span className="truncate">{chip.replace(/^https?:\/\//i, '')}</span>
@@ -63,7 +63,7 @@ export function UrlChipsInput({
             aria-label={`Remove ${chip}`}
             className="shrink-0 text-(--muted-foreground) transition-colors hover:text-(--foreground)"
           >
-            <X size={12} />
+            <CloseIcon size="xs" />
           </button>
         </span>
       ))}

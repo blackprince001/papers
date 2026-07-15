@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
-import { MagicStar as Sparkles, ArrowDown2 as ChevronDown, Save2 as Save, Filter, MenuBoard as List, DocumentText as FileText, Chart as BarChart3, Warning2 as AlertCircle } from 'iconsax-reactjs';
+import { SparklesIcon, ChevronDownIcon, SaveIcon, FilterIcon, ViewListIcon, FileTextIcon, ChartBarsIcon, WarningIcon } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { SourceSelector, type SourceId } from '@/components/discovery/SourceSelector';
 import { ResearchOverview } from '@/components/discovery/ResearchOverview';
 import { DiscoveredPaperCard } from '@/components/discovery/DiscoveredPaperCard';
@@ -19,20 +21,21 @@ import { discoveryApi, type DiscoverySessionCreate, type DiscoveredPaperPreview,
 import { toastSuccess, toastError } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 const DISCOVERY_PROMPTS = [
   {
-    icon: FileText,
+    icon: FileTextIcon,
     text: 'Latest Breakthroughs',
     prompt: 'Find the latest breakthroughs and recent advances in',
   },
   {
-    icon: BarChart3,
+    icon: ChartBarsIcon,
     text: 'Survey Papers',
     prompt: 'Find comprehensive survey and review papers covering the state of the art in',
   },
   {
-    icon: AlertCircle,
+    icon: WarningIcon,
     text: 'Open Challenges',
     prompt: 'Identify open challenges, research gaps, and underexplored areas in',
   },
@@ -164,7 +167,7 @@ export default function Discovery() {
   } : undefined;
 
   return (
-    <div className="max-w-240 mx-auto px-6 py-8">
+    <PageContainer width="wide">
       <div className="mb-8 text-center">
         <h1 className="text-page-title mb-1">Research Discovery</h1>
         <p className="text-body text-(--muted-foreground) max-w-2xl mx-auto">
@@ -194,9 +197,9 @@ export default function Discovery() {
               onClick={() => setShowFilters(!showFilters)}
               className="flex items-center gap-2 text-code text-(--muted-foreground) hover:text-(--foreground) transition-colors"
             >
-              <Filter size={14} />
+              <FilterIcon size="sm" />
               <span>Advanced Filters</span>
-              <ChevronDown size={14} className={cn('transition-transform', showFilters && 'rotate-180')} />
+              <ChevronDownIcon size="sm" className={cn('transition-transform', showFilters && 'rotate-180')} />
             </button>
             {showFilters && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t border-(--border)">
@@ -209,7 +212,6 @@ export default function Discovery() {
                     <Select
                       value={value}
                       onChange={(e) => set(e.target.value)}
-                      className="h-8!"
                     >
                       <option value="">Any</option>
                       {Array.from({ length: new Date().getFullYear() - 1989 }, (_, i) => new Date().getFullYear() - i).map((y) => (
@@ -281,9 +283,14 @@ export default function Discovery() {
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-          <p className="text-code text-red-800">{error}</p>
-        </div>
+        <ErrorState
+          size="panel"
+          title="Search failed"
+          description={error}
+          onRetry={handleSearch}
+          retrying={isSearching}
+          className="mb-6"
+        />
       )}
 
       {/* Research Overview */}
@@ -305,32 +312,31 @@ export default function Discovery() {
                 {loadedSession && <span className="text-caption font-normal text-(--muted-foreground) ml-2">(loaded from saved)</span>}
               </h3>
               {displayClustering && (
-                <div className="flex items-center gap-1 border border-(--border) rounded-lg overflow-hidden">
-                  {(['list', 'clustered'] as const).map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab)}
-                      className={cn(
-                        'px-3 py-1 text-caption font-medium transition-colors flex items-center gap-1',
-                        activeTab === tab
-                          ? 'bg-(--foreground) text-(--white)'
-                          : 'text-(--muted-foreground) hover:text-(--foreground)'
-                      )}
-                    >
-                      {tab === 'list' ? <><List size={11} /> All</> : <><Sparkles size={11} /> By Topic</>}
-                    </button>
-                  ))}
-                </div>
+                <Tabs
+                  value={activeTab}
+                  onValueChange={(v) => setActiveTab(v as 'list' | 'clustered')}
+                  variant="segmented"
+                >
+                  <TabsList>
+                    <TabsTrigger value="list" className="flex items-center gap-1">
+                      <ViewListIcon size="xs" /> All
+                    </TabsTrigger>
+                    <TabsTrigger value="clustered" className="flex items-center gap-1">
+                      <SparklesIcon size="xs" /> By Topic
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
               )}
             </div>
             <Button
               variant="primary"
-              icon={<Save size={14} />}
+              icon={<SaveIcon size="sm" />}
               onClick={handleSaveSession}
-              disabled={saveSessionMutation.isPending || !!loadedSession}
+              loading={saveSessionMutation.isPending}
+              disabled={!!loadedSession}
               className="self-start shrink-0 sm:self-auto"
             >
-              {saveSessionMutation.isPending ? 'Saving...' : saveSessionMutation.isSuccess ? 'Saved!' : 'Save Session'}
+              {saveSessionMutation.isSuccess ? 'Saved!' : 'Save Session'}
             </Button>
           </div>
 
@@ -356,7 +362,7 @@ export default function Discovery() {
       {/* Empty State */}
       {!hasSearched && (
         <div className="text-center py-16">
-          <Sparkles size={48} className="text-(--muted-foreground) mx-auto mb-4 opacity-50" />
+          <SparklesIcon size={48} className="text-(--muted-foreground) mx-auto mb-4 opacity-50" />
           <p className="text-body text-(--muted-foreground) max-w-md mx-auto">
             Enter a search query above to discover research papers with AI-powered insights
           </p>
@@ -372,6 +378,6 @@ export default function Discovery() {
           onSelectPaper={(paper) => setCitationPaper(paper)}
         />
       )}
-    </div>
+    </PageContainer>
   );
 }

@@ -1,4 +1,4 @@
-import { Trash as Trash2 } from "iconsax-reactjs";
+import { TrashIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { highlightLabel, highlightTheme } from "./highlight-colors";
 import type { Annotation } from "@/lib/api/annotations";
@@ -88,7 +88,7 @@ export function AnnotationCard({
             className="rounded p-0.5 opacity-0 transition-opacity group-hover/card:opacity-60 hover:opacity-100!"
             style={{ color: `var(--theme-${theme}-text)` }}
           >
-            <Trash2 size={12} />
+            <TrashIcon size="xs" />
           </button>
         )}
       </div>

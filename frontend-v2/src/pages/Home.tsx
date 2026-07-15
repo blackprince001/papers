@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { SearchNormal as Search, Add as Plus } from 'iconsax-reactjs';
+import { SearchIcon, PlusIcon } from '@/components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -47,7 +47,7 @@ export default function Home() {
             onSubmit={() => handleSearch()}
             placeholder="Search your library..."
             submitLabel="Search"
-            submitIcon={<Search size={14} />}
+            submitIcon={<SearchIcon size="sm" />}
             autoFocus
           />
         </div>
@@ -62,7 +62,7 @@ export default function Home() {
               Recent Papers: {total > 0 && ` · ${total} papers`}
             </h4>
             <Link to="/ingest" aria-label="Add paper">
-              <Button variant="primary" icon={<Plus size={14} />} className="px-2.5 sm:px-4">
+              <Button variant="primary" icon={<PlusIcon size="sm" />} className="px-2.5 sm:px-4">
                 <span className="hidden sm:inline">Add Paper</span>
               </Button>
             </Link>

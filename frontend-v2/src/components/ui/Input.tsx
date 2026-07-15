@@ -1,5 +1,9 @@
 import { forwardRef, type InputHTMLAttributes } from 'react';
+import { Input as HeroInput, type InputProps as HeroInputProps } from '@heroui/react';
 import { cn } from '@/lib/utils';
+
+/* Lumen facade over the HeroUI v3 Input (React Aria). Standalone input —
+ * labels/descriptions stay with the caller, as before. */
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: boolean;
@@ -8,21 +12,15 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ error, className, ...props }, ref) => {
     return (
-      <input
+      <HeroInput
         ref={ref}
+        aria-invalid={error || undefined}
         className={cn(
-          'w-full bg-(--card) text-(--foreground)',
-          'text-code font-normal leading-5',
-          'px-3 py-2 h-9',
-          'rounded-lg',
-          'border border-(--border)',
-          'placeholder:text-(--muted-foreground)',
-          'focus:outline-none focus:border-(--ring) focus:ring-2 focus:ring-(--ring)/10',
-          'transition-all duration-150',
-          error && 'border-(--destructive) focus:border-(--destructive)',
+          'w-full',
+          error && 'border-(--danger) focus:border-(--danger) focus-visible:border-(--danger)',
           className,
         )}
-        {...props}
+        {...(props as Partial<HeroInputProps>)}
       />
     );
   },

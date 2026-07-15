@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { DocumentDownload as Download, DocumentText as FileText, DocumentCode as FileJson, TableDocument as FileSpreadsheet, Refresh as Loader2 } from 'iconsax-reactjs';
+import { DownloadIcon, FileTextIcon, FileCodeIcon, FileSpreadsheetIcon } from '@/components/icons';
 import { exportApi } from '@/lib/api/export';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
@@ -9,10 +9,10 @@ import { toastSuccess, toastError, toastWarning } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils';
 
 const EXPORT_FORMATS = [
-  { name: 'BibTeX', value: 'bibtex' as const, icon: FileText, ext: '.bib', desc: 'Standard citation format for LaTeX' },
-  { name: 'JSON', value: 'json' as const, icon: FileJson, ext: '.json', desc: 'Full metadata with annotations' },
-  { name: 'CSV', value: 'csv' as const, icon: FileSpreadsheet, ext: '.csv', desc: 'Spreadsheet-compatible format' },
-  { name: 'RIS', value: 'ris' as const, icon: FileText, ext: '.ris', desc: 'Reference Manager format' },
+  { name: 'BibTeX', value: 'bibtex' as const, icon: FileTextIcon, ext: '.bib', desc: 'Standard citation format for LaTeX' },
+  { name: 'JSON', value: 'json' as const, icon: FileCodeIcon, ext: '.json', desc: 'Full metadata with annotations' },
+  { name: 'CSV', value: 'csv' as const, icon: FileSpreadsheetIcon, ext: '.csv', desc: 'Spreadsheet-compatible format' },
+  { name: 'RIS', value: 'ris' as const, icon: FileTextIcon, ext: '.ris', desc: 'Reference Manager format' },
 ];
 
 const CITATION_FORMATS = [
@@ -89,7 +89,7 @@ export default function Export() {
   if (paperIds.length === 0) return null;
 
   return (
-    <div className="max-w-175 mx-auto px-6 py-8">
+    <div className="max-w-(--width-reading) mx-auto px-6 py-8">
       <div className="mb-8">
         <h1 className="text-page-title mb-1">Export Papers</h1>
         <p className="text-body text-(--muted-foreground)">
@@ -132,7 +132,7 @@ export default function Export() {
                     )}
                   >
                     <div className="flex items-center gap-2 mb-1">
-                      <Icon size={16} className="text-(--muted-foreground)" />
+                      <Icon size="md" className="text-(--muted-foreground)" />
                       <span className="text-code font-bold">{fmt.name}</span>
                     </div>
                     <p className="text-caption text-(--muted-foreground) leading-snug">{fmt.desc}</p>
@@ -168,13 +168,13 @@ export default function Export() {
 
         {/* Actions */}
         <div className="flex items-center gap-3">
-          <Button 
-            variant="primary" 
-            icon={exportMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+          <Button
+            variant="primary"
+            icon={<DownloadIcon size="sm" />}
             onClick={() => exportMutation.mutate()}
-            disabled={exportMutation.isPending}
+            loading={exportMutation.isPending}
           >
-            {exportMutation.isPending ? 'Exporting...' : 'Export'}
+            Export
           </Button>
           <Button 
             variant="ghost" 

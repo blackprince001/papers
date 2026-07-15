@@ -1,8 +1,10 @@
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { Magicpen as Highlighter, Message as MessageSquare, Trash as Trash2, Edit as Edit2, ArrowRight2 as ChevronRight, ExportSquare } from 'iconsax-reactjs';
+import { ChatIcon, ChevronRightIcon, EditIcon, ExternalLinkIcon, HighlighterIcon, TrashIcon } from '@/components/icons';
 import { type Annotation } from '@/lib/api/annotations';
 import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/lib/utils';
 
 interface PaperAnnotationsPanelProps {
@@ -39,7 +41,7 @@ export function PaperAnnotationsPanel({
     return (
       <div className="p-8 space-y-4">
         {[1, 2, 3].map(i => (
-          <div key={i} className="h-24 bg-(--muted)/50 rounded-xl animate-pulse" />
+          <Skeleton key={i} className="h-24 rounded-xl" />
         ))}
       </div>
     );
@@ -64,9 +66,9 @@ export function PaperAnnotationsPanel({
         <div className="flex items-start justify-between gap-3 mb-2">
           <div className="flex items-center gap-1.5 overflow-hidden">
             {isNote ? (
-              <MessageSquare size={13} className="text-(--muted-foreground) shrink-0" />
+              <ChatIcon size="sm" className="text-(--muted-foreground) shrink-0" />
             ) : (
-              <Highlighter size={13} className="text-(--muted-foreground) shrink-0" />
+              <HighlighterIcon size="sm" className="text-(--muted-foreground) shrink-0" />
             )}
             {page && (
               <span className={cn(
@@ -79,18 +81,21 @@ export function PaperAnnotationsPanel({
           </div>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button
-              variant="ghost"
-              className="h-6 w-6 p-0"
+              variant="icon"
+              size="icon-xs"
               onClick={(e) => { e.stopPropagation(); onEditAnnotation(ann); }}
+              aria-label="Edit annotation"
             >
-              <Edit2 size={12} />
+              <EditIcon size="xs" />
             </Button>
             <Button
-              variant="ghost"
-              className="h-6 w-6 p-0 text-(--destructive) hover:bg-(--destructive)/10"
+              variant="icon"
+              size="icon-xs"
+              className="text-(--destructive) hover:bg-(--destructive)/10"
               onClick={(e) => { e.stopPropagation(); onDeleteAnnotation(ann.id); }}
+              aria-label="Delete annotation"
             >
-              <Trash2 size={12} />
+              <TrashIcon size="xs" />
             </Button>
           </div>
         </div>
@@ -111,7 +116,7 @@ export function PaperAnnotationsPanel({
           <span className="text-micro text-(--muted-foreground) opacity-60 font-medium uppercase tabular-nums">
             {format(new Date(ann.created_at), 'MMM d, yyyy')}
           </span>
-          <ChevronRight size={12} className="text-(--muted-foreground) opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1" />
+          <ChevronRightIcon size="xs" className="text-(--muted-foreground) opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1" />
         </div>
       </div>
     );
@@ -134,7 +139,7 @@ export function PaperAnnotationsPanel({
               className="h-7 gap-1.5 text-caption text-(--muted-foreground) hover:text-(--foreground)"
               onClick={() => navigate('/annotations')}
             >
-              <ExportSquare size={13} />
+              <ExternalLinkIcon size="sm" />
               Cite & Export
             </Button>
           )}
@@ -157,11 +162,12 @@ export function PaperAnnotationsPanel({
           {filteredAnnotations.map(renderAnnotationCard)}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-12 px-6 text-center bg-(--muted)/10 rounded-2xl border border-dashed border-(--border)">
-          <Highlighter size={32} className="mb-4 text-(--muted-foreground) opacity-30" />
-          <p className="text-code text-(--muted-foreground)">
-            {filterByPage ? `No annotations on page ${currentPage}` : 'No annotations yet'}
-          </p>
+        <div className="bg-(--muted)/10 rounded-2xl border border-dashed border-(--border)">
+          <EmptyState
+            size="panel"
+            icon={HighlighterIcon}
+            title={filterByPage ? `No annotations on page ${currentPage}` : 'No annotations yet'}
+          />
         </div>
       )}
 

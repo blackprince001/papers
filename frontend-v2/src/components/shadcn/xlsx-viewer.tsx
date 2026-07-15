@@ -12,22 +12,21 @@ import {
   type XlsxTableHeaderMenuRenderProps,
   type XlsxViewerController,
 } from "@extend-ai/react-xlsx"
-import {
-  ArrowLeft01Icon,
-  ArrowRight01Icon,
-  Download01Icon,
-  MinusSignCircleIcon,
-  Moon02Icon,
-  MoreHorizontalIcon,
-  PlusSignCircleIcon,
-  Search01Icon,
-  Sun03Icon,
-  Upload01Icon,
-} from "@hugeicons/core-free-icons"
-import { HugeiconsIcon } from "@hugeicons/react"
 import { createPortal } from "react-dom"
 
 import { cn } from "@/lib/utils"
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  DownloadIcon,
+  MoonIcon,
+  MoreHorizontalIcon,
+  SearchIcon,
+  SunIcon,
+  UploadIcon,
+  ZoomInIcon,
+  ZoomOutIcon,
+} from "@/components/icons"
 import { Button } from "@/components/shadcn/button"
 import {
   DropdownMenu,
@@ -522,7 +521,7 @@ export function WorkbookTableHeaderMenu({
           {triggerIcon ? (
             triggerIcon
           ) : (
-            <HugeiconsIcon icon={MoreHorizontalIcon} className="size-3.5" />
+            <MoreHorizontalIcon className="size-3.5" />
           )}
         </Button>
       </DropdownMenuTrigger>
@@ -685,7 +684,7 @@ function WorkbookSearchPopover({
             aria-label="Search workbook"
             disabled={controlsDisabled}
           >
-            <HugeiconsIcon icon={Search01Icon} className="size-4" />
+            <SearchIcon className="size-4" />
           </Button>
         </PopoverTrigger>
       </ToolbarTooltip>
@@ -735,7 +734,7 @@ function WorkbookSearchPopover({
                 disabled={isSearching || searchResults.length === 0}
                 onClick={() => goToRelativeResult(-1)}
               >
-                <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" />
+                <ChevronLeftIcon className="size-4" />
               </Button>
               <Button
                 type="button"
@@ -745,7 +744,7 @@ function WorkbookSearchPopover({
                 disabled={isSearching || searchResults.length === 0}
                 onClick={() => goToRelativeResult(1)}
               >
-                <HugeiconsIcon icon={ArrowRight01Icon} className="size-4" />
+                <ChevronRightIcon className="size-4" />
               </Button>
             </div>
           </div>
@@ -819,10 +818,11 @@ function WorkbookToolbar({
                 aria-label={isDark ? "Use light workbook" : "Use dark workbook"}
                 onClick={() => onIsDarkChange(!isDark)}
               >
-                <HugeiconsIcon
-                  icon={isDark ? Sun03Icon : Moon02Icon}
-                  className="size-4"
-                />
+                {isDark ? (
+                  <SunIcon className="size-4" />
+                ) : (
+                  <MoonIcon className="size-4" />
+                )}
               </Button>
             </ToolbarTooltip>
           ) : null}
@@ -842,7 +842,7 @@ function WorkbookToolbar({
                 aria-label="Zoom out"
                 onClick={zoomOut}
               >
-                <HugeiconsIcon icon={MinusSignCircleIcon} className="size-4" />
+                <ZoomOutIcon className="size-4" />
               </Button>
             </ToolbarTooltip>
             <Select
@@ -878,7 +878,7 @@ function WorkbookToolbar({
                 aria-label="Zoom in"
                 onClick={zoomIn}
               >
-                <HugeiconsIcon icon={PlusSignCircleIcon} className="size-4" />
+                <ZoomInIcon className="size-4" />
               </Button>
             </ToolbarTooltip>
           </div>
@@ -901,7 +901,7 @@ function WorkbookToolbar({
                   aria-label="Download XLSX"
                   onClick={onDownload}
                 >
-                  <HugeiconsIcon icon={Download01Icon} className="size-4" />
+                  <DownloadIcon className="size-4" />
                 </Button>
               </ToolbarTooltip>
             </>
@@ -920,7 +920,7 @@ function WorkbookToolbar({
                   aria-label="Upload XLSX"
                   onClick={onUploadClick}
                 >
-                  <HugeiconsIcon icon={Upload01Icon} className="size-4" />
+                  <UploadIcon className="size-4" />
                 </Button>
               </ToolbarTooltip>
             </>
@@ -962,7 +962,7 @@ function WorkbookStandaloneToolbar({
                 aria-label="Upload XLSX"
                 onClick={onUploadClick}
               >
-                <HugeiconsIcon icon={Upload01Icon} className="size-4" />
+                <UploadIcon className="size-4" />
               </Button>
             </ToolbarTooltip>
           ) : null}
@@ -1573,7 +1573,7 @@ function XlsxViewerContent({
               className="mt-4"
               onClick={() => fileInputRef.current?.click()}
             >
-              <HugeiconsIcon icon={Upload01Icon} className="size-4" />
+              <UploadIcon className="size-4" />
               Upload XLSX
             </Button>
           </div>
@@ -1613,7 +1613,7 @@ function XlsxViewerContent({
               className="mt-4"
               onClick={() => fileInputRef.current?.click()}
             >
-              <HugeiconsIcon icon={Upload01Icon} className="size-4" />
+              <UploadIcon className="size-4" />
               Upload XLSX
             </Button>
           </div>

@@ -4,12 +4,11 @@ import { PaperDetails } from './PaperDetails';
 import { AISummary } from './AISummary';
 import { KeyFindings } from './KeyFindings';
 import { ReadingGuide } from './ReadingGuide';
-import { AutoHighlights } from './AutoHighlights';
 import { PaperAnnotationsPanel } from './PaperAnnotationsPanel';
 import { RelatedPapers } from './RelatedPapers';
 import { type Paper } from '@/lib/api/papers';
 import { type Annotation } from '@/lib/api/annotations';
-import { DocumentText as FileText, MagicStar as Sparkles, Magicpen as Highlighter, Link } from 'iconsax-reactjs';
+import { FileTextIcon, HighlighterIcon, LinkIcon, SparklesIcon } from '@/components/icons';
 // import { cn } from '@/lib/utils';
 
 interface AnalysisSidebarProps {
@@ -44,15 +43,15 @@ export function AnalysisSidebar({
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
         <TabsList className="px-4 gap-2 border-b border-(--border) bg-(--white) shrink-0">
           <TabsTrigger value="details" className="h-12 gap-2 border-b-2 rounded-none">
-            <FileText size={14} />
+            <FileTextIcon size="sm" />
             <span className="hidden lg:inline">Details</span>
           </TabsTrigger>
           <TabsTrigger value="ai" className="h-12 gap-2 border-b-2 rounded-none">
-            <Sparkles size={14} />
+            <SparklesIcon size="sm" />
             <span className="hidden lg:inline">AI Analytics</span>
           </TabsTrigger>
           <TabsTrigger value="annotations" className="h-12 gap-2 border-b-2 rounded-none">
-            <Highlighter size={14} />
+            <HighlighterIcon size="sm" />
             <span className="hidden lg:inline">Notes</span>
             {annotations.length > 0 && (
               <span className="text-micro bg-(--muted) px-1.5 py-0.5 rounded-full">
@@ -61,7 +60,7 @@ export function AnalysisSidebar({
             )}
           </TabsTrigger>
           <TabsTrigger value="related" className="h-12 gap-2 border-b-2 rounded-none">
-            <Link size={14} />
+            <LinkIcon size="sm" />
             <span className="hidden lg:inline">Related</span>
           </TabsTrigger>
         </TabsList>
@@ -73,8 +72,6 @@ export function AnalysisSidebar({
 
           <TabsContent value="ai" className="h-full overflow-y-auto scrollbar-none p-6 text-(--foreground)">
             <div className="space-y-8">
-              <AutoHighlights paperId={paper.id} />
-              
               <section>
                 <div className="flex items-center gap-2 mb-4">
                   <h3 className="text-body font-bold">Executive Summary</h3>

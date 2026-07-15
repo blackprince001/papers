@@ -3,8 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog } from './ui/Dialog';
 import { Button } from './ui/Button';
 import { Select } from './ui/Select';
+import { Skeleton } from './ui/Skeleton';
+import { EmptyState } from './ui/EmptyState';
 import { paperSharingApi, groupSharingApi, type SharePermission, type ShareRecipient } from '@/lib/api/sharing';
-import { Trash, UserAdd } from 'iconsax-reactjs';
+import { TrashIcon, UserPlusIcon, UsersIcon } from '@/components/icons';
 
 interface ShareDialogProps {
   open: boolean;
@@ -97,8 +99,12 @@ export function ShareDialog({ open, onClose, resourceId, resourceType, resourceT
                 <option value="editor">Editor</option>
               </Select>
             </div>
-            <Button onClick={handleShare} disabled={shareMutation.isPending || !emailInput.trim()}>
-              <UserAdd size={16} />
+            <Button
+              icon={<UserPlusIcon size="sm" />}
+              onClick={handleShare}
+              loading={shareMutation.isPending}
+              disabled={!emailInput.trim()}
+            >
               Share
             </Button>
           </div>
@@ -110,9 +116,24 @@ export function ShareDialog({ open, onClose, resourceId, resourceType, resourceT
 
         {/* Current shares */}
         {isLoading ? (
-          <p className="text-caption text-(--muted-foreground)">Loading shares...</p>
+          <div className="space-y-2">
+            {[0, 1].map((i) => (
+              <div key={i} className="flex items-center justify-between gap-2 py-1.5 px-2">
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-3.5 w-36" />
+                  <Skeleton className="h-3 w-52" />
+                </div>
+                <Skeleton className="h-8 w-28" />
+              </div>
+            ))}
+          </div>
         ) : shares.length === 0 ? (
-          <p className="text-caption text-(--muted-foreground)">Not shared with anyone yet.</p>
+          <EmptyState
+            size="panel"
+            icon={UsersIcon}
+            title="Not shared with anyone yet"
+            description="People you share with will appear here."
+          />
         ) : (
           <div className="space-y-2">
             <p className="text-caption font-medium text-(--muted-foreground)">Shared with</p>
@@ -137,7 +158,7 @@ export function ShareDialog({ open, onClose, resourceId, resourceType, resourceT
                     className="p-1 rounded-interactive text-(--muted-foreground) hover:text-(--destructive) hover:bg-(--destructive)/10 transition-colors"
                     aria-label={`Remove ${share.display_name}`}
                   >
-                    <Trash size={14} />
+                    <TrashIcon size="sm" />
                   </button>
                 </div>
               </div>

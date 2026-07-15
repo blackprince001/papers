@@ -1,18 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  DocumentText,
-  Book1,
-  Chart,
-  MenuBoard,
-  Edit,
-  Note1,
-  Global,
-  User,
-  ExportSquare,
-} from "iconsax-reactjs";
+  AnnotationIcon,
+  BookOpenIcon,
+  ChartBarsIcon,
+  EditIcon,
+  ExternalLinkIcon,
+  FileTextIcon,
+  GlobeIcon,
+  UserIcon,
+  ViewListIcon,
+  type IconProps,
+} from "@/components/icons";
 import {
   referencesApi,
   type ReferenceManifestEntry,
@@ -26,17 +27,17 @@ interface ReferenceChipProps {
   label: string;
 }
 
-type IconCmp = typeof DocumentText;
+type IconCmp = ComponentType<IconProps>;
 
 const KIND_ICONS: Record<string, IconCmp> = {
-  paper: DocumentText,
-  citation: Book1,
-  figure: Chart,
-  section: MenuBoard,
-  annotation: Edit,
-  note: Note1,
-  external: Global,
-  author: User,
+  paper: FileTextIcon,
+  citation: BookOpenIcon,
+  figure: ChartBarsIcon,
+  section: ViewListIcon,
+  annotation: EditIcon,
+  note: AnnotationIcon,
+  external: GlobeIcon,
+  author: UserIcon,
 };
 
 const KIND_LABELS: Record<string, string> = {
@@ -52,11 +53,11 @@ const KIND_LABELS: Record<string, string> = {
 
 const KIND_ICON_TINT: Record<string, string> = {
   paper: "text-sky-600",
-  citation: "text-amber-600",
+  citation: "text-(--warning)",
   figure: "text-emerald-600",
   section: "text-violet-600",
   annotation: "text-rose-600",
-  note: "text-orange-600",
+  note: "text-(--coral-red)",
   external: "text-cyan-600",
   author: "text-indigo-600",
 };
@@ -106,7 +107,7 @@ export function ReferenceChip({ kind, id, label }: ReferenceChipProps) {
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const Icon = KIND_ICONS[kind] ?? DocumentText;
+  const Icon = KIND_ICONS[kind] ?? FileTextIcon;
   const tint = KIND_ICON_TINT[kind] ?? "text-(--muted-foreground)";
   const kindLabel = KIND_LABELS[kind] ?? kind;
 
@@ -173,9 +174,9 @@ export function ReferenceChip({ kind, id, label }: ReferenceChipProps) {
         title="Reference unavailable"
       >
         <Icon
-          size={11}
+          size="xs"
+          filled
           className={cn("translate-y-[1px] opacity-50", tint)}
-          variant="Bold"
         />
         <span>{text}</span>
       </span>
@@ -224,7 +225,7 @@ export function ReferenceChip({ kind, id, label }: ReferenceChipProps) {
                 />
               )}
               <div className="flex items-center gap-1.5 mb-1">
-                <Icon size={12} className={tint} variant="Bold" />
+                <Icon size="xs" filled className={tint} />
                 <span className="text-[0.625rem] text-(--muted-foreground) uppercase tracking-wider">
                   {kindLabel}
                 </span>
@@ -249,7 +250,7 @@ export function ReferenceChip({ kind, id, label }: ReferenceChipProps) {
                   className="mt-2 inline-flex items-center gap-1 text-caption text-(--sky-blue) hover:opacity-80 transition-opacity"
                 >
                   {resolved.internal ? "Open" : "View source"}
-                  <ExportSquare size={11} />
+                  <ExternalLinkIcon size="xs" />
                 </button>
               )}
             </div>
@@ -276,9 +277,9 @@ export function ReferenceChip({ kind, id, label }: ReferenceChipProps) {
         title={resolved?.title || text}
       >
         <Icon
-          size={11}
+          size="xs"
+          filled
           className={cn("translate-y-[1px]", tint)}
-          variant="Bold"
         />
         <span>{text}</span>
       </button>

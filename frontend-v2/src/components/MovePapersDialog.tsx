@@ -59,8 +59,8 @@ export function MovePapersDialog({
         <Button variant="ghost" onClick={onClose} disabled={isMoving}>
           Cancel
         </Button>
-        <Button variant="primary" onClick={() => onMove(selected)} disabled={isMoving}>
-          {isMoving ? 'Applying…' : 'Apply'}
+        <Button variant="primary" onClick={() => onMove(selected)} loading={isMoving}>
+          Apply
         </Button>
       </DialogFooter>
     </Dialog>

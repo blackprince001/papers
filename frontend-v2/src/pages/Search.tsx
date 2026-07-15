@@ -1,11 +1,13 @@
 import { useState, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { SearchNormal as SearchIcon, SliderHorizontal as SlidersHorizontal, MagicStar as Sparkles } from 'iconsax-reactjs';
+import { useQuery } from '@tanstack/react-query';
+import { SearchIcon, SlidersIcon, SparklesIcon } from '@/components/icons';
 import { searchApi, type SearchMode, type SearchRequest } from '@/lib/api/search';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/Popover';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
@@ -14,7 +16,6 @@ import { cn } from '@/lib/utils';
 
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const queryClient = useQueryClient();
   
   const initialQuery = searchParams.get('q') ?? '';
   const initialMode = (searchParams.get('mode') as SearchMode) ?? 'fulltext';
@@ -37,7 +38,7 @@ export default function Search() {
   });
 
   // Search query
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ['search', query, mode, yearFrom, yearTo, readingStatus, priority],
     queryFn: () => searchApi.search({
       query,
@@ -95,7 +96,7 @@ export default function Search() {
       <div className="flex items-center gap-3 mb-6">
         <div className="flex-1 relative">
           <SearchIcon
-            size={16}
+            size="md"
             className="absolute left-3.5 top-1/2 -translate-y-1/2 text-(--muted-foreground) pointer-events-none"
           />
           <input
@@ -112,10 +113,11 @@ export default function Search() {
         {/* Filters Popover */}
         <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
           <PopoverTrigger>
-            <Button 
-              variant="secondary" 
-              icon={<SlidersHorizontal size={14} />} 
-              className={cn("h-11!", hasFilters && "bg-(--muted)")}
+            <Button
+              variant="secondary"
+              size="lg"
+              icon={<SlidersIcon size="sm" />}
+              className={cn(hasFilters && 'bg-(--muted)')}
             >
               Filters
               {hasFilters && <span className="w-1.5 h-1.5 rounded-full bg-(--foreground) ml-1" />}
@@ -177,7 +179,7 @@ export default function Search() {
               : "bg-(--muted) text-(--foreground) hover:bg-(--border)"
           )}
         >
-          <SearchIcon size={13} />
+          <SearchIcon size="sm" />
           <span>Full-text</span>
         </button>
         <button 
@@ -189,26 +191,27 @@ export default function Search() {
               : "bg-(--muted) text-(--foreground) hover:bg-(--border)"
           )}
         >
-          <Sparkles size={13} />
+          <SparklesIcon size="sm" />
           <span>Semantic</span>
         </button>
       </div>
 
       {/* Semantic search degradation notice */}
       {semanticUnavailable && mode === 'semantic' && (
-        <div className="flex items-start gap-3 px-3 py-2 mb-6 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 text-caption">
-          <span className="mt-0.5 shrink-0 text-sm">⚠</span>
+        <div className="flex items-start gap-3 px-3 py-2 mb-6 rounded-lg border border-(--warning-border) bg-(--warning-soft) text-caption">
+          <span className="mt-0.5 shrink-0 text-sm text-(--warning)">⚠</span>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-amber-800 dark:text-amber-200">
+            <p className="font-medium text-(--warning)">
               Semantic search is unavailable — the server has no embedding key configured.
             </p>
-            <p className="text-(--muted-foreground) mt-0.5 text-[0.6875rem]">
+            <p className="text-(--muted-foreground) mt-0.5 text-micro">
               Full-text search still works normally.
             </p>
           </div>
           <Button
             variant="ghost"
-            className="h-6! text-caption! shrink-0"
+            size="sm"
+            className="shrink-0"
             onClick={() => handleModeChange('fulltext')}
           >
             Use full-text
@@ -230,12 +233,12 @@ export default function Search() {
       )}
 
       {isError && (
-        <div className="text-center py-12 text-(--muted-foreground)">
-          <p className="mb-4">Failed to search</p>
-          <Button variant="outlined" onClick={() => queryClient.invalidateQueries({ queryKey: ['search'] })}>
-            Retry
-          </Button>
-        </div>
+        <ErrorState
+          size="page"
+          title="Failed to search"
+          onRetry={() => refetch()}
+          retrying={isRefetching}
+        />
       )}
 
       {!isLoading && !isError && query.trim() && (
@@ -245,9 +248,12 @@ export default function Search() {
           </p>
 
           {results.length === 0 ? (
-            <div className="text-center py-12 text-(--muted-foreground)">
-              <p>No results found</p>
-            </div>
+            <EmptyState
+              size="page"
+              icon={SearchIcon}
+              title="No results found"
+              description="Try a different query or adjust your filters."
+            />
           ) : (
             results.map((result) => {
               const theme = getPaperTheme(result.paper_id);
@@ -288,10 +294,11 @@ export default function Search() {
       )}
 
       {!query.trim() && (
-        <div className="text-center py-12 text-(--muted-foreground)">
-          <SearchIcon size={48} className="mx-auto mb-4 opacity-20" />
-          <p>Enter a search query to find papers</p>
-        </div>
+        <EmptyState
+          size="page"
+          icon={SearchIcon}
+          title="Enter a search query to find papers"
+        />
       )}
     </div>
   );

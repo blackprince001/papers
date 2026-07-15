@@ -1,6 +1,6 @@
-import { ArrowLeft2 as ChevronLeft, ArrowRight2 as ChevronRight, More as MoreHorizontal } from 'iconsax-reactjs';
 import { cn } from '@/lib/utils';
 import { usePagination } from '@/hooks/use-pagination';
+import { ChevronLeftIcon, ChevronRightIcon, MoreHorizontalIcon } from '../icons';
 
 interface PaginationProps {
   currentPage: number;
@@ -33,14 +33,14 @@ export function Pagination({ currentPage, totalPages, onPageChange, itemsToShow 
         aria-label="Previous page"
         className={cn(btnBase, btnIdle)}
       >
-        <ChevronLeft size={14} />
+        <ChevronLeftIcon size="sm" />
       </button>
 
       {showLeftEllipsis && (
         <>
           <PageBtn page={1} active={false} onClick={onPageChange} btnBase={btnBase} btnIdle={btnIdle} btnActive={btnActive} />
           <span className="inline-flex items-center justify-center h-8 w-8 text-(--muted-foreground)">
-            <MoreHorizontal size={14} />
+            <MoreHorizontalIcon size="sm" />
           </span>
         </>
       )}
@@ -60,7 +60,7 @@ export function Pagination({ currentPage, totalPages, onPageChange, itemsToShow 
       {showRightEllipsis && (
         <>
           <span className="inline-flex items-center justify-center h-8 w-8 text-(--muted-foreground)">
-            <MoreHorizontal size={14} />
+            <MoreHorizontalIcon size="sm" />
           </span>
           <PageBtn page={totalPages} active={false} onClick={onPageChange} btnBase={btnBase} btnIdle={btnIdle} btnActive={btnActive} />
         </>
@@ -72,7 +72,7 @@ export function Pagination({ currentPage, totalPages, onPageChange, itemsToShow 
         aria-label="Next page"
         className={cn(btnBase, btnIdle)}
       >
-        <ChevronRight size={14} />
+        <ChevronRightIcon size="sm" />
       </button>
     </nav>
   );

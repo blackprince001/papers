@@ -1,58 +1,69 @@
 ---
 type: Reference
-title: Frontend Styling — Tailwind v4
-description: Tailwind v4 via CSS-based @theme config (no JS config) — near-monochrome + forest-green palette, 8 per-paper themes, dark mode, self-hosted Inter, sonner theming, PWA theme color.
+title: Frontend Styling — Tailwind v4 + HeroUI v3
+description: CSS-based token system, HeroUI theme bridge, status intents, radius policy, reduced motion, 8 paper themes, dark mode.
 resource: frontend-v2/src/index.css
-tags: [frontend, styling, tailwind, design-tokens, dark-mode]
-timestamp: 2026-06-28T00:00:00Z
+tags: [frontend, styling, tailwind, heroui, design-tokens, dark-mode]
+timestamp: 2026-07-12T00:00:00Z
 ---
 
 # Setup
 
-Tailwind v4 (`tailwindcss@^4.3.0`) via the **`@tailwindcss/vite`** plugin
-(`vite.config.ts:4,10`) + `tw-animate-css` for animations. **No
-`tailwind.config.js` / `postcss.config.js`** — config is entirely CSS-based
-(Tailwind v4 model). shadcn `components.json` declares `style: "new-york-v4"`,
-`cssVariables: true`, base color neutral, `css: "src/index.css"`, ui alias
-`@/components/shadcn`.
+Tailwind v4 via `@tailwindcss/vite` — config is entirely CSS-based in
+`src/index.css`. **HeroUI v3** (`@heroui/styles`) is imported immediately
+after `tailwindcss` and themed through CSS variables (see the bridge
+below). `tw-animate-css` provides `animate-*` utilities.
 
-# CSS entry — `src/index.css` (676 lines)
+# Token system (`src/index.css`)
 
-- `@import 'tailwindcss';` + `@import 'tw-animate-css';` (`:1-2`).
-- Self-hosted **Inter variable font** (`@font-face` InterVariable + italic, `/fonts/*.woff2`, `:5-19`); `@custom-variant dark (&:is(.dark *))` (`:21`).
-- **Design tokens in `@theme {}`** (`:23-190`): type scale (`--text-micro … --text-display`), semantic color aliases, radii (`--radius-badge/button/interactive/banner/card/pill`), custom spacing (`--spacing-13/15/18/4_5`), layout widths (`--width-sidebar`, `--width-content-max: 72.5rem`), shadows, named animations.
-- `html { font-size: 110% }` (`:201`); body Inter opsz 32 + tabular-nums + ligatures (`:493-510`).
+- **Type scale** in `@theme`: `--text-micro … --text-display` with baked
+  line-heights/weights. Base `h1–h4` rules reference these tokens (single
+  source of truth).
+- **Palette**: near-monochrome + forest green (`--forest-black`,
+  `--deep-forest`, accents `--mint-green`, `--sky-blue`, `--coral-red`),
+  neutral scale, surfaces. `.dark` (on `<html>`, mirrored by
+  `data-theme`) redefines the primitives; everything derived flips free.
+- **Status intents**: `--danger / --warning / --success / --info` plus
+  derived `-soft` (9% color-mix over background) and `-border` (28%)
+  surfaces. Utilities: `text-danger`, `bg-warning-soft`,
+  `border-info-border`, etc. Raw Tailwind palette classes
+  (`bg-red-50`…) are banned in app code (audit-enforced).
+- **Radius policy**: badges `rounded` · controls `rounded-lg`
+  (=`--radius-interactive`) · banners `rounded-xl` · cards/panels/dialogs
+  `rounded-2xl` · pills `rounded-full`. `rounded-md` is banned.
+- **Charts**: `--chart-1..4` (sky-blue, success-green, coral-red,
+  mid-gray) — Recharts consumes `var()` directly.
+- **Layout**: `--width-content-max` (72.5rem, PageContainer "wide"),
+  `--width-main-content` (58.75rem, "content"), `--width-reading`
+  (43.75rem), `--header-h`, `--overlay-scrim`.
+- **Reduced motion**: global `prefers-reduced-motion` block kills
+  animations/transitions; `[data-slot='spinner']` keeps rotating slowed
+  (WCAG 2.3.3).
 
-# Base palette (`:root`, `:223-364`) — "Papers Design System", Logically-inspired
+# HeroUI v3 theme bridge
 
-Near-monochrome + forest-green:
+HeroUI reads a CSS-var contract; the bridge in `:root` maps every
+contract var onto Lumen primitives so both themes come from one palette:
+`--surface`→card-surface, `--overlay`→white, `--default`→light-gray,
+`--accent`→forest-black (**not** mint — accent is HeroUI's action color;
+mint stays `--mint-green`), `--field-*` (incl.
+**`--field-border-width: 1px`** — HeroUI defaults fields borderless; the
+user requires visible outlines), `--separator`, `--focus`, `--link`,
+`--radius: 0.5rem`, status `-foreground` pairs. `.dark` overrides only
+non-deriving values. BEM-level overrides: `.button` radius pinned to
+`--radius-interactive` (HeroUI defaults to pills) and popover-family
+surfaces flattened — **border only, no drop shadow** (user preference).
 
-- Primary: `--forest-black: #232927`, `--true-black: #080908`, `--deep-forest: #0f3322`.
-- Accents: `--mint-green: #4cffa9`, `--sky-blue: #3c91e6`, `--coral-red: #e45b3c`.
-- Neutral scale: `--near-black/charcoal/dark-gray/mid-gray/cool-gray`, surfaces `--off-white: #fdfdfd`, `--light-gray`, `--border-gray: #e2e4e3`, `--card-surface: #f9f9f9`.
-- Semantic Tailwind mappings (`:300-319`): `--primary: var(--forest-black)`, `--background: var(--off-white)`, `--foreground: var(--charcoal)`, `--border`, `--ring: var(--forest-black)`.
-- Floating-panel tokens (`--panel-surface`, `--panel-radius`, `--panel-gap`) used by the 3-column workspace.
+# Paper themes & misc
 
-# 8 paper themes (`:321-361`)
+8 per-paper themes (`--theme-{olive…sand}-{bg,border,text,accent,action}`)
+unchanged, assigned by `lib/paper-themes.ts`. Sonner toasts themed via CSS
+(intent colors from the status tokens; the custom "balance" toast is
+gone). Hidden scrollbars; `[data-reader-dark]` inverts only PDF canvases.
 
-Per-paper color identity: `--theme-olive/beige/blue/green/terracotta/sage/slate/sand-{bg,border,text,accent,action}`.
-Assigned deterministically by paper id in `lib/paper-themes.ts:20` and reused
-for highlight colors (`reader/highlight-colors.ts`).
+# Enforcement
 
-# Dark theme (`.dark`, `:366-472`)
-
-Clean neutral blacks (no tinting); inverts the neutral scale and paper-theme
-vars; `color-scheme: dark`. Dark reading pulses `[data-reader-dark]` and the
-CSS `filter: invert(1) hue-rotate(180deg)` applies only to `.react-pdf__Page
-canvas` (`:674`) — see [pdf-reader.md](pdf-reader.md).
-
-# Component layers
-
-In-house `src/components/ui/*` (Logically tokens) **and** shadcn
-`src/components/shadcn/*` (Radix-based) — both share the same CSS variables.
-
-# Misc styling
-
-Hidden scrollbars (`:487-491`); custom native `<dialog>` backdrops
-(`:568-580`); sonner toasts themed via CSS vars (`:582-661`). PWA theme color
-`#232927` (forest black) — `vite.config.ts:18`, `index.html:9`.
+`frontend-v2/scripts/audit-standards.mjs` counts violations (icon-library
+imports, ad-hoc spinners, `!` size overrides, raw status palette, hex in
+tsx, `rounded-md`, "Loading…" literals, non-token page widths). Keep it
+at zero outside `components/shadcn/` (quarantined island).

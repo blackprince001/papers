@@ -66,7 +66,7 @@ export function AgentThoughtPanel({ thoughts }: AgentThoughtPanelProps) {
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1.5 text-[0.6875rem] font-medium hover:text-(--foreground) transition-colors"
+        className="flex items-center gap-1.5 text-micro font-medium hover:text-(--foreground) transition-colors"
       >
         <span className="inline-block w-2 h-2 rounded-full bg-(--muted-foreground) animate-pulse" />
         {expanded ? 'Hide reasoning' : 'Show reasoning'}
@@ -74,7 +74,7 @@ export function AgentThoughtPanel({ thoughts }: AgentThoughtPanelProps) {
       </button>
 
       {expanded && (
-        <div className="mt-1.5 max-h-64 overflow-y-auto whitespace-pre-wrap text-[0.6875rem] leading-relaxed opacity-80 border-t border-(--border) pt-1.5">
+        <div className="mt-1.5 max-h-64 overflow-y-auto whitespace-pre-wrap text-micro leading-relaxed opacity-80 border-t border-(--border) pt-1.5">
           {visible}
           {displayedLen < reasoning.length && (
             <span className="inline-block w-[0.125rem] h-3 bg-(--foreground) ml-0.5 animate-pulse align-middle" />

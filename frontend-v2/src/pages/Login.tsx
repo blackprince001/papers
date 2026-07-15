@@ -40,7 +40,7 @@ export default function Login() {
 
         {/* Error */}
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-body text-red-700">
+          <div className="mb-4 rounded-lg bg-(--danger-soft) border border-(--danger-border) px-3 py-2 text-body text-(--danger)">
             {error}
           </div>
         )}

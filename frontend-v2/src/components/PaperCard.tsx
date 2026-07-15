@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Trash as Trash2, People, Message as MessageSquare } from 'iconsax-reactjs';
+import { ChatIcon, CheckIcon, TrashIcon, UsersIcon } from '@/components/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
@@ -7,6 +7,7 @@ import { getPaperTheme } from '@/lib/paper-themes';
 import { paperAuthors, paperYear } from '@/lib/paper-display';
 import { usePaperThumbnail } from '@/hooks/use-paper-thumbnail';
 import { PaperCoverPlaceholder } from '@/components/ui/PaperCoverPlaceholder';
+import { Skeleton, SkeletonText } from '@/components/ui/Skeleton';
 import { ReadingStatusBadge } from '@/components/ReadingStatusBadge';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { ProcessingStatusBadge } from '@/components/ProcessingStatusBadge';
@@ -89,9 +90,7 @@ export function PaperCard({
                 : 'bg-transparent border-(--mid-gray)',
             )}>
               {selected && (
-                <svg className="w-2.5 h-2.5 text-(--background)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
+                <CheckIcon size="xs" strokeWidth={3} className="text-(--background)" />
               )}
             </div>
           )}
@@ -109,7 +108,7 @@ export function PaperCard({
           {/* Shared indicator */}
           {isShared && (
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[0.625rem] font-medium bg-(--sky-blue)/10 text-(--sky-blue)">
-              <People size={10} />
+              <UsersIcon size="xs" />
               Shared
             </span>
           )}
@@ -134,7 +133,7 @@ export function PaperCard({
               className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-black/10"
               style={{ color: theme.text }}
             >
-              <MessageSquare size={12} />
+              <ChatIcon size="xs" />
             </button>
           )}
           {!selectionMode && onDelete && (
@@ -144,7 +143,7 @@ export function PaperCard({
               className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-black/10"
               style={{ color: theme.text }}
             >
-              <Trash2 size={12} />
+              <TrashIcon size="xs" />
             </button>
           )}
         </div>
@@ -224,5 +223,31 @@ export function PaperCard({
     <Link to={`/papers/${paper.id}`} className="block h-full">
       {cardInner}
     </Link>
+  );
+}
+
+/** Loading placeholder mirroring the PaperCard anatomy: badge/year header row
+ * over the inset cover-and-details area. */
+export function PaperCardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-(--border) overflow-hidden">
+      {/* Header: status badge + year */}
+      <div className="flex items-center justify-between px-4 pt-3.5 pb-2.5">
+        <Skeleton className="h-5 w-16 rounded-full" />
+        <Skeleton className="h-4 w-10" />
+      </div>
+      {/* Inset content: cover thumbnail + details */}
+      <div className="flex gap-3.5 rounded-t-xl border-t border-(--border) bg-(--card) px-4 pt-3.5 pb-4">
+        <Skeleton className="w-20 shrink-0 self-start aspect-[0.7727] rounded-lg" />
+        <div className="min-w-0 flex-1">
+          {/* Title (2-line clamp) */}
+          <SkeletonText lines={2} lastLineWidth="w-3/4" />
+          {/* Authors */}
+          <Skeleton className="mt-2.5 h-3 w-1/2" />
+          {/* Summary preview */}
+          <SkeletonText lines={2} lastLineWidth="w-2/3" className="mt-3" />
+        </div>
+      </div>
+    </div>
   );
 }

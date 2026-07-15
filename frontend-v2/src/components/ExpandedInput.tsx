@@ -3,21 +3,20 @@ import {
   useEffect,
   useRef,
   useCallback,
+  type ComponentType,
   type ReactNode,
 } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { annotationsApi } from "@/lib/api/annotations";
 import { papersApi } from "@/lib/api/papers";
 import {
-  DocumentText as FileText,
-  Book1 as BookOpen,
-  Stickynote as StickyNote,
-  TickCircle as Check,
-  ArrowDown2 as ChevronDown,
-  DocumentText,
-  Note1,
-  Edit,
-} from "iconsax-reactjs";
+  CheckIcon,
+  ChevronDownIcon,
+  FileTextIcon,
+  LibraryIcon,
+  NoteIcon,
+  type IconProps,
+} from "@/components/icons";
 import {
   Popover,
   PopoverTrigger,
@@ -34,14 +33,14 @@ interface MentionItem {
 }
 
 interface SuggestionPrompt {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: ComponentType<IconProps>;
   text: string;
   prompt: string;
 }
 
 export interface PromptGroup {
   label: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: ComponentType<IconProps>;
   prompts: SuggestionPrompt[];
 }
 
@@ -67,16 +66,10 @@ export interface ExpandedInputProps {
   className?: string;
 }
 
-// Same icon/tint convention as ReferenceChip, so an in-progress mention
-// reads as the same "reference" affordance once it's sent and rendered.
-const MENTION_ICONS: Record<string, typeof DocumentText> = {
-  note: Note1,
-  annotation: Edit,
-  paper: DocumentText,
-};
-
+// Same tint convention as ReferenceChip, so an in-progress mention reads
+// as the same "reference" affordance once it's sent and rendered.
 const MENTION_TINT: Record<string, string> = {
-  note: "text-orange-600",
+  note: "text-(--coral-red)",
   annotation: "text-rose-600",
   paper: "text-sky-600",
 };
@@ -99,29 +92,16 @@ function highlightContent(value: string): ReactNode[] {
         | "note"
         | "annotation"
         | "paper";
-      const Icon = MENTION_ICONS[type];
-      // The icon is absolutely positioned so it doesn't add width to the
-      // token — the overlay text has to stay character-for-character
-      // identical to the real (invisible) textarea value, or the caret and
-      // this highlight drift apart as soon as anything wraps.
+      // No icon in the overlay: the highlight must stay character-for-
+      // character identical to the invisible textarea value, and a hanging
+      // icon overlaps whatever precedes the token. Tint + underline are
+      // enough to mark the mention.
       nodes.push(
-        <span key={key++} className="relative">
-          <Icon
-            size={11}
-            variant="Bold"
-            className={cn(
-              "absolute -left-3.5 top-1/2 -translate-y-1/2",
-              MENTION_TINT[type],
-            )}
-          />
-          <span
-            className={cn(
-              "border-b border-dotted border-(--border)",
-              MENTION_TINT[type],
-            )}
-          >
-            {full}
-          </span>
+        <span
+          key={key++}
+          className={cn("border-b border-dotted border-(--border)", MENTION_TINT[type])}
+        >
+          {full}
         </span>,
       );
     } else if (bold) {
@@ -144,7 +124,7 @@ function highlightContent(value: string): ReactNode[] {
       );
     } else if (heading) {
       nodes.push(
-        <span key={key++} className="text-amber-700">
+        <span key={key++} className="text-(--warning)">
           {full}
         </span>,
       );
@@ -402,11 +382,11 @@ export function ExpandedInput({
   const getMentionIcon = (type: MentionItem["type"]) => {
     switch (type) {
       case "note":
-        return <StickyNote size={14} />;
+        return <NoteIcon size="sm" />;
       case "annotation":
-        return <FileText size={14} />;
+        return <FileTextIcon size="sm" />;
       case "paper":
-        return <BookOpen size={14} />;
+        return <LibraryIcon size="sm" />;
     }
   };
 
@@ -558,7 +538,7 @@ export function ExpandedInput({
                     )}
                   </div>
                   {index === selectedMentionIndex && (
-                    <Check size={12} className="shrink-0 text-(--primary)" />
+                    <CheckIcon size="xs" className="shrink-0 text-(--primary)" />
                   )}
                 </button>
               ))}
@@ -614,7 +594,7 @@ export function ExpandedInput({
                 <Popover>
                   <PopoverTrigger className="inline-flex items-center gap-1 text-caption text-(--muted-foreground) hover:text-(--foreground) transition-colors px-2 py-1 rounded-lg hover:bg-(--muted)">
                     <span>Prompts</span>
-                    <ChevronDown size={12} />
+                    <ChevronDownIcon size="xs" />
                   </PopoverTrigger>
                   <PopoverContent
                     side="top"

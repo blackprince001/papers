@@ -1,4 +1,4 @@
-import { User } from 'iconsax-reactjs';
+import { UserIcon } from '@/components/icons';
 import { Logo } from '@/components/Logo';
 import { cn } from '@/lib/utils';
 
@@ -18,7 +18,7 @@ export function MessageAuthor({ role, name, className }: MessageAuthorProps) {
         {isAssistant ? (
           <Logo size={20} className="w-5 h-5 object-cover" />
         ) : (
-          <User size={12} />
+          <UserIcon size="xs" />
         )}
       </span>
       <span className="text-caption font-medium text-(--foreground)">

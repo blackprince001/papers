@@ -1,5 +1,6 @@
-import { SearchNormal as Search, Folder, TickCircle as Check } from 'iconsax-reactjs';
+import { CheckIcon, FolderIcon, SearchIcon } from '@/components/icons';
 import { Input } from '@/components/ui/Input';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/lib/utils';
 import type { Group } from '@/lib/api/groups';
 
@@ -54,7 +55,7 @@ function GroupItem({ group, level, selectedIds, onToggle, search }: GroupItemPro
               : 'border-(--border)',
           )}
         >
-          {isSelected && <Check size={10} className="text-(--background)" strokeWidth={3} />}
+          {isSelected && <CheckIcon size="xs" strokeWidth={3} className="text-(--background)" />}
         </div>
 
         <span
@@ -134,8 +135,8 @@ export function GroupTreeSelector({
     <div>
       {!hideSearch && (
         <div className="relative mb-3">
-          <Search
-            size={14}
+          <SearchIcon
+            size="sm"
             className="absolute left-3 top-1/2 -translate-y-1/2 text-(--muted-foreground) pointer-events-none"
           />
           <Input
@@ -165,9 +166,8 @@ export function GroupTreeSelector({
             />
           ))
         ) : (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-(--muted-foreground)">
-            <Folder size={28} className="opacity-30" />
-            <span className="text-code">{emptyLabel}</span>
+          <div className="flex h-full items-center justify-center">
+            <EmptyState size="panel" icon={FolderIcon} title={emptyLabel} />
           </div>
         )}
       </div>

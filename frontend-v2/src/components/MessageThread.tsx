@@ -9,7 +9,7 @@ import { StreamingMessage } from './ai/StreamingMessage';
 import { ExpandedInput } from './ExpandedInput';
 import type { ReferenceManifestEntry } from '@/lib/api/references';
 import { format } from 'date-fns';
-import { Send, ArrowRight2, ArrowDown2 } from 'iconsax-reactjs';
+import { ChevronDownIcon, ChevronRightIcon, SendIcon } from '@/components/icons';
 import { Skeleton } from './ui/Skeleton';
 import { logger } from '@/lib/logger';
 
@@ -280,7 +280,7 @@ export function MessageThread({ parentMessage, showInput = false, onCloseInput }
           onClick={() => setExpanded((v) => !v)}
           className="mb-1.5 inline-flex items-center gap-1 text-caption text-(--muted-foreground) font-medium hover:text-(--foreground) transition-colors"
         >
-          {isExpanded ? <ArrowDown2 size={12} /> : <ArrowRight2 size={12} />}
+          {isExpanded ? <ChevronDownIcon size="xs" /> : <ChevronRightIcon size="xs" />}
           {threadCount} {threadCount === 1 ? 'reply' : 'replies'}
         </button>
       )}
@@ -300,7 +300,7 @@ export function MessageThread({ parentMessage, showInput = false, onCloseInput }
                   onClick={() => setShowEarlier(true)}
                   className="inline-flex items-center gap-1 text-caption text-(--muted-foreground) font-medium hover:text-(--foreground) transition-colors"
                 >
-                  <ArrowDown2 size={12} />
+                  <ChevronDownIcon size="xs" />
                   Show {hiddenEarlierCount} earlier {hiddenEarlierCount === 1 ? 'reply' : 'replies'}
                 </button>
               )}
@@ -387,7 +387,7 @@ export function MessageThread({ parentMessage, showInput = false, onCloseInput }
             onSubmit={handleSend}
             placeholder="Reply in thread..."
             disabled={isStreaming}
-            submitIcon={<Send size={11} />}
+            submitIcon={<SendIcon size="xs" />}
             autoFocus
           />
         </div>

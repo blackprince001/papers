@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Tag, MagicStar as Sparkles } from 'iconsax-reactjs';
+import { SparklesIcon, TagIcon } from '@/components/icons';
 import type { ClusteringResult, DiscoveredPaperPreview, PaperRelevanceExplanation } from '@/lib/api/discovery';
 import { DiscoveredPaperCard } from './DiscoveredPaperCard';
 import { cn } from '@/lib/utils';
@@ -79,7 +79,7 @@ export function ClusteredResults({ clustering, papers, relevanceExplanations = [
                 )}
               >
                 <span className="flex min-w-0 items-center gap-2 md:items-start">
-                  <Tag className="w-3.5 h-3.5 shrink-0 md:mt-0.5" />
+                  <TagIcon className="w-3.5 h-3.5 shrink-0 md:mt-0.5" />
                   <span className="truncate md:overflow-visible md:whitespace-normal md:text-clip md:break-words">
                     {section.name}
                   </span>
@@ -125,7 +125,7 @@ export function ClusteredResults({ clustering, papers, relevanceExplanations = [
               <DiscoveredPaperCard paper={paper} />
               {relevance && (
                 <div className="flex items-start gap-2 rounded-lg border border-(--border) bg-(--muted) px-3 py-2">
-                  <Sparkles className="w-3.5 h-3.5 shrink-0 text-(--muted-foreground) mt-0.5" />
+                  <SparklesIcon className="w-3.5 h-3.5 shrink-0 text-(--muted-foreground) mt-0.5" />
                   <div className="space-y-0.5 text-caption text-(--muted-foreground)">
                     <p><span className="font-medium text-(--foreground)">Why relevant: </span>{relevance.relevance}</p>
                     {relevance.key_contribution && (

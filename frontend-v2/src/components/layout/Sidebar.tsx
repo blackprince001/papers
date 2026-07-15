@@ -2,7 +2,23 @@ import { useState, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'motion/react';
-import { Home, Chart as BarChart3, Gps as Compass, Notepad2 as Newspaper, MagicStar as Sparkles, Book1 as Library, DocumentText as FileText, Hierarchy as GitBranch, People as Users, Archive, Folder, ArrowDown2 as ChevronDown, SidebarLeft as PanelLeftClose, SidebarLeft as PanelLeftOpen, Shield } from 'iconsax-reactjs';
+import {
+  ArchiveIcon,
+  ChartBarsIcon,
+  ChevronDownIcon,
+  CitationGraphIcon,
+  DiscoverIcon,
+  FeedIcon,
+  FileTextIcon,
+  FolderIcon,
+  HomeIcon,
+  LibraryIcon,
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
+  ShieldIcon,
+  SparklesIcon,
+  UsersIcon,
+} from '@/components/icons';
 import { groupsApi, type Group } from '@/lib/api/groups';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { cn } from '@/lib/utils';
@@ -62,14 +78,14 @@ function GroupTreeItem({ group, level = 0 }: { group: GroupTreeNode; level?: num
             className="p-0.5 shrink-0 hover:bg-(--border) rounded"
           >
             <motion.div animate={{ rotate: expanded ? 0 : -90 }} transition={{ duration: 0.15 }}>
-              <ChevronDown size={13} />
+              <ChevronDownIcon size="sm" />
             </motion.div>
           </button>
         ) : (
           <span className="w-5 shrink-0" />
         )}
         <Link to={`/groups/${group.id}`} className="flex items-center gap-2 flex-1 min-w-0">
-          <Folder size={14} className="shrink-0" />
+          <FolderIcon size="sm" className="shrink-0" />
           <span className="truncate text-caption">{group.name}</span>
         </Link>
       </div>
@@ -95,22 +111,22 @@ function GroupTreeItem({ group, level = 0 }: { group: GroupTreeNode; level?: num
 // ── Nav group definitions ──────────────────────────────────────────────────
 
 const CORE_NAV = [
-  { href: '/', icon: Home, label: 'Home' },
-  { href: '/dashboard', icon: BarChart3, label: 'Dashboard' },
-  { href: '/papers', icon: FileText, label: 'Library' },
-  { href: '/groups', icon: Library, label: 'Groups' },
+  { href: '/', icon: HomeIcon, label: 'Home' },
+  { href: '/dashboard', icon: ChartBarsIcon, label: 'Dashboard' },
+  { href: '/papers', icon: FileTextIcon, label: 'Library' },
+  { href: '/groups', icon: LibraryIcon, label: 'Groups' },
 ];
 
 const DISCOVER_NAV = [
-  { href: '/discovery', icon: Compass, label: 'Discovery' },
-  { href: '/huggingface-papers', icon: Newspaper, label: 'HF Papers' },
-  { href: '/recommendations', icon: Sparkles, label: 'For You' },
+  { href: '/discovery', icon: DiscoverIcon, label: 'Discovery' },
+  { href: '/huggingface-papers', icon: FeedIcon, label: 'HF Papers' },
+  { href: '/recommendations', icon: SparklesIcon, label: 'For You' },
 ];
 
 const TOOLS_NAV = [
-  { href: '/annotations', icon: FileText, label: 'Annotations' },
-  { href: '/citations', icon: GitBranch, label: 'Citations' },
-  { href: '/author', icon: Users, label: 'Authors' },
+  { href: '/annotations', icon: FileTextIcon, label: 'Annotations' },
+  { href: '/citations', icon: CitationGraphIcon, label: 'Citations' },
+  { href: '/author', icon: UsersIcon, label: 'Authors' },
 ];
 
 function NavItem({
@@ -130,7 +146,7 @@ function NavItem({
           : 'text-(--muted-foreground) hover:bg-(--muted) hover:text-(--foreground)',
       )}
     >
-      <Icon size={15} className="shrink-0" />
+      <Icon size="sm" className="shrink-0" />
       {isOpen && <span className="text-code truncate">{label}</span>}
     </Link>
   );
@@ -181,7 +197,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
           className="p-1.5 text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) rounded-lg transition-colors"
           aria-label={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
         >
-          {isOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
+          {isOpen ? <PanelLeftCloseIcon size="md" /> : <PanelLeftOpenIcon size="md" />}
         </button>
       </div>
 
@@ -227,13 +243,13 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       <div className="border-t border-(--panel-border) py-2.5 px-2.5 shrink-0 bg-(--panel-surface-muted)">
         <NavItem
           href="/discovery-archive"
-          icon={Archive}
+          icon={ArchiveIcon}
           label="Discovery Archive"
           isOpen={isOpen}
           isActive={isActive('/discovery-archive')}
         />
         {isAdmin && (
-          <NavItem href="/admin/users" icon={Shield} label="User Management" isOpen={isOpen} isActive={isActive('/admin/users')} />
+          <NavItem href="/admin/users" icon={ShieldIcon} label="User Management" isOpen={isOpen} isActive={isActive('/admin/users')} />
         )}
         <div className="mt-0.5">
           <UserMenu isOpen={isOpen} />

@@ -2,16 +2,17 @@ import { useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Buildings2,
-  Hashtag,
-  Book1,
-  QuoteUp,
-  SearchNormal1,
-  People,
-  ArrowRight,
-} from 'iconsax-reactjs';
+  BuildingIcon,
+  HashtagIcon,
+  LibraryIcon,
+  QuoteIcon,
+  SearchIcon,
+  UsersIcon,
+  ArrowRightIcon,
+} from '@/components/icons';
 import { discoveryApi, type AuthorProfile } from '@/lib/api/discovery';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { AuthorAvatar, TopicChip } from '@/components/author/AuthorBits';
 
 export default function AuthorSearch() {
@@ -33,10 +34,9 @@ export default function AuthorSearch() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8">
+    <div className="mx-auto max-w-main px-6 py-8">
       <header className="mb-6 space-y-1">
         <h1 className="flex items-center gap-2">
-          <People size={22} />
           Author Search
         </h1>
         <p className="text-body text-(--muted-foreground)">
@@ -65,17 +65,19 @@ export default function AuthorSearch() {
       )}
 
       {!searchQuery.isLoading && nameParam && results.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-20 text-center text-(--muted-foreground)">
-          <SearchNormal1 size={32} className="opacity-30" />
-          <p className="text-body">No authors found matching “{nameParam}”</p>
-        </div>
+        <EmptyState
+          size="page"
+          icon={SearchIcon}
+          title={`No authors found matching “${nameParam}”`}
+        />
       )}
 
       {!nameParam && (
-        <div className="flex flex-col items-center gap-3 py-20 text-center text-(--muted-foreground)">
-          <People size={32} className="opacity-30" />
-          <p className="text-body">Enter a name above to search for authors.</p>
-        </div>
+        <EmptyState
+          size="page"
+          icon={UsersIcon}
+          title="Enter a name above to search for authors"
+        />
       )}
 
       {!searchQuery.isLoading && results.length > 0 && (
@@ -101,7 +103,7 @@ function SearchBox({ initial, onSubmit }: { initial: string; onSubmit: (q: strin
       className="mb-8"
     >
       <div className="flex items-center gap-2 rounded-card border border-(--border) bg-(--card) px-3 py-2 transition-colors hover:border-(--foreground)/20 focus-within:border-(--foreground)/30">
-        <SearchNormal1 size={16} className="shrink-0 text-(--muted-foreground)" />
+        <SearchIcon size="md" className="shrink-0 text-(--muted-foreground)" />
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -133,8 +135,8 @@ function AuthorCard({ author }: { author: AuthorProfile }) {
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex items-start justify-between gap-2">
             <h3 className="text-body-lg font-semibold text-(--foreground)">{author.display_name}</h3>
-            <ArrowRight
-              size={16}
+            <ArrowRightIcon
+              size="md"
               className="mt-1 shrink-0 text-(--muted-foreground) opacity-0 transition-opacity group-hover:opacity-100"
             />
           </div>
@@ -142,26 +144,26 @@ function AuthorCard({ author }: { author: AuthorProfile }) {
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-caption text-(--muted-foreground)">
             {author.institutions?.[0]?.name && (
               <span className="flex items-center gap-1">
-                <Buildings2 size={12} />
+                <BuildingIcon size="xs" />
                 {author.institutions[0].name}
                 {author.institutions[0].country && ` · ${author.institutions[0].country}`}
               </span>
             )}
             {author.h_index != null && (
               <span className="flex items-center gap-1">
-                <Hashtag size={12} />
+                <HashtagIcon size="xs" />
                 h-index {author.h_index}
               </span>
             )}
             {author.works_count != null && (
               <span className="flex items-center gap-1">
-                <Book1 size={12} />
+                <LibraryIcon size="xs" />
                 {author.works_count.toLocaleString()} works
               </span>
             )}
             {author.cited_by_count != null && (
               <span className="flex items-center gap-1">
-                <QuoteUp size={12} />
+                <QuoteIcon size="xs" />
                 {author.cited_by_count.toLocaleString()} citations
               </span>
             )}
