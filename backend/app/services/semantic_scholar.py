@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any
 
 import httpx
@@ -18,16 +19,40 @@ class SemanticScholarService:
       self.headers["x-api-key"] = self.api_key
 
   async def _get(self, endpoint: str, params: dict[str, Any]) -> dict[str, Any]:
-    """Make GET request to Semantic Scholar API."""
-    async with httpx.AsyncClient() as client:
-      url = f"{self.BASE_URL}/{endpoint}"
-      response = await client.get(
-        url, params=params, headers=self.headers, timeout=30.0
-      )
+    """GET the Semantic Scholar API, retrying transient 429s with backoff.
+
+    The unauthenticated S2 pool throttles aggressively; without retries a single
+    429 silently empties a paper's references. Set ``SEMANTIC_SCHOLAR_API_KEY``
+    for a dedicated (much higher) rate limit.
+    """
+    url = f"{self.BASE_URL}/{endpoint}"
+    delay = 1.0
+    for attempt in range(4):
+      async with httpx.AsyncClient() as client:
+        response = await client.get(
+          url, params=params, headers=self.headers, timeout=30.0
+        )
       if response.status_code == 404:
         return {"data": []}
+      if response.status_code == 429 and attempt < 3:
+        retry_after = response.headers.get("retry-after", "")
+        wait = (
+          float(retry_after)
+          if retry_after.replace(".", "", 1).isdigit()
+          else delay
+        )
+        logger.warning(
+          "Semantic Scholar rate limited (429); backing off",
+          endpoint=endpoint,
+          attempt=attempt + 1,
+          wait=wait,
+        )
+        await asyncio.sleep(min(wait, 10.0))
+        delay *= 2
+        continue
       response.raise_for_status()
       return response.json()
+    return {"data": []}  # unreachable — the loop returns or raises
 
   def _format_paper(self, paper: dict[str, Any]) -> dict[str, Any]:
     """Format paper data from API response."""

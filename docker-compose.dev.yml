@@ -97,7 +97,6 @@ services:
       - APP_URL=${APP_URL:-${FRONTEND_URL}}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-gemini-embedding-001}
       - EMBEDDING_DIMENSION=${EMBEDDING_DIMENSION:-768}
-      - ENABLE_DEEP_RESEARCH=${ENABLE_DEEP_RESEARCH:-false}
     volumes:
       - storage_data:/app/storage
     depends_on:
@@ -125,7 +124,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     # container_name: papers-celery-worker
-    command: uv run celery -A app.celery_app worker -l info -Q ai,processing,discovery,dead_letter -c 4
+    command: uv run celery -A app.celery_app worker -l info -Q ai,processing,discovery,research,dead_letter -c 4
     deploy:
       replicas: 2
     environment:
@@ -154,7 +153,6 @@ services:
       - APP_URL=${APP_URL}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-gemini-embedding-001}
       - EMBEDDING_DIMENSION=${EMBEDDING_DIMENSION:-768}
-      - ENABLE_DEEP_RESEARCH=${ENABLE_DEEP_RESEARCH:-false}
     volumes:
       - storage_data:/app/storage
     depends_on:

@@ -22,7 +22,7 @@ system map.
 * [Landing](landing/) - separate React/Vite marketing site (no router).
 * [Infrastructure](infra/) - Docker Compose, Traefik, environment configuration.
 * [Decisions](decisions/) - architectural decision records (the "why").
-* [Features](features/) - forward-looking feature-planning concepts (currently: [deep-research](/features/deep-research.md)).
+* [Features](features/) - feature design/plan concepts (currently: [deep-research](/features/deep-research.md), now implemented).
 
 # How to use this bundle
 

@@ -62,6 +62,7 @@ class User(Base):
   multi_chat_sessions = relationship("MultiChatSession", back_populates="user")
   saved_searches = relationship("SavedSearch", back_populates="user")
   discovery_sessions = relationship("DiscoverySession", back_populates="user")
+  deep_research_sessions = relationship("DeepResearchSession", back_populates="user")
   refresh_tokens = relationship(
     "RefreshToken", back_populates="user", cascade="all, delete-orphan"
   )

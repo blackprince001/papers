@@ -89,6 +89,14 @@ export type {
 export { userAiProvidersApi } from './userAiProviders';
 export type { UserAiProvider, UserAiProviderCreate, UserAiProviderUpdate } from './userAiProviders';
 
+export { deepResearchApi } from './deepResearch';
+export type {
+  DeepResearchStatus,
+  CitedSource,
+  DeepResearchSession as DeepResearchSessionType,
+  DeepResearchSessionDetail as DeepResearchSessionDetailType,
+} from './deepResearch';
+
 export { discoveryApi } from './discovery';
 export type {
   DiscoverySearchFilters,

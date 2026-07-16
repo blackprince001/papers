@@ -1,7 +1,7 @@
 ---
 type: Config
 title: Environment Configuration
-description: The full root .env.example variable list — API keys, DB/Redis components, JWT, Google OAuth/admin, email, deep-research toggles, prod domain vars — plus the frontend build-time vars.
+description: The full root .env.example variable list — API keys, DB/Redis components, JWT, Google OAuth/admin, email, prod domain vars — plus the frontend build-time vars.
 resource: .env.example
 tags: [infra, config, env]
 timestamp: 2026-06-28T00:00:00Z
@@ -63,12 +63,13 @@ backend run from `backend/` does not see the repo-root `.env`; see
 
 `RESEND_API_KEY` / `EMAIL_FROM` / `EMAIL_ENABLED` (off by default).
 
-# Deep research (experimental, off)
+# Deep research (no env vars)
 
-`ENABLE_DEEP_RESEARCH` only. The `DEEP_RESEARCH_DAILY_CAP` /
-`DEEP_RESEARCH_MODEL`/`_MCP_URL`/`_MCP_TOKEN` vars were removed 2026-07-01 —
-the revised [deep-research](/features/deep-research.md) approach won't use an
-external MCP config or a daily cap.
+[Deep research](/features/deep-research.md) is **always-on with zero env vars**.
+The last flag, `ENABLE_DEEP_RESEARCH`, was removed 2026-07-15 (following
+`DEEP_RESEARCH_DAILY_CAP` / `_MODEL` / `_MCP_URL` / `_MCP_TOKEN` on 2026-07-01).
+The only related config is operational: the Celery worker `-Q` list must include
+the `research` queue (see [/infra/docker.md](/infra/docker.md)).
 
 # Prod-only domain vars
 

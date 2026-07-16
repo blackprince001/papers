@@ -30,7 +30,7 @@ papers/
 │   │   ├── main.py               # App factory, router wiring, lifespan, /health
 │   │   ├── dependencies.py       # Shared deps: auth, db, get_paper_or_404, scoping
 │   │   ├── celery_app.py         # Celery instance, 3 queues + DLQ + beat
-│   │   ├── api/                  # 21 APIRouter modules + api/crud/ helpers
+│   │   ├── api/                  # 22 APIRouter modules + api/crud/ helpers
 │   │   ├── core/                 # config, database, security, encryption, logger, rate_limit
 │   │   ├── crud/                 # Top-level CRUD (user_ai_provider + settings only)
 │   │   ├── models/               # SQLAlchemy 2.x ORM models (~20 tables)
@@ -40,7 +40,7 @@ papers/
 │   │   │   └── discovery/        # arXiv, Semantic Scholar, OpenAlex, Google Scholar
 │   │   ├── tasks/                # Celery tasks (ai, paper_processing, discovery, email)
 │   │   └── utils/                # Stateless helpers (text, JSON repair, citations)
-│   ├── migrations/               # Alembic (head: citation_map_001, 43 revisions)
+│   ├── migrations/               # Alembic (head: deep_research_001, 45 revisions)
 │   └── tests/                    # 10 test files focused on the AI agent layer
 ├── frontend-v2/                  # Main React SPA "Lumen"
 │   └── src/                      # components, contexts, hooks, lib, pages
@@ -56,7 +56,7 @@ papers/
 
 | Module / Package | Purpose | Concept |
 |---|---|---|
-| `backend/app/api/` | 21 FastAPI routers, one per domain, mounted under `/api/v1` | [/backend/api/index.md](/backend/api/index.md) |
+| `backend/app/api/` | 22 FastAPI routers, one per domain, mounted under `/api/v1` | [/backend/api/index.md](/backend/api/index.md) |
 | `backend/app/api/crud/` | Reusable async CRUD helpers with ownership scoping via `services/access` | [/backend/crud.md](/backend/crud.md) |
 | `backend/app/core/` | Cross-cutting infra: settings, async+sync DB, JWT/password/Google, Fernet, structlog, rate limiter | [/backend/core.md](/backend/core.md) |
 | `backend/app/models/` | SQLAlchemy 2.x ORM models (single `Base`, ~20 tables) | [/backend/models.md](/backend/models.md) |
@@ -64,7 +64,7 @@ papers/
 | `backend/app/services/` | Domain services + all external API clients | [/backend/services/index.md](/backend/services/index.md) |
 | `backend/app/services/ai/` | AI provider abstraction (5 providers) + openai-agents SDK orchestration | [/backend/services/ai-agent.md](/backend/services/ai-agent.md) |
 | `backend/app/services/discovery/` | Academic source providers + AI-enhanced discovery search | [/backend/services/discovery-providers.md](/backend/services/discovery-providers.md) |
-| `backend/app/tasks/` | Celery tasks across `processing`, `ai`, `discovery` queues + `dead_letter` DLQ | [/backend/tasks.md](/backend/tasks.md) |
+| `backend/app/tasks/` | Celery tasks across `processing`, `ai`, `discovery`, `research` queues + `dead_letter` DLQ | [/backend/tasks.md](/backend/tasks.md) |
 | `backend/app/utils/` | Stateless helpers (text sanitization, JSON repair, citation extraction) | [/backend/utils.md](/backend/utils.md) |
 | `frontend-v2/src/lib/api/` | REST client (`fetchApi` + 20 per-domain `*Api` modules) with silent refresh | [/frontend/api-layer.md](/frontend/api-layer.md) |
 | `frontend-v2/src/lib/ai/` | SSE streaming clients for chat/discovery | [/frontend/chat-system.md](/frontend/chat-system.md) |
@@ -104,7 +104,7 @@ papers/
 | `fastapi[standard]`, `pydantic`, `pydantic-settings` | Async web framework + validation + typed config |
 | `sqlalchemy[asyncio]` + `asyncpg` | Async ORM engine |
 | `psycopg2-binary` | Sync engine for Celery workers |
-| `alembic` | DB migrations (43 revisions, head `citation_map_001`) |
+| `alembic` | DB migrations (45 revisions, head `deep_research_001`) |
 | `pgvector` | Vector similarity search on embeddings |
 | `celery[redis]` + `redis` | Background task queue + broker/result backend |
 | `openai-agents[litellm]` + `openai` | Agents SDK orchestration; OpenAI-compatible client |

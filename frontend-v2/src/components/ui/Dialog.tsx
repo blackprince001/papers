@@ -34,18 +34,27 @@ export function Dialog({ open, onClose, title, description, children, className,
     <ModalRoot isOpen={open} onOpenChange={(o) => !o && onClose()}>
       <ModalBackdrop>
         <ModalContainer placement="center" size={heroSize[size]}>
-          <ModalDialog className={cn(size === 'xl' && 'max-w-2xl', className)}>
+          <ModalDialog className={cn('relative', size === 'xl' && 'max-w-2xl', className)}>
+            {/* Pinned to the corner, out of the header flow — HeroUI's ModalHeader
+                lays its children out in a column, so an in-header close button
+                lands below the text instead of beside it. */}
+            <Button
+              variant="icon"
+              size="icon-sm"
+              aria-label="Close"
+              onClick={onClose}
+              className="absolute top-3 right-3 z-10"
+            >
+              <CloseIcon size="sm" />
+            </Button>
             {(title || description) && (
-              <ModalHeader className="flex items-start justify-between gap-4">
-                <div className="flex flex-col gap-0.5">
+              <ModalHeader>
+                <div className="flex flex-col gap-0.5 pr-8">
                   {title && <ModalHeading className="text-body font-semibold">{title}</ModalHeading>}
                   {description && (
                     <p className="text-caption text-(--muted-foreground)">{description}</p>
                   )}
                 </div>
-                <Button variant="icon" size="icon-sm" aria-label="Close" onClick={onClose}>
-                  <CloseIcon size="sm" />
-                </Button>
               </ModalHeader>
             )}
             <ModalBody>{children}</ModalBody>

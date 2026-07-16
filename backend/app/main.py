@@ -10,6 +10,7 @@ from app.api.annotations import router as annotations_router
 from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
 from app.api.citation_map import router as citation_map_router
+from app.api.deep_research import router as deep_research_router
 from app.api.discovery import router as discovery_router
 from app.api.duplicates import router as duplicates_router
 from app.api.export import router as export_router
@@ -187,6 +188,12 @@ app.include_router(
   discovery_router,
   prefix="/api/v1/discovery",
   tags=["discovery"],
+  dependencies=_auth_dep,
+)
+app.include_router(
+  deep_research_router,
+  prefix="/api/v1/deep-research",
+  tags=["deep-research"],
   dependencies=_auth_dep,
 )
 app.include_router(

@@ -18,6 +18,10 @@ REST client** in `src/lib/api/` — see [api-layer.md](api-layer.md).
   `streamGroupMessage`, `streamMultiMessage`. Each runs its own
   401→`attemptSilentRefresh`→retry (`chatStream.ts:75-126`), attaching
   `getAuthHeaders()` and an optional `provider_id` pin (`chatStream.ts:36`, `:148`).
+- `chatStreamClient.streamDeepResearch(sessionId)` — a **GET** stream
+  (`/deep-research/{id}/stream`) via the new `streamingFetchGet` helper, run
+  through `parseSSE` with the same 401-refresh. Consumed by
+  `useDeepResearchStream` (see [Deep research streaming](#deep-research-streaming)).
 - `parseSSE.ts:1-207` — raw SSE parser over a `Response` body with timeout
   (`DEFAULT_TIMEOUT_MS = 60_000`) and retry/backoff.
 
@@ -35,6 +39,12 @@ REST client** in `src/lib/api/` — see [api-layer.md](api-layer.md).
 | Hook | File | Purpose |
 |---|---|---|
 | `useAISearchStream` | `hooks/use-ai-search-stream.ts:126` | SSE streaming for AI discovery search: `status`/`timeline`, aggregated `allPapers`, `queryUnderstanding`, `overview`, `clustering`, `relevanceExplanations`. |
+
+# Deep research streaming
+
+| Hook | File | Purpose |
+|---|---|---|
+| `useDeepResearchStream` | `hooks/use-deep-research-stream.ts` | Drives a long-running deep-research run: fetches the authoritative detail snapshot, streams live via `chatStreamClient.streamDeepResearch(sessionId)` and **reconnects on drop** while the run is non-terminal, then reconciles from the persisted detail. Reduces `chunk`/`thought`/`tool_call`/`tool_result`/`provider_switched`/`paused`/`error`/`done`/`end` events. Because the server relays the whole run to Redis, a reconnect replays everything so far. See [/features/deep-research.md](/features/deep-research.md) and [/backend/api/deep-research.md](/backend/api/deep-research.md). |
 
 # Server side
 

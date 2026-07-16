@@ -20,7 +20,7 @@ outside this stack (its `dist/` is served elsewhere).
 | `postgres` | `pgvector/pgvector:pg16` (`:26`) | `5433:5432` (`:33-34`) | `postgres_data` + `./init-db.sql` mounted into init dir (`:36-37`) | off (`:46`) |
 | `redis` | `redis:7-alpine` (`:50`), `--appendonly yes` | `6379:6379` (`:53-54`) | `redis_data:/data` (`:56`) | off (`:65`) |
 | `backend` | `./backend/Dockerfile` (`:69-71`) | — | `storage_data:/app/storage` (`:105`) | `api.testing.maurc.org`, port 8000, healthcheck `/health` (`:113-123`) |
-| `celery-worker` | same Dockerfile (`:127-129`), **replicas: 2** (`:133`), `uv run celery … -Q ai,processing,discovery,dead_letter -c 4` (`:131`) | — | `storage_data:/app/storage` (`:165`) | off (`:174`) |
+| `celery-worker` | same Dockerfile (`:127-129`), **replicas: 2** (`:133`), `uv run celery … -Q ai,processing,discovery,research,dead_letter -c 4` (`:131`) | — | `storage_data:/app/storage` (`:165`) | off (`:174`) |
 | `celery-beat` | same Dockerfile (`:181-182`), `uv run celery -A app.celery_app beat -l info` (`:183`) | — | — | off (`:206`) |
 | `frontend` | `./frontend-v2/Dockerfile` (`:210-212`) build args `VITE_API_URL`, `VITE_GOOGLE_CLIENT_ID` | — | — | `testing.maurc.org`, port 4173, healthcheck `/` (`:221-231`) |
 

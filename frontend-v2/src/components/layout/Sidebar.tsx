@@ -13,6 +13,7 @@ import {
   FolderIcon,
   HomeIcon,
   LibraryIcon,
+  MicroscopeIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
   ShieldIcon,
@@ -119,6 +120,7 @@ const CORE_NAV = [
 
 const DISCOVER_NAV = [
   { href: '/discovery', icon: DiscoverIcon, label: 'Discovery' },
+  { href: '/deep-research', icon: MicroscopeIcon, label: 'Deep Research' },
   { href: '/huggingface-papers', icon: FeedIcon, label: 'HF Papers' },
   { href: '/recommendations', icon: SparklesIcon, label: 'For You' },
 ];
@@ -247,6 +249,13 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
           label="Discovery Archive"
           isOpen={isOpen}
           isActive={isActive('/discovery-archive')}
+        />
+        <NavItem
+          href="/deep-research-archive"
+          icon={ArchiveIcon}
+          label="Research Archive"
+          isOpen={isOpen}
+          isActive={isActive('/deep-research-archive')}
         />
         {isAdmin && (
           <NavItem href="/admin/users" icon={ShieldIcon} label="User Management" isOpen={isOpen} isActive={isActive('/admin/users')} />

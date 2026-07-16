@@ -40,8 +40,10 @@ system in `index.css`:
 `Layout.tsx` — 3-column resizable workspace; panel tab state lives per
 paper tab with a local fallback for unregistered papers. `Sidebar.tsx` —
 nav + group tree; collapse toggle shows the resulting state
-(`PanelLeftClose/OpenIcon`). `Navbar.tsx`, `TabBar.tsx`,
-`ChatPanel.tsx` — right rail with 7 pill tabs (count badges on
+(`PanelLeftClose/OpenIcon`). Its `DISCOVER_NAV` list carries a "Deep
+Research" entry (`MicroscopeIcon`) and a pinned "Research Archive" link —
+see [/features/deep-research.md](/features/deep-research.md). `Navbar.tsx`,
+`TabBar.tsx`, `ChatPanel.tsx` — right rail with 7 pill tabs (count badges on
 Notes/Annotations), Insights sub-tabs Summary/Insights/Guide (the former
 Highlights tab is now an auto-highlight button in PaperDetails' header).
 `PageContainer.tsx` — the page-column convention
@@ -63,5 +65,9 @@ through the standards primitives — no ad-hoc spinners, pulses, or
 `PapersList` — redesigned mobile-first (PageContainer wide, single
 toolbar with segmented scope/view toggles, responsive card grid, table
 hidden below `md`). `Settings` — split into `pages/settings/` section
-components. Dev-only review routes: `/dev/icons` (icon sheet) and
-`/dev/ui` (kitchen sink for the HeroUI bridge + facades).
+components. `DeepResearch` / `DeepResearchArchive` — the chat-style
+deep-research thread (`components/deep-research/` — `ReasoningTree`,
+`ResearchComposer` — driven by `useDeepResearchStream`) and its run
+archive; see [/features/deep-research.md](/features/deep-research.md).
+Dev-only review routes: `/dev/icons` (icon sheet) and `/dev/ui` (kitchen
+sink for the HeroUI bridge + facades).

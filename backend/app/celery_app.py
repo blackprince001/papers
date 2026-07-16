@@ -13,6 +13,7 @@ celery_app = Celery(
 default_exchange = Exchange("default", type="direct")
 ai_exchange = Exchange("ai", type="direct")
 discovery_exchange = Exchange("discovery", type="direct")
+research_exchange = Exchange("research", type="direct")
 dead_letter_exchange = Exchange("dead_letter", type="direct")
 
 # Celery configuration
@@ -66,6 +67,17 @@ celery_app.conf.update(
         "x-dead-letter-routing-key": "dead_letter",
       },
     ),
+    # Research queue — long-running, resumable deep-research runs, isolated so
+    # they never starve fast AI features on the `ai` queue.
+    Queue(
+      "research",
+      exchange=research_exchange,
+      routing_key="research",
+      queue_arguments={
+        "x-dead-letter-exchange": "dead_letter",
+        "x-dead-letter-routing-key": "dead_letter",
+      },
+    ),
     # Dead letter queue for failed tasks after max retries
     Queue(
       "dead_letter",
@@ -77,6 +89,8 @@ celery_app.conf.update(
     "app.tasks.ai_tasks.*": {"queue": "ai"},
     "app.tasks.paper_processing.*": {"queue": "processing"},
     "app.tasks.discovery_tasks.*": {"queue": "discovery"},
+    "app.tasks.deep_research_tasks.*": {"queue": "research"},
+    "research.*": {"queue": "research"},
   },
   # Retry policy defaults
   task_default_retry_delay=60,  # 1 minute default retry delay

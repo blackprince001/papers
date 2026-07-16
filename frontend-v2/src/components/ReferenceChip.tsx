@@ -51,15 +51,39 @@ const KIND_LABELS: Record<string, string> = {
   author: "Author",
 };
 
-const KIND_ICON_TINT: Record<string, string> = {
-  paper: "text-sky-600",
-  citation: "text-(--warning)",
-  figure: "text-emerald-600",
-  section: "text-violet-600",
-  annotation: "text-rose-600",
-  note: "text-(--coral-red)",
-  external: "text-cyan-600",
-  author: "text-indigo-600",
+// Subtle, theme-aware pill per reference kind: a low-opacity tinted background
+// + border in the kind's color, with the icon and label in that kind's readable
+// shade (light + dark variants) so the text stays vivid without shouting.
+const KIND_STYLE: Record<string, string> = {
+  paper:
+    "bg-sky-500/10 border-sky-500/25 text-sky-700 dark:bg-sky-400/15 dark:border-sky-400/30 dark:text-sky-300",
+  citation:
+    "bg-amber-500/10 border-amber-500/25 text-amber-700 dark:bg-amber-400/15 dark:border-amber-400/30 dark:text-amber-300",
+  figure:
+    "bg-emerald-500/10 border-emerald-500/25 text-emerald-700 dark:bg-emerald-400/15 dark:border-emerald-400/30 dark:text-emerald-300",
+  section:
+    "bg-violet-500/10 border-violet-500/25 text-violet-700 dark:bg-violet-400/15 dark:border-violet-400/30 dark:text-violet-300",
+  annotation:
+    "bg-rose-500/10 border-rose-500/25 text-rose-700 dark:bg-rose-400/15 dark:border-rose-400/30 dark:text-rose-300",
+  note:
+    "bg-orange-500/10 border-orange-500/25 text-orange-700 dark:bg-orange-400/15 dark:border-orange-400/30 dark:text-orange-300",
+  external:
+    "bg-cyan-500/10 border-cyan-500/25 text-cyan-700 dark:bg-cyan-400/15 dark:border-cyan-400/30 dark:text-cyan-300",
+  author:
+    "bg-indigo-500/10 border-indigo-500/25 text-indigo-700 dark:bg-indigo-400/15 dark:border-indigo-400/30 dark:text-indigo-300",
+};
+const DEFAULT_STYLE = "bg-(--muted) border-(--border) text-(--foreground)";
+
+// Text-only kind color for the hover-card icon (the card has a neutral surface).
+const KIND_ICON: Record<string, string> = {
+  paper: "text-sky-600 dark:text-sky-400",
+  citation: "text-amber-600 dark:text-amber-400",
+  figure: "text-emerald-600 dark:text-emerald-400",
+  section: "text-violet-600 dark:text-violet-400",
+  annotation: "text-rose-600 dark:text-rose-400",
+  note: "text-orange-600 dark:text-orange-400",
+  external: "text-cyan-600 dark:text-cyan-400",
+  author: "text-indigo-600 dark:text-indigo-400",
 };
 
 const CARD_WIDTH = 288; // 18rem
@@ -108,7 +132,8 @@ export function ReferenceChip({ kind, id, label }: ReferenceChipProps) {
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   const Icon = KIND_ICONS[kind] ?? FileTextIcon;
-  const tint = KIND_ICON_TINT[kind] ?? "text-(--muted-foreground)";
+  const style = KIND_STYLE[kind] ?? DEFAULT_STYLE;
+  const iconTint = KIND_ICON[kind] ?? "text-(--muted-foreground)";
   const kindLabel = KIND_LABELS[kind] ?? kind;
 
   const resolved = entry !== "loading" && entry !== null ? entry : null;
@@ -163,8 +188,9 @@ export function ReferenceChip({ kind, id, label }: ReferenceChipProps) {
   }, [open, updatePosition]);
 
   const baseChip =
-    "inline-flex items-baseline gap-1 align-baseline border-b border-dotted border-(--border) " +
-    "text-(--foreground) transition-colors";
+    "inline-flex items-center gap-1 align-middle rounded-md border px-1.5 py-px " +
+    "transition-colors " +
+    style;
 
   // Unresolved → quiet, non-interactive (no broken link for a hallucinated id).
   if (entry === null) {
@@ -173,12 +199,8 @@ export function ReferenceChip({ kind, id, label }: ReferenceChipProps) {
         className={cn(baseChip, "opacity-60 cursor-default")}
         title="Reference unavailable"
       >
-        <Icon
-          size="xs"
-          filled
-          className={cn("translate-y-[1px] opacity-50", tint)}
-        />
-        <span>{text}</span>
+        <Icon size="xs" filled className="shrink-0 opacity-60" />
+        <span className="truncate max-w-[16ch]">{text}</span>
       </span>
     );
   }
@@ -225,7 +247,7 @@ export function ReferenceChip({ kind, id, label }: ReferenceChipProps) {
                 />
               )}
               <div className="flex items-center gap-1.5 mb-1">
-                <Icon size="xs" filled className={tint} />
+                <Icon size="xs" filled className={iconTint} />
                 <span className="text-[0.625rem] text-(--muted-foreground) uppercase tracking-wider">
                   {kindLabel}
                 </span>
@@ -276,12 +298,8 @@ export function ReferenceChip({ kind, id, label }: ReferenceChipProps) {
         )}
         title={resolved?.title || text}
       >
-        <Icon
-          size="xs"
-          filled
-          className={cn("translate-y-[1px]", tint)}
-        />
-        <span>{text}</span>
+        <Icon size="xs" filled className="shrink-0" />
+        <span className="truncate max-w-[16ch]">{text}</span>
       </button>
       {card}
     </>

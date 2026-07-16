@@ -23,7 +23,6 @@ class Settings(BaseSettings):
   SERPAPI_KEY: str = ""
   SEMANTIC_SCHOLAR_API_KEY: str = ""
   OPENALEX_API_KEY: str = ""
-  ENABLE_DEEP_RESEARCH: bool = False
   AGENT_MAX_TURNS: int = 25
   AI_TASK_RATE_LIMIT: int = Field(
     default=10, description="Max AI tasks per minute per user (Celery)"

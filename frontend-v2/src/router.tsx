@@ -25,6 +25,8 @@ import Citations from './pages/Citations';
 import Ingest from './pages/Ingest';
 import Export from './pages/Export';
 import Discovery from './pages/Discovery';
+import DeepResearch from './pages/DeepResearch';
+import DeepResearchArchive from './pages/DeepResearchArchive';
 import Recommendations from './pages/Recommendations';
 import DiscoveryArchive from './pages/DiscoveryArchive';
 import HuggingFacePapers from './pages/HuggingFacePapers';
@@ -90,6 +92,8 @@ export const router = createBrowserRouter([
       { path: 'ingest', element: <Ingest /> },
       { path: 'export', element: <Export /> },
       { path: 'discovery', element: <Discovery /> },
+      { path: 'deep-research', element: <DeepResearch /> },
+      { path: 'deep-research-archive', element: <DeepResearchArchive /> },
       { path: 'recommendations', element: <Recommendations /> },
       { path: 'discovery-archive', element: <DiscoveryArchive /> },
       { path: 'huggingface-papers', element: <HuggingFacePapers /> },
