@@ -126,10 +126,64 @@ async function streamingFetch(
 }
 
 /**
+ * GET streaming fetch with auth + optional token refresh (for endpoints that
+ * tail a server-side stream by id, e.g. deep research).
+ */
+async function streamingFetchGet(
+  url: string,
+  signal?: AbortSignal,
+): Promise<Response> {
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: { Accept: 'text/event-stream', ...getAuthHeaders() },
+    signal,
+  });
+
+  if (response.status === 401) {
+    const newToken = await tryRefreshToken();
+    if (newToken) {
+      const retryResponse = await fetch(url, {
+        method: 'GET',
+        headers: { Accept: 'text/event-stream', Authorization: `Bearer ${newToken}` },
+        signal,
+      });
+      if (retryResponse.ok) {
+        const { setTokenGetter } = await import('@/lib/api/client');
+        setTokenGetter(() => newToken);
+        return retryResponse;
+      }
+    }
+  }
+
+  if (!response.ok) {
+    const detail = await extractErrorBody(response);
+    throw new Error(detail);
+  }
+
+  return response;
+}
+
+/**
  * Client for all SSE streaming endpoints.
  * Handles auth, token refresh, and unified event parsing.
  */
 export const chatStreamClient = {
+  /**
+   * Follow a deep-research run's event stream (reconnect-safe — the server
+   * replays from the start of the run each time this connects).
+   */
+  async *streamDeepResearch(
+    sessionId: number,
+    options: ChatStreamOptions = {},
+  ): AsyncGenerator<StreamEvent, void, unknown> {
+    const url = `${API_BASE_URL}/deep-research/${sessionId}/stream`;
+    const response = await streamingFetchGet(url, options.signal);
+    const gen = parseSSE(response, { ...options });
+    for await (const event of gen) {
+      yield event as StreamEvent;
+    }
+  },
+
   /**
    * Stream a paper chat message.
    */
