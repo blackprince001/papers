@@ -7,11 +7,20 @@ All tools use the per-request ``BYOContext`` for database access.
 
 from __future__ import annotations
 
+from typing import Any
+
 try:
   from agents import function_tool
 except ImportError:
-  def function_tool(f):
-    return f  # type: ignore[assignment]
+  def function_tool(*args, **kwargs):  # type: ignore[misc]
+    # Support both bare ``@function_tool`` and ``@function_tool(name_override=…)``.
+    if args and callable(args[0]):
+      return args[0]
+
+    def _wrap(f):
+      return f
+
+    return _wrap
 
 from app.core.config import settings
 from app.core.logger import get_logger
@@ -21,6 +30,23 @@ from app.services.ai.agent.tools import with_timeout
 logger = get_logger(__name__)
 
 VALID_SOURCES = {"arxiv", "semantic_scholar", "google_scholar", "openalex"}
+
+
+def _collect_dr_sources(items: list[dict[str, Any]]) -> None:
+  """Append structured papers to the deep-research citation collector.
+
+  The deep-research run seeds ``dr_sources`` in its ``BYOContext``; tools push
+  the papers they surfaced so the run can build a rich, tabbed Citations panel.
+  A no-op for chat/discovery agents (no collector present).
+  """
+  if not items:
+    return
+  try:
+    bucket = get_byo_context().extra.get("dr_sources")
+    if isinstance(bucket, list):
+      bucket.extend(items)
+  except Exception:  # noqa: BLE001 — telemetry only, never break a tool
+    pass
 
 
 def _format_paper(p, index: int = 0) -> str:
@@ -124,10 +150,25 @@ async def search_discovery(
       f"Found {len(all_papers)} paper(s) for '{query}' across "
       f"{len(source_list)} source(s):\n"
     ]
+    collected: list[dict[str, Any]] = []
     for i, p in enumerate(all_papers, 1):
       ext = ExternalPaperResult(**p)
       lines.append(_format_paper(ext, i))
       lines.append("")
+      collected.append(
+        {
+          "type": "academic",
+          "source": ext.source,
+          "external_id": ext.external_id,
+          "title": ext.title,
+          "authors": ext.authors,
+          "year": ext.year,
+          "citation_count": ext.citation_count,
+          "url": ext.url,
+          "pdf_url": ext.pdf_url,
+        }
+      )
+    _collect_dr_sources(collected)
 
     return "\n".join(lines).strip()
 
@@ -180,7 +221,7 @@ async def get_paper_details(source: str, external_id: str) -> str:
     return f"Error fetching paper details: {str(e)[:300]}"
 
 
-@function_tool
+@function_tool(name_override="discovery_get_citations")
 @with_timeout()
 async def get_citations(source: str, external_id: str, limit: int = 10) -> str:
   """Get papers that cite a specific paper.
@@ -428,6 +469,22 @@ async def web_search(query: str, limit: int = 5) -> str:
 
     if not results:
       return f"No scholarly works found for '{query}'."
+
+    _collect_dr_sources(
+      [
+        {
+          "type": "web",
+          "source": "openalex",
+          "external_id": r.get("id"),
+          "title": r.get("title"),
+          "authors": r.get("authors"),
+          "year": r.get("year"),
+          "citation_count": r.get("citations"),
+          "url": r.get("url"),
+        }
+        for r in results
+      ]
+    )
 
     lines = [f"Scholarly results for '{query}':\n"]
     for i, r in enumerate(results, 1):
