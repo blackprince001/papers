@@ -6,6 +6,7 @@ from app.models.citation_map import (
   CitationMapItem,
   CitationMapPosition,
 )
+from app.models.deep_research import DeepResearchSession
 from app.models.discovery import DiscoveredPaper, DiscoverySession
 from app.models.duplicate_log import DuplicateDetectionLog
 from app.models.group import Group
@@ -31,6 +32,7 @@ __all__ = [
   "CitationMapPosition",
   "MultiChatMessage",
   "MultiChatSession",
+  "DeepResearchSession",
   "DiscoveredPaper",
   "DiscoverySession",
   "DuplicateDetectionLog",
