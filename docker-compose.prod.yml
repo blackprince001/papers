@@ -104,7 +104,6 @@ services:
       - APP_URL=https://${FRONTEND_DOMAIN}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-gemini-embedding-001}
       - EMBEDDING_DIMENSION=${EMBEDDING_DIMENSION:-768}
-      - ENABLE_DEEP_RESEARCH=${ENABLE_DEEP_RESEARCH:-false}
     depends_on:
       postgres:
         condition: service_healthy
@@ -133,7 +132,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A app.celery_app worker -l info -Q ai,processing,discovery,dead_letter -c 4
+    command: celery -A app.celery_app worker -l info -Q ai,processing,discovery,research,dead_letter -c 4
     deploy:
       replicas: 2
     environment:
@@ -162,7 +161,6 @@ services:
       - APP_URL=https://${FRONTEND_DOMAIN}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-gemini-embedding-001}
       - EMBEDDING_DIMENSION=${EMBEDDING_DIMENSION:-768}
-      - ENABLE_DEEP_RESEARCH=${ENABLE_DEEP_RESEARCH:-false}
     depends_on:
       postgres:
         condition: service_healthy
