@@ -1,0 +1,78 @@
+import { useRef, useEffect } from 'react';
+import { ArrowUpIcon } from '@/components/icons';
+import { cn } from '@/lib/utils';
+
+export function ResearchComposer({
+  value,
+  onChange,
+  onSubmit,
+  disabled,
+  autoFocus,
+  placeholder = 'Research with Lumen. Press Enter to start.',
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSubmit: () => void;
+  disabled?: boolean;
+  autoFocus?: boolean;
+  placeholder?: string;
+  className?: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  // Grow with content, up to a cap.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
+  }, [value]);
+
+  const canSend = !!value.trim() && !disabled;
+
+  return (
+    <div
+      className={cn(
+        'rounded-2xl border border-(--border) bg-(--card) transition-colors duration-150',
+        'hover:border-(--foreground)/20 focus-within:border-(--foreground)/30',
+        className,
+      )}
+    >
+      <textarea
+        ref={ref}
+        rows={1}
+        autoFocus={autoFocus}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (canSend) onSubmit();
+          }
+        }}
+        placeholder={placeholder}
+        className="w-full bg-transparent text-body text-(--foreground) placeholder:text-(--muted-foreground) px-4 pt-3.5 pb-1 resize-none focus:outline-none leading-relaxed"
+      />
+      <div className="flex items-center justify-end px-3 pb-2.5 pt-1">
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={!canSend}
+          aria-label="Start research"
+          className={cn(
+            'w-8 h-8 rounded-full flex items-center justify-center shrink-0',
+            'transition-all duration-150 active:scale-95',
+            canSend
+              ? 'bg-(--primary) [color:var(--primary-foreground)] hover:brightness-95'
+              : 'bg-(--muted) text-(--muted-foreground) cursor-not-allowed',
+          )}
+        >
+          <ArrowUpIcon size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default ResearchComposer;
