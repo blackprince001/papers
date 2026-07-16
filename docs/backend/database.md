@@ -45,7 +45,9 @@ engines.
 
 # Migrations
 
-Alembic at `backend/migrations/` — **43 revisions**, head
-`citation_map_001` (`add_citation_map.py:15`, 2026-06-19). `init-db.sql`
+Alembic at `backend/migrations/` — **45 revisions**, head
+`deep_research_001` (`deep_research_001.py`, `down_revision = "add_last_opened_at"`,
+2026-07-15; it creates `deep_research_sessions` — see
+[/features/deep-research.md](/features/deep-research.md)). `init-db.sql`
 (`CREATE EXTENSION IF NOT EXISTS vector`) is mounted in dev only; prod relies
 on the `pgvector/pgvector:pg16` image + migrations.

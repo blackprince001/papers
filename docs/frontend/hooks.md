@@ -1,7 +1,7 @@
 ---
 type: Reference
 title: Frontend Hooks
-description: The 11 custom hooks — chat controller/sessions/stream, AI-search stream, typewriter, reading session, paper thumbnail, PDF dark mode, overflow, pagination, confirm dialog.
+description: The 12 custom hooks — chat controller/sessions/stream, AI-search stream, deep-research stream, typewriter, reading session, paper thumbnail, PDF dark mode, overflow, pagination, confirm dialog.
 resource: frontend-v2/src/hooks
 tags: [frontend, hooks]
 timestamp: 2026-06-28T00:00:00Z
@@ -21,4 +21,5 @@ Chat/AI hooks are covered in [chat-system.md](chat-system.md); the rest:
 # Chat/AI hooks (recap — see [chat-system.md](chat-system.md))
 
 `useChatController`, `useChatSessions`, `useChatStream`, `useTypewriter`,
-`useAISearchStream`.
+`useAISearchStream`, `useDeepResearchStream` (deep-research run streaming +
+reconnect — see [/features/deep-research.md](/features/deep-research.md)).

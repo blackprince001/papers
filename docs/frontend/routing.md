@@ -35,6 +35,8 @@ timestamp: 2026-06-28T00:00:00Z
 | `/discovery` | `pages/Discovery.tsx` | AI discovery |
 | `/recommendations` | `pages/Recommendations.tsx` | "For You" |
 | `/discovery-archive` | `pages/DiscoveryArchive.tsx` | saved sessions |
+| `/deep-research` | `pages/DeepResearch.tsx` | composer + live deep-research run (streamed report, cited sources, resume) — see [/features/deep-research.md](/features/deep-research.md) |
+| `/deep-research-archive` | `pages/DeepResearchArchive.tsx` | past deep-research runs (open/delete, resume on paused) |
 | `/huggingface-papers` | `pages/HuggingFacePapers.tsx` | HF Daily Papers |
 | `/settings` | `pages/Settings.tsx` | profile + AI provider config |
 | `/author`, `/author/search` | `pages/AuthorSearch.tsx` | author search |

@@ -15,7 +15,7 @@ in `backend/app/schemas/` — one Pydantic v2 file per domain.
 
 | Model | Table | Key relationships | Concept links |
 |---|---|---|---|
-| `User` | `users` (`user.py:9-10`) | Hub: `papers`, `groups`, `tags`, `annotations`, `bookmarks`, `paper_states`, `paper_shares`, `shared_papers`, `group_shares`, `shared_groups`, `reading_sessions`, `chat_sessions`, `multi_chat_sessions`, `saved_searches`, `discovery_sessions`, `refresh_tokens` | [security.md](/backend/security.md) |
+| `User` | `users` (`user.py:9-10`) | Hub: `papers`, `groups`, `tags`, `annotations`, `bookmarks`, `paper_states`, `paper_shares`, `shared_papers`, `group_shares`, `shared_groups`, `reading_sessions`, `chat_sessions`, `multi_chat_sessions`, `saved_searches`, `discovery_sessions`, `deep_research_sessions`, `refresh_tokens` | [security.md](/backend/security.md) |
 | `RefreshToken` | `refresh_tokens` (`refresh_token.py:9-10`) | → `User` | token rotation |
 
 # Papers (core library)
@@ -72,6 +72,7 @@ in `backend/app/schemas/` — one Pydantic v2 file per domain.
 |---|---|---|
 | `DiscoveredPaper` | `discovered_papers` (`discovery.py:48-51`) | `sessions` (M2M) |
 | `DiscoverySession` | `discovery_sessions` (`discovery.py:90-93`) | `user`, `papers` (M2M) |
+| `DeepResearchSession` | `deep_research_sessions` (`deep_research.py`) | `user` (FK ON DELETE SET NULL). Holds `question`, `title`, `status` (`running`/`paused`/`completed`/`failed`), `report` (Text), `cited_sources` (JSON), `run_state` (JSON — internal `to_input_list()` resume checkpoint, never serialized to clients), `last_error_code`, `attempt_count`, inline `created_at`/`updated_at`. See [/features/deep-research.md](/features/deep-research.md) |
 | `SavedSearch` | `saved_searches` (`saved_search.py:10-11`) | `user` |
 | `UserAIProvider` | `user_ai_providers` (`user_ai_provider.py:17-25`) | `user` backref `ai_providers` |
 | `UserAISettings` | `user_ai_settings` (`user_ai_settings.py:12-19`) | `user` backref `ai_settings` |
@@ -96,6 +97,7 @@ in `backend/app/schemas/` — one Pydantic v2 file per domain.
 | `reference.py` | `ReferenceManifestEntry`, `ReferenceManifest`, `BatchResolveRequest/Response` |
 | `related.py` | `RelatedPaperExternal`, `RelatedPapersResponse` |
 | `discovery.py` | `DiscoverySearchFilters/Request/Response`, `DiscoveredPaper/Preview`, `SourceSearchResult`, `AddToLibrary*`, `BatchAddToLibrary*`, `DiscoverySession*/Detail`, `Recommendation*`, `CitationExplorer*`, `DiscoverySourceInfo/SourcesResponse` |
+| `deep_research.py` | `DeepResearchSessionCreate` (`question`), `CitedSource`, `DeepResearchSession` (list view), `DeepResearchSessionDetail` (+ `report`, `cited_sources`). `run_state` is intentionally NOT in any schema |
 | `duplicate.py` | `DuplicateMatch`, `MergeRequest`, `MergePreview` |
 | `export.py` | `ExportRequest`, `CitationExportRequest` |
 | `huggingface.py` | `HF*` types for HuggingFace Daily Papers |

@@ -26,7 +26,6 @@ instantiated at import (`config.py:135`).
 | `SERPAPI_KEY` | str | `""` | `:24` | Google Scholar discovery provider |
 | `SEMANTIC_SCHOLAR_API_KEY` | str | `""` | `:25` | Semantic Scholar discovery provider |
 | `OPENALEX_API_KEY` | str | `""` | `:26` | OpenAlex discovery provider |
-| `ENABLE_DEEP_RESEARCH` | bool | `False` | `:27` | Experimental deep-research feature |
 | `AGENT_MAX_TURNS` | int | `25` | `:29` | Max agent turns |
 | `DEBUG` | bool | `False` | `:30` | Debug flag |
 | `PORT` | int | `8000` | `:31` | Backend listen port |
@@ -59,11 +58,11 @@ instantiated at import (`config.py:135`).
 `Settings` does NOT declare `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or
 `DEEPSEEK_API_KEY` — chat providers are per-user BYO (see
 [ai-agent.md](/backend/services/ai-agent.md)), and the comment at
-`config.py:21-23` confirms this. The former `DEEP_RESEARCH_MODEL` /
-`DEEP_RESEARCH_MCP_URL` / `DEEP_RESEARCH_MCP_TOKEN` compose/env drift was
-removed 2026-07-01, along with `DEEP_RESEARCH_DAILY_CAP` — the revised
-[deep-research](/features/deep-research.md) approach won't need them; only
-the `ENABLE_DEEP_RESEARCH` flag remains.
+`config.py:21-23` confirms this. There are **no deep-research env vars at all**:
+`ENABLE_DEEP_RESEARCH` was removed 2026-07-15 (the feature is now always-on),
+following `DEEP_RESEARCH_DAILY_CAP` / `_MODEL` / `_MCP_URL` / `_MCP_TOKEN`
+(removed 2026-07-01). Deep research runs with zero configuration — see
+[deep-research](/features/deep-research.md).
 
 # Citations
 
