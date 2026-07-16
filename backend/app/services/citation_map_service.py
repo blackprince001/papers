@@ -183,11 +183,25 @@ class CitationMapService:
       title=paper.title,
     )
 
-    references: list[dict[str, Any]] = []
-    if s2_id:
-      references = await semantic_scholar_service.get_neighbors(
-        s2_id, direction="references", limit=REFERENCES_FETCH_LIMIT
-      )
+    if not s2_id:
+      # Could not resolve the paper on Semantic Scholar — usually a transient
+      # 429, not a genuine "no references". Never poison the cache with an empty
+      # *resolved* result (a fresh resolved row is trusted and never retried):
+      # keep any prior good data, or leave the row unresolved so it retries.
+      if row is not None:
+        return row
+      row = CitationMapCache(paper_id=paper.id)
+      row.resolved = 0
+      row.references_json = []
+      row.fetched_at = datetime.now(timezone.utc)
+      session.add(row)
+      await session.commit()
+      await session.refresh(row)
+      return row
+
+    references = await semantic_scholar_service.get_neighbors(
+      s2_id, direction="references", limit=REFERENCES_FETCH_LIMIT
+    )
 
     if row is None:
       row = CitationMapCache(paper_id=paper.id)
@@ -195,7 +209,10 @@ class CitationMapService:
 
     row.s2_paper_id = s2_id
     row.resolved = 1
-    row.references_json = references
+    # A transient empty fetch (e.g. throttled mid-paging) must not wipe
+    # previously-resolved references; a genuinely reference-less paper stays [].
+    if references or not row.references_json:
+      row.references_json = references
     row.fetched_at = datetime.now(timezone.utc)
     await session.commit()
     await session.refresh(row)
