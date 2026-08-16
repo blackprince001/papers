@@ -766,6 +766,18 @@ dialog::backdrop {
   filter: invert(1) hue-rotate(180deg);
 }
 
+/* Deterministic motion override used by the dev review surface. This does
+ * not replace the user's prefers-reduced-motion setting; it makes screenshots
+ * and manual QA reproducible when the OS setting is unavailable. */
+html[data-review-motion='reduced'] *,
+html[data-review-motion='reduced'] ::before,
+html[data-review-motion='reduced'] ::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
 /* ===== REDUCED MOTION ===== */
 /* Kill decorative motion globally. Spinners are essential status indicators
  * (WCAG 2.3.3) — they keep rotating, slowed. */

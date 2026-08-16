@@ -653,6 +653,7 @@ async def get_paper_details(
 )
 async def add_to_library(
   discovered_paper_id: int,
+  user: CurrentUser,
   group_ids: Optional[List[int]] = Query(default=None),
   session: AsyncSession = Depends(get_db),
 ):
@@ -696,6 +697,7 @@ async def add_to_library(
       db_session=session,
       url=cast(str, ingest_url),
       group_ids=group_ids,
+      user_id=user.id,
     )
 
     return AddToLibraryResponse(
@@ -704,6 +706,8 @@ async def add_to_library(
       message="Paper added to library successfully",
     )
 
+  except ValueError as e:
+    raise HTTPException(status_code=400, detail=str(e)) from e
   except Exception as e:
     logger.error(
       "Error adding paper to library",
@@ -719,6 +723,7 @@ async def add_to_library(
 @router.post("/batch/add-to-library", response_model=BatchAddToLibraryResponse)
 async def batch_add_to_library(
   request: BatchAddToLibraryRequest,
+  user: CurrentUser,
   session: AsyncSession = Depends(get_db),
 ):
   """Add multiple discovered papers to the library at once."""
@@ -757,6 +762,7 @@ async def batch_add_to_library(
         db_session=session,
         url=cast(str, ingest_url),
         group_ids=request.group_ids,
+        user_id=user.id,
       )
 
       added.append(

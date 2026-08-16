@@ -229,12 +229,14 @@ class MultiChatService:
     user_id: int | None,
     provider_configs: list[ProviderRouteConfig],
     session_id: int | None = None,
+    is_admin: bool = False,
   ) -> None:
     """Set up the BYOContext for the current request (always overwrites)."""
     set_byo_context(
       BYOContext(
         user_id=user_id,
         provider_configs=provider_configs,
+        is_admin=is_admin,
         extra={"db_session": db_session, "session_id": session_id},
       )
     )
@@ -280,6 +282,7 @@ class MultiChatService:
     session_id: int | None = None,
     user_id: int | None = None,
     provider_id: int | None = None,
+    is_admin: bool = False,
   ) -> AsyncGenerator[dict[str, Any], None]:
     """Stream a multi-paper chat message response."""
     effective_paper_ids = paper_ids or []
@@ -364,7 +367,7 @@ class MultiChatService:
       agent_input = build_agent_input(history, user_message)
 
       self._setup_byo_context(
-        db_session, user_id, [r.route for r in resolved], session_id=session_pk
+        db_session, user_id, [r.route for r in resolved], session_id=session_pk, is_admin=is_admin
       )
       agent = create_multi_paper_agent(papers)
 
@@ -444,6 +447,7 @@ class MultiChatService:
     session_id: int | None = None,
     user_id: int | None = None,
     provider_id: int | None = None,
+    is_admin: bool = False,
   ) -> MultiChatMessage | None:
     """Send a multi-paper chat message and get a response (non-streaming)."""
     effective_paper_ids = paper_ids or []
@@ -487,7 +491,7 @@ class MultiChatService:
       agent_input = build_agent_input(history, user_message)
 
       self._setup_byo_context(
-        db_session, user_id, [r.route for r in resolved], session_id=session_pk
+        db_session, user_id, [r.route for r in resolved], session_id=session_pk, is_admin=is_admin
       )
       agent = create_multi_paper_agent(papers)
       primary = resolved[0]

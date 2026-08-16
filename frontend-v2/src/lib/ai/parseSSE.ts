@@ -6,6 +6,8 @@ import { logger } from '../logger';
  */
 export interface SSEEvent {
   type: string;
+  /** Server-supplied resume cursor from the SSE id field. */
+  id?: string;
   [key: string]: unknown;
 }
 
@@ -17,6 +19,8 @@ export interface ParseSSEOptions {
   maxRetries?: number;
   /** Called when a retry is about to happen, with the retry count (1-based) */
   onRetry?: (attempt: number, error: Error) => void;
+  /** Create a fresh response for a retry. Required when maxRetries > 0. */
+  reconnect?: () => Promise<Response>;
 }
 
 /** Default timeout: 60s of silence = stale connection */
@@ -80,11 +84,13 @@ export async function* parseSSE(
         if (timeoutMs > 0) {
           timeoutTimer = setTimeout(() => {
             controller.abort();
+            void reader.cancel();
           }, timeoutMs);
         }
       };
 
       try {
+        resetTimeout();
         while (true) {
           if (signal?.aborted || controller.signal.aborted) {
             if (signal?.aborted) {
@@ -138,7 +144,7 @@ export async function* parseSSE(
       }
 
       retriesDone++;
-      if (retriesDone > maxRetries) {
+      if (retriesDone > maxRetries || !options.reconnect) {
         throw err;
       }
 
@@ -149,7 +155,7 @@ export async function* parseSSE(
         err,
       );
       await sleep(delay);
-      // Signal the loop to retry with the same response
+      response = await options.reconnect();
     }
   }
 }
@@ -164,6 +170,7 @@ function processBlock(
 ): SSEEvent[] {
   const events: SSEEvent[] = [];
   let eventType = '';
+  let eventId: string | undefined;
   const dataLines: string[] = [];
 
   for (const rawLine of block.split('\n')) {
@@ -172,6 +179,8 @@ function processBlock(
 
     if (line.startsWith('event:')) {
       eventType = line.slice(6).trim();
+    } else if (line.startsWith('id:')) {
+      eventId = line.slice(3).trim();
     } else if (line.startsWith('data:')) {
       // data: can have an optional space after the colon
       dataLines.push(line.slice(5).replace(/^ /, ''));
@@ -188,13 +197,13 @@ function processBlock(
 
     if (eventType) {
       // Event-type format: use event as the type field
-      events.push({ type: eventType, ...parsed });
+      events.push({ ...parsed, ...(eventId ? { id: eventId } : {}), type: eventType });
     } else if (typeof parsed === 'object' && parsed !== null && 'type' in parsed) {
       // Already has a type field
-      events.push(parsed as SSEEvent);
+      events.push({ ...(eventId ? { id: eventId } : {}), ...(parsed as SSEEvent) });
     } else {
       // No explicit type — wrap with a default
-      events.push({ type: 'data', ...(parsed as Record<string, unknown>) });
+      events.push({ type: 'data', ...(eventId ? { id: eventId } : {}), ...(parsed as Record<string, unknown>) });
     }
   } catch (e) {
     // Could be non-JSON data or a partial event — skip silently

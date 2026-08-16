@@ -1,9 +1,9 @@
 """Deep research API — start, stream, list, get, delete, and resume runs.
 
 A run is dispatched to the isolated ``research`` Celery queue and streamed to the
-browser by tailing the replayable Redis event list ``deepresearch:{id}:events``.
-The stream is reconnectable: on (re)connect it replays the list from the start,
-then follows live, closing on a terminal event or terminal DB status.
+browser from the durable Postgres event store. Redis remains a compatibility relay,
+not the replay source. The stream resumes from an opaque generation/sequence cursor
+and closes on one durable terminal event or terminal DB status.
 """
 
 import asyncio
@@ -11,16 +11,17 @@ import json
 from typing import Any, AsyncGenerator, List
 
 import redis as redis_sync
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.core.logger import get_logger
-from app.dependencies import CurrentUser, get_db, scoped_user_id
-from app.models.deep_research import DeepResearchSession
+from app.dependencies import CurrentUser, get_db
+from app.models.deep_research import DeepResearchGeneration, DeepResearchSession
 from app.schemas.deep_research import (
   DeepResearchSession as DeepResearchSessionSchema,
 )
@@ -28,14 +29,55 @@ from app.schemas.deep_research import (
   DeepResearchSessionCreate,
   DeepResearchSessionDetail,
 )
-from app.tasks.deep_research_tasks import run_deep_research_task
+from app.services.deep_research.event_store import (
+  EventStore,
+  InvalidCursor,
+  decode_cursor,
+  encode_cursor,
+)
+from app.services.deep_research.orchestrator import (
+  enqueue_generation,
+  request_cancellation,
+)
+from app.tasks.deep_research_tasks import dispatch_research_outbox
 
 logger = get_logger(__name__)
 
 router = APIRouter()
 
-_TERMINAL_STATUSES = ("completed", "failed", "paused")
-_TERMINAL_EVENT_TYPES = ("done", "error", "paused")
+_TERMINAL_STATUSES = ("completed", "failed", "paused", "cancelled")
+_TERMINAL_EVENT_TYPES = ("done", "error", "paused", "cancelled")
+_ACTIVE_STATUSES = ("running", "queued", "planning", "searching", "reading", "synthesizing", "verifying", "cancel_requested")
+
+
+async def _enforce_active_run_limit(session: AsyncSession, user_id: int | None) -> None:
+  """Serialize the per-user count and reject excess active runs."""
+  # A missing scoped owner (the current administrator/orphan compatibility
+  # path) uses one global budget rather than bypassing the cap.
+  lock_key = 91827 + user_id if user_id is not None else 91827
+  await session.execute(select(func.pg_advisory_xact_lock(lock_key)))
+  active_query = select(func.count(DeepResearchSession.id)).where(
+    DeepResearchSession.status.in_(_ACTIVE_STATUSES),
+  )
+  if user_id is not None:
+    active_query = active_query.where(DeepResearchSession.user_id == user_id)
+  result = await session.execute(active_query)
+  active_count = result.scalar_one()
+  if active_count >= settings.DEEP_RESEARCH_MAX_ACTIVE_RUNS:
+    raise HTTPException(
+      status_code=429,
+      detail="Too many active deep-research runs",
+      headers={"Retry-After": "60"},
+    )
+
+
+def _ensure_mutations_enabled() -> None:
+  """Keep the known-unsafe legacy start/resume path frozen by default."""
+  if not settings.DEEP_RESEARCH_MUTATIONS_ENABLED:
+    raise HTTPException(
+      status_code=503,
+      detail="Deep research starts and resumes are temporarily disabled while the service is being rebuilt",
+    )
 
 
 def _events_key(session_id: int) -> str:
@@ -58,7 +100,7 @@ async def _get_owned_or_404(
   result = await session.execute(
     select(DeepResearchSession).where(
       DeepResearchSession.id == session_id,
-      DeepResearchSession.user_id == scoped_user_id(user),
+      DeepResearchSession.user_id == user.id,
     )
   )
   row = result.scalar_one_or_none()
@@ -72,24 +114,79 @@ async def start_deep_research(
   request: DeepResearchSessionCreate,
   user: CurrentUser,
   session: AsyncSession = Depends(get_db),
+  idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ):
   """Create a run and dispatch it to the research queue."""
+  _ensure_mutations_enabled()
   question = (request.question or "").strip()
   if not question:
     raise HTTPException(status_code=422, detail="A research question is required")
 
-  uid = scoped_user_id(user)
+  uid = user.id
+  key = idempotency_key.strip() if idempotency_key else None
+  if key and len(key) > 255:
+    raise HTTPException(status_code=422, detail="Idempotency-Key is too long")
+  if key:
+    existing = (
+      await session.execute(
+        select(DeepResearchSession).where(
+          DeepResearchSession.user_id == uid,
+          DeepResearchSession.idempotency_key == key,
+        )
+      )
+    ).scalar_one_or_none()
+    if existing is not None:
+      if existing.question != question:
+        raise HTTPException(
+          status_code=409,
+          detail="Idempotency-Key was already used for another request",
+        )
+      return DeepResearchSessionSchema.model_validate(existing)
+  await _enforce_active_run_limit(session, uid)
   row = DeepResearchSession(
     user_id=uid,
     question=question,
     title=question[:80],
-    status="running",
+    status="queued",
+    idempotency_key=key,
   )
   session.add(row)
-  await session.commit()
+  await session.flush()
+  generation = DeepResearchGeneration(
+    session_id=row.id,
+    generation_number=1,
+    status="queued",
+    correlation_id=row.correlation_id,
+  )
+  session.add(generation)
+  await session.flush()
+  await enqueue_generation(session, session=row, generation=generation)
+  try:
+    await session.commit()
+  except IntegrityError:
+    await session.rollback()
+    if not key:
+      raise
+    existing = (
+      await session.execute(
+        select(DeepResearchSession).where(
+          DeepResearchSession.user_id == uid,
+          DeepResearchSession.idempotency_key == key,
+        )
+      )
+    ).scalar_one()
+    if existing.question != question:
+      raise HTTPException(
+        status_code=409,
+        detail="Idempotency-Key was already used for another request",
+      ) from None
+    return DeepResearchSessionSchema.model_validate(existing)
   await session.refresh(row)
 
-  run_deep_research_task.apply_async(args=[row.id, uid], queue="research")
+  try:
+    dispatch_research_outbox.delay()
+  except Exception as exc:  # the periodic dispatcher will recover this row
+    logger.warning("Research outbox wake-up failed", session_id=row.id, error=str(exc))
   return DeepResearchSessionSchema.model_validate(row)
 
 
@@ -102,7 +199,7 @@ async def list_deep_research(
 ):
   stmt = (
     select(DeepResearchSession)
-    .where(DeepResearchSession.user_id == scoped_user_id(user))
+    .where(DeepResearchSession.user_id == user.id)
     .order_by(DeepResearchSession.updated_at.desc())
     .offset(offset)
     .limit(limit)
@@ -122,6 +219,19 @@ async def get_deep_research(
   return DeepResearchSessionDetail.model_validate(row)
 
 
+@router.post("/{session_id}/cancel", response_model=DeepResearchSessionSchema)
+async def cancel_deep_research(
+  session_id: int,
+  user: CurrentUser,
+  session: AsyncSession = Depends(get_db),
+):
+  """Request cooperative cancellation; a worker emits the terminal event."""
+  row = await _get_owned_or_404(session, session_id, user)
+  await request_cancellation(session, row)
+  await session.refresh(row)
+  return DeepResearchSessionSchema.model_validate(row)
+
+
 @router.delete("/{session_id}")
 async def delete_deep_research(
   session_id: int,
@@ -129,6 +239,9 @@ async def delete_deep_research(
   session: AsyncSession = Depends(get_db),
 ):
   row = await _get_owned_or_404(session, session_id, user)
+  if row.status not in ("completed", "failed", "cancelled", "paused"):
+    await request_cancellation(session, row)
+    return {"message": "Deep research cancellation requested", "id": session_id}
   await session.delete(row)
   await session.commit()
   return {"message": "Deep research session deleted", "id": session_id}
@@ -141,65 +254,101 @@ async def resume_deep_research(
   session: AsyncSession = Depends(get_db),
 ):
   """Resume a paused run from its checkpoint."""
+  _ensure_mutations_enabled()
   row = await _get_owned_or_404(session, session_id, user)
   if row.status != "paused":
     raise HTTPException(
       status_code=409, detail=f"Run is '{row.status}', only paused runs can be resumed"
     )
-  uid = scoped_user_id(user)
-  row.status = "running"
+  uid = user.id
+  await _enforce_active_run_limit(session, uid)
+  await session.refresh(row)
+  if row.status != "paused":
+    raise HTTPException(
+      status_code=409, detail=f"Run is '{row.status}', only paused runs can be resumed"
+    )
+  next_generation = (await session.execute(
+    select(func.coalesce(func.max(DeepResearchGeneration.generation_number), 0) + 1).where(
+      DeepResearchGeneration.session_id == row.id
+    )
+  )).scalar_one()
+  row.current_generation = next_generation
+  row.status = "queued"
+  generation = DeepResearchGeneration(
+    session_id=row.id,
+    generation_number=next_generation,
+    status="queued",
+    correlation_id=row.correlation_id,
+  )
+  session.add(generation)
+  await session.flush()
+  await enqueue_generation(session, session=row, generation=generation)
   await session.commit()
   await session.refresh(row)
 
-  run_deep_research_task.apply_async(args=[row.id, uid], queue="research")
+  try:
+    dispatch_research_outbox.delay()
+  except Exception as exc:  # the periodic dispatcher will recover this row
+    logger.warning("Research outbox wake-up failed", session_id=row.id, error=str(exc))
   return DeepResearchSessionSchema.model_validate(row)
 
 
 @router.get("/{session_id}/stream")
 async def stream_deep_research(
   session_id: int,
+  request: Request,
   user: CurrentUser,
   session: AsyncSession = Depends(get_db),
 ):
-  """SSE: replay the run's events, then follow live until it ends.
+  """Stream durable events for the current generation.
 
-  Reconnect-safe — the Redis list is read non-destructively from the start, so
-  a browser that drops and reopens sees the full progress again.
+  ``Last-Event-ID`` (or ``cursor``) is an opaque signed generation/sequence
+  cursor. A cursor from an older generation is rejected instead of replaying
+  events from the wrong execution.
   """
   await _get_owned_or_404(session, session_id, user)
+  cursor_value = request.headers.get("last-event-id") or request.query_params.get("cursor")
+  try:
+    cursor_generation, cursor_sequence = decode_cursor(cursor_value) if cursor_value else (None, 0)
+  except InvalidCursor as exc:
+    raise HTTPException(status_code=400, detail="Invalid event cursor") from exc
+
+  store = EventStore()
+  current_generation = (
+    await store.generation(session, session_id)
+  )
+  if current_generation is None:
+    raise HTTPException(status_code=404, detail="Research generation not found")
+  if cursor_generation is not None and cursor_generation != current_generation.generation_number:
+    raise HTTPException(status_code=409, detail="Event cursor belongs to a stale generation")
 
   async def event_generator() -> AsyncGenerator[str, None]:
-    r = _redis_client()
-    key = _events_key(session_id)
-    offset = 0
-    # Dedicated session, created and used entirely inside this streaming task,
-    # so its asyncpg connection lifecycle stays put (avoids MissingGreenlet).
+    offset = cursor_sequence
+    generation_number = int(current_generation.generation_number)
+    generation_id = int(current_generation.id)
     async with AsyncSessionLocal() as db:
       try:
         while True:
-          raws = await asyncio.to_thread(r.lrange, key, offset, -1)
+          events = await store.after(
+            db,
+            generation_id=generation_id,
+            after_sequence=offset,
+          )
           terminal_seen = False
-          for raw in raws:
-            offset += 1
-            yield f"data: {raw}\n\n"
-            try:
-              if json.loads(raw).get("type") in _TERMINAL_EVENT_TYPES:
-                terminal_seen = True
-            except (ValueError, TypeError):
-              continue
+          for event in events:
+            offset = event.sequence
+            event_id = encode_cursor(generation_number, event.sequence)
+            payload = json.dumps(event.payload, ensure_ascii=False)
+            yield f"event: {event.event_type}\nid: {event_id}\ndata: {payload}\n\n"
+            if event.event_type in _TERMINAL_EVENT_TYPES:
+              terminal_seen = True
           if terminal_seen:
             break
 
-          # Safety net: if the run finished but its terminal event has expired
-          # from Redis (or was never seen), close on the persisted status.
           db.expire_all()
           row = await db.get(DeepResearchSession, session_id)
-          if row is not None and row.status in _TERMINAL_STATUSES:
-            tail = await asyncio.to_thread(r.lrange, key, offset, -1)
-            for raw in tail:
-              offset += 1
-              yield f"data: {raw}\n\n"
-            yield f"data: {json.dumps({'type': 'end', 'status': row.status})}\n\n"
+          if row is not None and row.status in (*_TERMINAL_STATUSES, "cancelled"):
+            yield f"event: end\ndata: {json.dumps({'type': 'end', 'status': row.status})}\n\n"
             break
 
           yield ": keepalive\n\n"

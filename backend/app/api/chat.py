@@ -61,6 +61,7 @@ async def send_chat_message(
       session_id=chat_request.session_id,
       user_id=user.id,
       provider_id=chat_request.provider_id,
+      is_admin=user.role == "admin",
     )
 
     session_id = assistant_message.session_id if assistant_message else None
@@ -125,6 +126,7 @@ async def stream_chat_message(
           session_id=chat_request.session_id,
           user_id=user.id,
           provider_id=chat_request.provider_id,
+          is_admin=user.role == "admin",
         ):
           data = json.dumps(chunk)
           yield f"data: {data}\n\n"
@@ -217,6 +219,7 @@ async def send_thread_message(
       user_message=request.message,
       references=request.references,
       user_id=user.id,
+      is_admin=user.role == "admin",
     )
 
     parent_message = await chat_service.get_message_by_id(session, message_id)

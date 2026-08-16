@@ -92,6 +92,7 @@ async def stream_group_chat_message(
           session_id=chat_request.session_id,
           user_id=user.id,
           provider_id=chat_request.provider_id,
+          is_admin=user.role == "admin",
         ):
           yield f"data: {json.dumps(chunk)}\n\n"
       except Exception as e:
@@ -183,7 +184,7 @@ async def create_group_session(
       raise HTTPException(status_code=500, detail="Failed to load created session")
     return _serialize_session(loaded)
   except ValueError as e:
-    raise HTTPException(status_code=400, detail=str(e))
+    raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.post("/multi-chat/stream")
@@ -212,6 +213,7 @@ async def stream_multi_chat_message(
           session_id=chat_request.session_id,
           user_id=user.id,
           provider_id=chat_request.provider_id,
+          is_admin=user.role == "admin",
         ):
           yield f"data: {json.dumps(chunk)}\n\n"
       except Exception as e:

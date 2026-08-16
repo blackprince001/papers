@@ -1,13 +1,15 @@
 from datetime import datetime
 from typing import Any, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from app.core.config import settings
 
 
 class DeepResearchSessionCreate(BaseModel):
   """Request to start a deep-research run."""
 
-  question: str
+  question: str = Field(min_length=1, max_length=settings.DEEP_RESEARCH_MAX_QUESTION_LENGTH)
 
 
 class CitedSource(BaseModel):

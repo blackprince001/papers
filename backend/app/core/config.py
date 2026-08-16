@@ -24,6 +24,17 @@ class Settings(BaseSettings):
   SEMANTIC_SCHOLAR_API_KEY: str = ""
   OPENALEX_API_KEY: str = ""
   AGENT_MAX_TURNS: int = 25
+  # Temporary safety freeze while the deep-research lifecycle is being replaced.
+  # Keep false in every environment until the replacement passes its release gates.
+  DEEP_RESEARCH_MUTATIONS_ENABLED: bool = True
+  DEEP_RESEARCH_MAX_QUESTION_LENGTH: int = 4000
+  DEEP_RESEARCH_MAX_ACTIVE_RUNS: int = 3
+  DEEP_RESEARCH_MAX_EVENT_BYTES: int = 64 * 1024
+  DEEP_RESEARCH_MAX_REPORT_BYTES: int = 2 * 1024 * 1024
+  DEEP_RESEARCH_MAX_TURNS: int = 50
+  DEEP_RESEARCH_MAX_EVIDENCE_ITEMS: int = 120
+  INGESTION_MAX_DOWNLOAD_BYTES: int = 100 * 1024 * 1024
+  INGESTION_MAX_REDIRECTS: int = 5
   AI_TASK_RATE_LIMIT: int = Field(
     default=10, description="Max AI tasks per minute per user (Celery)"
   )

@@ -22,15 +22,22 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+from contextvars import ContextVar
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from celery.exceptions import SoftTimeLimitExceeded
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
 from app.core.logger import get_logger
-from app.models.deep_research import DeepResearchSession
+from app.models.deep_research import (
+  DeepResearchEvent,
+  DeepResearchGeneration,
+  DeepResearchSession,
+)
 from app.services.ai.agent import (
   ERROR_CODE_AUTH,
   ERROR_CODE_INTERNAL,
@@ -47,15 +54,15 @@ from app.services.ai.agent import (
 from app.services.ai.agent.agents import create_deep_research_agent
 from app.services.ai.agent.context import BYOContext
 from app.services.ai.agent.provider_resolver import resolve_providers
+from app.services.deep_research.event_store import DuplicateTerminalEvent, EventStore
+from app.services.deep_research.evidence import persist_evidence
+from app.services.deep_research.orchestrator import verify_report
+from app.services.deep_research.state import check_transition, payload_bytes
 
 logger = get_logger(__name__)
 
-# Deep research runs as a single agent loop with a generous turn budget. The
-# SDK requires *some* max_turns (there is no unbounded mode), so this is set
-# high enough that a thorough investigation finishes in one pass. If the agent
-# still hasn't converged, the run pauses with its ``to_input_list()`` checkpoint
-# saved so the user can resume for another budget — it never restarts from zero.
-DEEP_RESEARCH_MAX_TURNS = 50
+# Runner requires a finite turn budget. A bound keeps one generation from
+# consuming unbounded provider capacity; exhausted work pauses for review.
 EVENTS_TTL_SECONDS = 1800
 
 # Provider types that support the agent (function-calling) framework.
@@ -71,6 +78,15 @@ AGENT_PROVIDER_TYPES = {
 # Errors the user must act on before a resume can succeed (vs. transient ones
 # that resume automatically).
 USER_ACTIONABLE = {ERROR_CODE_AUTH, ERROR_CODE_NO_PROVIDER}
+_LEASE_TOKEN: ContextVar[str | None] = ContextVar("deep_research_lease_token", default=None)
+
+
+class StaleLease(Exception):
+  """A recovered generation is now owned by another worker."""
+
+
+class CancellationRequested(Exception):
+  """A concurrent cancellation won the lifecycle row lock."""
 
 
 class DeepResearchRetryable(Exception):
@@ -109,13 +125,105 @@ def _get_redis():
   )
 
 
+def _bounded_json_value(value: Any, max_bytes: int, fallback: Any = None) -> Any:
+  """Keep checkpoints within the database payload budget without corrupting history."""
+  try:
+    if len(json.dumps(value, ensure_ascii=False).encode("utf-8")) <= max_bytes:
+      return value
+    if fallback is not None and len(json.dumps(fallback, ensure_ascii=False).encode("utf-8")) <= max_bytes:
+      return fallback
+  except (TypeError, ValueError):
+    return None
+  return None
+
+
+def _bounded_text(value: str, max_bytes: int) -> str:
+  raw = value.encode("utf-8")
+  if len(raw) <= max_bytes:
+    return value
+  return raw[:max_bytes].decode("utf-8", errors="ignore")
+
+
+def _bounded_event(event: dict[str, Any], max_bytes: int) -> dict[str, Any]:
+  bounded = dict(event)
+  for field in ("content", "error"):
+    value = bounded.get(field)
+    if isinstance(value, str):
+      bounded[field] = _bounded_text(value, max_bytes)
+  raw = json.dumps(bounded, ensure_ascii=False)
+  if len(raw.encode("utf-8")) <= max_bytes:
+    return bounded
+  event_type = event.get("type")
+  if event_type == "done":
+    return {"type": "done", "content": "[report truncated]"}
+  if event_type == "error":
+    return {"type": "error", "error": "Research event exceeded the size limit"}
+  return {"type": event_type or "chunk", "content": "[event truncated]", "truncated": True}
+
+
 def _relay(r, session_id: int, event: dict[str, Any]) -> None:
-  """Append one stream event to the replayable Redis progress list."""
+  """Mirror a bounded event to Redis for legacy observability consumers."""
   if event.get("type") == "keepalive":
-    return  # live-only noise; not useful on replay
+    return
+  bounded = _bounded_event(event, settings.DEEP_RESEARCH_MAX_EVENT_BYTES)
   key = _events_key(session_id)
-  r.rpush(key, json.dumps(event))
+  r.rpush(key, json.dumps(bounded, ensure_ascii=False))
   r.expire(key, EVENTS_TTL_SECONDS)
+
+
+async def _ensure_generation(db, session: DeepResearchSession) -> DeepResearchGeneration:
+  generation = (
+    await db.execute(
+      select(DeepResearchGeneration).where(
+        DeepResearchGeneration.session_id == session.id,
+        DeepResearchGeneration.generation_number == session.current_generation,
+      )
+    )
+  ).scalar_one_or_none()
+  if generation is None:
+    generation = DeepResearchGeneration(
+      session_id=session.id,
+      generation_number=session.current_generation,
+      status=str(session.status),
+      correlation_id=session.correlation_id,
+    )
+    db.add(generation)
+    await db.commit()
+  return generation
+
+
+async def _emit_event(
+  db,
+  r,
+  session: DeepResearchSession,
+  event: dict[str, Any],
+  generation: DeepResearchGeneration | None = None,
+) -> None:
+  if event.get("type") == "keepalive":
+    return
+  generation = generation or await _ensure_generation(db, session)
+  fresh_generation = (
+    await db.execute(
+      select(DeepResearchGeneration)
+      .where(DeepResearchGeneration.id == generation.id)
+      .with_for_update()
+    )
+  ).scalar_one()
+  _assert_lease(fresh_generation)
+  generation = fresh_generation
+  bounded = _bounded_event(event, settings.DEEP_RESEARCH_MAX_EVENT_BYTES)
+  generation.lease_until = datetime.now(timezone.utc) + timedelta(minutes=20)
+  try:
+    await EventStore().append(
+      db,
+      session_id=int(session.id),
+      generation_id=int(generation.id),
+      event=bounded,
+      correlation_id=session.correlation_id,
+    )
+  except DuplicateTerminalEvent:
+    return
+  _relay(r, int(session.id), bounded)
 
 
 _LINK_RE = re.compile(r"\[([^\]]+)\]\((https?://[^)\s]+)\)")
@@ -191,6 +299,12 @@ def _final_output(result: Any) -> str | None:
     return None
 
 
+def _assert_lease(generation: DeepResearchGeneration) -> None:
+  token = _LEASE_TOKEN.get()
+  if token is not None and generation.lease_token != token:
+    raise StaleLease()
+
+
 async def _persist(db, session_id: int, **values: Any) -> None:
   """Fetch the row fresh and update it, clearing any aborted tool transaction.
 
@@ -202,15 +316,60 @@ async def _persist(db, session_id: int, **values: Any) -> None:
     await db.rollback()
   except Exception:  # noqa: BLE001
     pass
-  row = await db.get(DeepResearchSession, session_id)
+  row = (
+    await db.execute(
+      select(DeepResearchSession)
+      .where(DeepResearchSession.id == session_id)
+      .with_for_update()
+    )
+  ).scalar_one_or_none()
   if row is None:
     return
+  target_status = values.get("status")
+  if row.cancel_requested and target_status not in {"cancelled", "failed"}:
+    raise CancellationRequested()
+  if target_status is not None and target_status != row.status:
+    check_transition(str(row.status), str(target_status))
+    row.lifecycle_version = (row.lifecycle_version or 0) + 1
   for k, v in values.items():
     setattr(row, k, v)
+  generation = (
+    await db.execute(
+      select(DeepResearchGeneration).where(
+        DeepResearchGeneration.session_id == session_id,
+        DeepResearchGeneration.generation_number == row.current_generation,
+      )
+    )
+  ).scalar_one_or_none()
+  if generation is None:
+    generation = DeepResearchGeneration(
+      session_id=session_id,
+      generation_number=row.current_generation,
+      status=str(row.status),
+      correlation_id=row.correlation_id,
+    )
+    db.add(generation)
+  _assert_lease(generation)
+  generation.status = str(row.status)
+  if "run_state" in values:
+    generation.checkpoint = values["run_state"]
+    generation.checkpoint_bytes = (
+      payload_bytes(values["run_state"]) if values["run_state"] is not None else 0
+    )
+  if str(row.status) in {"completed", "failed", "cancelled", "paused"}:
+    generation.lease_until = None
+    generation.finished_at = datetime.now(timezone.utc)
+  generation.state_version = (generation.state_version or 0) + 1
   await db.commit()
 
 
-async def run_research(session_id: int, user_id: int | None) -> str:
+async def run_research(
+  session_id: int,
+  user_id: int | None,
+  is_admin: bool = False,
+  generation_id: int | None = None,
+  lease_token: str | None = None,
+) -> str:
   """Execute or resume a deep-research run; return the terminal status string.
 
   Raises :class:`DeepResearchRetryable` when the caller (the Celery task) should
@@ -226,30 +385,60 @@ async def run_research(session_id: int, user_id: int | None) -> str:
   session_maker = async_sessionmaker(
     engine, expire_on_commit=False, autoflush=False, autocommit=False
   )
+  token = _LEASE_TOKEN.set(lease_token)
   try:
     async with session_maker() as db:
-      return await _run_research(db, session_id, user_id)
+      return await _run_research(db, session_id, user_id, is_admin, generation_id)
   finally:
+    _LEASE_TOKEN.reset(token)
     await engine.dispose()
 
 
-async def _run_research(db, session_id: int, user_id: int | None) -> str:
+async def _run_research(
+  db, session_id: int, user_id: int | None, is_admin: bool = False, generation_id: int | None = None
+) -> str:
   r = _get_redis()
   Runner = _get_runner()
 
   session = await db.get(DeepResearchSession, session_id)
   if session is None:
     return "failed"
+  generation = await _ensure_generation(db, session)
+  if generation_id is not None and int(generation.id) != generation_id:
+    return "ignored"
+  try:
+    _assert_lease(generation)
+  except StaleLease:
+    return "ignored"
+  if session.cancel_requested:
+    await _cancel(db, r, session_id)
+    return "cancelled"
 
-  question = session.question
+  question = (session.question or "").strip()
+  if not question or len(question) > settings.DEEP_RESEARCH_MAX_QUESTION_LENGTH:
+    await _mark_failed(
+      db,
+      r,
+      session_id,
+      "input_too_large",
+      "Research question exceeds the configured size limit",
+    )
+    return "failed"
   resume_state = session.run_state
-  await _persist(
-    db,
-    session_id,
-    status="running",
-    last_error_code=None,
-    attempt_count=(session.attempt_count or 0) + 1,
-  )
+  try:
+    await _persist(
+      db,
+      session_id,
+      status="planning",
+      last_error_code=None,
+      attempt_count=(session.attempt_count or 0) + 1,
+    )
+  except StaleLease:
+    logger.info("Stopping stale deep-research worker", session_id=session_id)
+    return "ignored"
+  except CancellationRequested:
+    await _cancel(db, r, session_id)
+    return "cancelled"
 
   if Runner is None:
     await _pause(
@@ -285,26 +474,45 @@ async def _run_research(db, session_id: int, user_id: int | None) -> str:
   )
   agent = create_deep_research_agent()
   agent_input: Any = resume_state or [{"role": "user", "content": question}]
+  try:
+    await _persist(db, session_id, status="searching")
+  except CancellationRequested:
+    await _cancel(db, r, session_id)
+    return "cancelled"
+  session = await db.get(DeepResearchSession, session_id)
+  if session is None:
+    return "failed"
 
   set_byo_context(
     BYOContext(
       user_id=user_id,
       provider_configs=[provider.route],
+      is_admin=is_admin,
       extra={"db_session": db, "session_id": session_id, "dr_sources": []},
     )
   )
   try:
     result = Runner.run_streamed(
-      agent, input=agent_input, run_config=run_config, max_turns=DEEP_RESEARCH_MAX_TURNS
+      agent, input=agent_input, run_config=run_config, max_turns=settings.DEEP_RESEARCH_MAX_TURNS
     )
     content: list[str] = []
+    content_bytes = 0
     run_error: dict[str, Any] | None = None
     try:
       async for adapted in adapt_stream(result, session_id=session_id):
-        _relay(r, session_id, adapted)
+        if await _cancellation_requested(db, session_id):
+          await _cancel(db, r, session_id)
+          return "cancelled"
+        await _emit_event(db, r, session, adapted, generation)
         t = adapted.get("type")
         if t == "chunk":
-          content.append(adapted.get("content", ""))
+          chunk = adapted.get("content", "")
+          if isinstance(chunk, str) and content_bytes < settings.DEEP_RESEARCH_MAX_REPORT_BYTES:
+            bounded_chunk = _bounded_text(
+              chunk, settings.DEEP_RESEARCH_MAX_REPORT_BYTES - content_bytes
+            )
+            content.append(bounded_chunk)
+            content_bytes += len(bounded_chunk.encode("utf-8"))
         elif t == "error":
           run_error = adapted
     except SoftTimeLimitExceeded as e:
@@ -312,18 +520,53 @@ async def _run_research(db, session_id: int, user_id: int | None) -> str:
       await _persist(
         db,
         session_id,
-        run_state=_safe_to_input_list(result, fallback=agent_input),
-        status="running",
+        run_state=_bounded_json_value(
+          _safe_to_input_list(result, fallback=agent_input),
+          settings.DEEP_RESEARCH_MAX_EVENT_BYTES,
+          fallback=agent_input,
+        ),
+        status="queued",
         last_error_code=ERROR_CODE_TIMEOUT,
       )
       raise DeepResearchRetryable(ERROR_CODE_TIMEOUT) from e
 
-    checkpoint = _safe_to_input_list(result, fallback=agent_input)
+    checkpoint = _bounded_json_value(
+          _safe_to_input_list(result, fallback=agent_input),
+          settings.DEEP_RESEARCH_MAX_EVENT_BYTES,
+          fallback=agent_input,
+        )
 
     if run_error is None:
-      # Agent finished on its own → the report is its final output.
-      report = _final_output(result) or "".join(content)
-      await _complete(db, r, session_id, report)
+      # The model work is complete; advance through the checked synthesis and
+      # verification stages before exposing a durable terminal result.
+      report = _bounded_text(
+        _final_output(result) or "".join(content), settings.DEEP_RESEARCH_MAX_REPORT_BYTES
+      )
+      await _persist(db, session_id, status="reading")
+      await _persist(db, session_id, status="synthesizing")
+      sources = _run_sources(report)
+      session = await db.get(DeepResearchSession, session_id)
+      if session is None:
+        return "failed"
+      generation = await _ensure_generation(db, session)
+      evidence = await persist_evidence(
+        db,
+        session_id=session_id,
+        generation_id=int(generation.id),
+        sources=sources,
+      )
+      await _persist(db, session_id, status="verifying")
+      verification = verify_report(report, {item.url for item in evidence if item.url})
+      if verification.unsupported_urls:
+        await _pause(
+          db,
+          r,
+          session_id,
+          "unsupported_citation",
+          "Research report contains citations that are not present in its evidence ledger.",
+        )
+        return "paused"
+      await _complete(db, r, session_id, report, sources=sources)
       return "completed"
 
     code = run_error.get("error_code") or ERROR_CODE_INTERNAL
@@ -341,7 +584,13 @@ async def _run_research(db, session_id: int, user_id: int | None) -> str:
       )
       return "paused"
     if run_error.get("recoverable"):
-      await _persist(db, session_id, status="running", last_error_code=code)
+      await _persist(db, session_id, status="queued", last_error_code=code)
+      session = await db.get(DeepResearchSession, session_id)
+      if session is not None:
+        await _emit_event(
+          db, r, session,
+          {"type": "retrying", "error": run_error.get("error", "Retrying research"), "error_code": code, "recoverable": True},
+        )
       raise DeepResearchRetryable(code)
     if code in USER_ACTIONABLE:
       await _pause(db, r, session_id, code, run_error.get("error", "Run paused"))
@@ -349,6 +598,9 @@ async def _run_research(db, session_id: int, user_id: int | None) -> str:
     await _mark_failed(db, r, session_id, code, run_error.get("error", "Run failed"))
     return "failed"
 
+  except CancellationRequested:
+    await _cancel(db, r, session_id)
+    return "cancelled"
   except DeepResearchRetryable:
     raise
   except SoftTimeLimitExceeded as e:
@@ -358,7 +610,7 @@ async def _run_research(db, session_id: int, user_id: int | None) -> str:
       "Deep research soft time limit reached; will resume", session_id=session_id
     )
     await _persist(
-      db, session_id, status="running", last_error_code=ERROR_CODE_TIMEOUT
+      db, session_id, status="queued", last_error_code=ERROR_CODE_TIMEOUT
     )
     raise DeepResearchRetryable(ERROR_CODE_TIMEOUT) from e
   except asyncio.CancelledError:
@@ -367,7 +619,13 @@ async def _run_research(db, session_id: int, user_id: int | None) -> str:
     code, recoverable = classify_exception(e)
     logger.error("Deep research run error", error=str(e)[:200], error_code=code)
     if recoverable:
-      await _persist(db, session_id, status="running", last_error_code=code)
+      await _persist(db, session_id, status="queued", last_error_code=code)
+      session = await db.get(DeepResearchSession, session_id)
+      if session is not None:
+        await _emit_event(
+          db, r, session,
+          {"type": "retrying", "error": str(e)[:300], "error_code": code, "recoverable": True},
+        )
       raise DeepResearchRetryable(code) from e
     if code in USER_ACTIONABLE:
       await _pause(db, r, session_id, code, str(e)[:300])
@@ -386,8 +644,10 @@ def _run_sources(report: str) -> list[dict[str, Any]]:
     collected = get_byo_context().extra.get("dr_sources") or []
   except Exception:  # noqa: BLE001
     collected = []
+  # A report is never evidence. Only structured results emitted by authorized
+  # tools enter the ledger; otherwise a model could validate its own invented URL.
   if not collected:
-    return _extract_sources(report)
+    return []
 
   seen: set[Any] = set()
   out: list[dict[str, Any]] = []
@@ -401,40 +661,136 @@ def _run_sources(report: str) -> list[dict[str, Any]]:
       continue
     seen.add(key)
     out.append(it)
-  return out[:120]
+  return out[: settings.DEEP_RESEARCH_MAX_EVIDENCE_ITEMS]
 
 
-async def _complete(db, r, session_id: int, report: str) -> None:
-  await _persist(
+async def _cancellation_requested(db, session_id: int) -> bool:
+  await db.rollback()
+  session = await db.get(DeepResearchSession, session_id)
+  return bool(session and session.cancel_requested)
+
+
+async def _terminal_transition(
+  db,
+  r,
+  session_id: int,
+  *,
+  status: str,
+  event: dict[str, Any],
+  report: str | None = None,
+  cited_sources: list[dict[str, Any]] | None = None,
+  last_error_code: str | None = None,
+) -> None:
+  """Atomically persist a terminal lifecycle state and its sole SSE event."""
+  await db.rollback()
+  session = (
+    await db.execute(
+      select(DeepResearchSession)
+      .where(DeepResearchSession.id == session_id)
+      .with_for_update()
+    )
+  ).scalar_one_or_none()
+  if session is None:
+    return
+  generation = await _ensure_generation(db, session)
+  _assert_lease(generation)
+  terminal_exists = (
+    await db.execute(
+      select(DeepResearchEvent.id)
+      .where(
+        DeepResearchEvent.generation_id == generation.id,
+        DeepResearchEvent.event_type.in_(("done", "error", "paused", "cancelled")),
+      )
+      .limit(1)
+    )
+  ).scalar_one_or_none()
+  if terminal_exists is not None:
+    await db.rollback()
+    return
+  if session.status != status:
+    check_transition(str(session.status), status)
+    session.status = status
+    session.lifecycle_version = (session.lifecycle_version or 0) + 1
+  if report is not None:
+    session.report = report
+  if cited_sources is not None:
+    session.cited_sources = _bounded_json_value(
+      cited_sources, settings.DEEP_RESEARCH_MAX_REPORT_BYTES, fallback=[]
+    )
+  session.run_state = None
+  session.last_error_code = last_error_code
+  generation.status = status
+  generation.lease_until = None
+  generation.finished_at = datetime.now(timezone.utc)
+  generation.state_version = (generation.state_version or 0) + 1
+  bounded = _bounded_event(event, settings.DEEP_RESEARCH_MAX_EVENT_BYTES)
+  await EventStore().append(
     db,
-    session_id,
-    report=report,
-    cited_sources=_run_sources(report),
-    status="completed",
-    run_state=None,
-    last_error_code=None,
+    session_id=int(session.id),
+    generation_id=int(generation.id),
+    event=bounded,
+    correlation_id=session.correlation_id,
+    commit=False,
   )
-  _relay(r, session_id, {"type": "done", "content": report, "session_id": session_id})
+  await db.commit()
+  _relay(r, int(session.id), bounded)
+
+
+async def _cancel(db, r, session_id: int) -> None:
+  await _terminal_transition(
+    db,
+    r,
+    session_id,
+    status="cancelled",
+    event={"type": "cancelled", "error": "Research cancelled", "recoverable": False},
+    last_error_code="cancelled",
+  )
+
+
+async def _complete(
+  db, r, session_id: int, report: str, *, sources: list[dict[str, Any]] | None = None
+) -> None:
+  report = _bounded_text(report, settings.DEEP_RESEARCH_MAX_REPORT_BYTES)
+  sources = sources if sources is not None else _run_sources(report)
+  await _terminal_transition(
+    db,
+    r,
+    session_id,
+    status="completed",
+    event={"type": "done", "content": report, "session_id": session_id},
+    report=report,
+    cited_sources=sources,
+  )
 
 
 async def _pause(db, r, session_id: int, code: str, message: str) -> None:
-  await _persist(db, session_id, status="paused", last_error_code=code)
-  _relay(
+  await _terminal_transition(
+    db,
     r,
     session_id,
-    {"type": "paused", "error": message, "error_code": code, "recoverable": True},
+    status="paused",
+    event={"type": "paused", "error": message, "error_code": code, "recoverable": True},
+    last_error_code=code,
   )
 
 
 async def _mark_failed(db, r, session_id: int, code: str, message: str) -> None:
-  await _persist(db, session_id, status="failed", last_error_code=code)
-  _relay(
+  await _terminal_transition(
+    db,
     r,
     session_id,
-    {"type": "error", "error": message, "error_code": code, "recoverable": False},
+    status="failed",
+    event={"type": "error", "error": message, "error_code": code, "recoverable": False},
+    last_error_code=code,
   )
 
 
-def run_deep_research(session_id: int, user_id: int | None) -> str:
+def run_deep_research(
+  session_id: int,
+  user_id: int | None,
+  is_admin: bool = False,
+  generation_id: int | None = None,
+  lease_token: str | None = None,
+) -> str:
   """Synchronous entry point for the Celery task."""
-  return asyncio.run(run_research(session_id, user_id))
+  return asyncio.run(run_research(session_id, user_id, is_admin, generation_id, lease_token))

@@ -9,6 +9,8 @@ import { deepResearchApi, type DeepResearchSession } from '@/lib/api/deepResearc
 import { cn } from '@/lib/utils';
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
+const DEEP_RESEARCH_MUTATIONS_ENABLED =
+  import.meta.env.VITE_DEEP_RESEARCH_MUTATIONS_ENABLED === 'true';
 
 const STATUS: Record<string, { label: string; dot: string }> = {
   running: { label: 'Researching', dot: 'bg-(--foreground) animate-pulse' },
@@ -108,10 +110,10 @@ export default function DeepResearchArchive() {
                     <Button
                       variant="outlined"
                       className="h-8! text-caption!"
-                      disabled={resumeMutation.isPending}
+                      disabled={resumeMutation.isPending || !DEEP_RESEARCH_MUTATIONS_ENABLED}
                       onClick={() => resumeMutation.mutate(session.id)}
                     >
-                      Resume
+                      {DEEP_RESEARCH_MUTATIONS_ENABLED ? 'Resume' : 'Resume unavailable'}
                     </Button>
                   )}
                   <Button

@@ -38,6 +38,7 @@ Or set `DATABASE_URL` directly (`postgresql+asyncpg://…`).
 | `STORAGE_PATH` | Paper file storage path (default `/app/storage/papers`) |
 | `EMBEDDING_MODEL` | Embedding model name (default `gemini-embedding-001`) |
 | `EMBEDDING_DIMENSION` | Embedding vector dim (default `768`) |
+| `DEEP_RESEARCH_MUTATIONS_ENABLED` | Temporary safety gate for new deep-research starts/resumes; default `false` during the rewrite |
 
 # Auth
 
@@ -63,13 +64,14 @@ backend run from `backend/` does not see the repo-root `.env`; see
 
 `RESEND_API_KEY` / `EMAIL_FROM` / `EMAIL_ENABLED` (off by default).
 
-# Deep research (no env vars)
+# Deep research
 
-[Deep research](/features/deep-research.md) is **always-on with zero env vars**.
-The last flag, `ENABLE_DEEP_RESEARCH`, was removed 2026-07-15 (following
-`DEEP_RESEARCH_DAILY_CAP` / `_MODEL` / `_MCP_URL` / `_MCP_TOKEN` on 2026-07-01).
-The only related config is operational: the Celery worker `-Q` list must include
-the `research` queue (see [/infra/docker.md](/infra/docker.md)).
+Deep-research mutation endpoints are temporarily frozen by
+`DEEP_RESEARCH_MUTATIONS_ENABLED=false` in every deployment while the unsafe legacy
+lifecycle is replaced. Do not enable it except for a deliberately reviewed local/test
+override. Completed reports remain readable. The old product flag and earlier
+`DEEP_RESEARCH_*` settings were removed; this is a safety gate, not a product flag.
+The research worker still uses the `research` queue (see [/infra/docker.md](/infra/docker.md)).
 
 # Prod-only domain vars
 
@@ -81,6 +83,7 @@ the `research` queue (see [/infra/docker.md](/infra/docker.md)).
 |---|---|
 | `VITE_API_URL` | API base (default `http://localhost:8000/api/v1`) — baked at build; passed as Docker build arg |
 | `VITE_GOOGLE_CLIENT_ID` | Google client ID — baked at build; passed as Docker build arg |
+| `VITE_DEEP_RESEARCH_MUTATIONS_ENABLED` | Temporary UI gate; keep `false` while the deep-research rewrite is in progress |
 
 # Landing build-time vars (`landing/.env.example`)
 

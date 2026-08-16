@@ -23,6 +23,8 @@ class BYOContext:
   """
 
   user_id: int | None = None
+  # Set only from the verified authenticated principal at the API boundary.
+  is_admin: bool = False
 
   provider_configs: list[ProviderRouteConfig] = field(default_factory=list)
 

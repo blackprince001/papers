@@ -193,9 +193,9 @@ def _adapt_event(
       }
 
   if event_type == "thought":
-    thought = _get_thought(event)
-    if thought:
-      return {"type": CHUNK_TYPE_THOUGHT, "content": thought}
+    # Model reasoning is not user-facing telemetry. Tool/activity events expose
+    # useful progress without retaining or emitting raw chain-of-thought.
+    return None
 
   if event_type == "error":
     error_msg, error_code, recoverable = _get_error(event)
@@ -228,14 +228,13 @@ def _adapt_raw_response(
       return {"type": CHUNK_TYPE_TEXT, "content": delta}
     return None
 
-  # Reasoning/thinking deltas (o-series, DeepSeek-R1, etc.).
+  # Reasoning/thinking deltas (o-series, DeepSeek-R1, etc.) are deliberately
+  # not emitted or persisted. They can contain raw chain-of-thought.
   if data_type in (
     "response.reasoning_summary_text.delta",
     "response.reasoning_text.delta",
   ):
-    delta = getattr(data, "delta", "") or ""
-    if delta:
-      return {"type": CHUNK_TYPE_THOUGHT, "content": delta}
+    return None
 
   return None
 

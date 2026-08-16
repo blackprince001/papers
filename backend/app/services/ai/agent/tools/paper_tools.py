@@ -18,8 +18,19 @@ from app.core.logger import get_logger
 from app.services.ai.agent.context import get_byo_context
 from app.services.ai.agent.paper_meta import authors_str, publication_year
 from app.services.ai.agent.tools import rollback_quietly, with_timeout
+from app.services.deep_research.evidence import collect_context_evidence
 
 logger = get_logger(__name__)
+
+
+def _agent_scope(ctx) -> tuple[int | None, bool]:
+  return ctx.user_id, ctx.is_admin
+
+
+def _visible_query(query, user_id: int | None, is_admin: bool):
+  from app.services.access import apply_agent_paper_visibility_filter
+
+  return apply_agent_paper_visibility_filter(query, user_id, is_admin=is_admin)
 
 
 @function_tool
@@ -40,7 +51,6 @@ async def get_paper_content(paper_ids: list[int]) -> str:
   """
   ctx = get_byo_context()
   db = ctx.extra.get("db_session")
-  user_id = ctx.user_id
 
   if not db:
     return "Error: No database session available."
@@ -51,28 +61,28 @@ async def get_paper_content(paper_ids: list[int]) -> str:
 
     from app.models.paper import Paper
 
-    result = await db.execute(
+    user_id, is_admin = _agent_scope(ctx)
+    query = _visible_query(
       select(Paper)
       .where(Paper.id.in_(paper_ids))
-      .options(selectinload(Paper.tags), selectinload(Paper.groups))
+      .options(selectinload(Paper.tags), selectinload(Paper.groups)),
+      user_id,
+      is_admin,
     )
+    result = await db.execute(query)
     papers = {p.id: p for p in result.scalars().all()}
 
-    from app.services.access import apply_visible_papers_filter
-
-    visible_ids: set[int] | None = None
-    if user_id is not None:
-      visible_query = apply_visible_papers_filter(select(Paper.id), user_id)
-      visible_ids = {r[0] for r in (await db.execute(visible_query)).all()}
-
+    collect_context_evidence(
+      ctx.extra,
+      [
+        {"source": "library", "external_id": str(paper.id), "title": paper.title or "Untitled"}
+        for paper in papers.values()
+      ],
+    )
     parts: list[str] = []
     for pid in paper_ids:
       paper = papers.get(pid)
       if not paper:
-        parts.append(f"## Paper {pid}\n\n(not found)")
-        continue
-      if visible_ids is not None and paper.id not in visible_ids:
-        parts.append(f"## {paper.title}\n\n(not accessible)")
         continue
 
       text = paper.content_text
@@ -85,7 +95,7 @@ async def get_paper_content(paper_ids: list[int]) -> str:
         text = text[:max_chars]
       parts.append(f"# {paper.title}\n\n{text}")
 
-    return "\n\n---\n\n".join(parts)
+    return "\n\n---\n\n".join(parts) if parts else "No accessible papers found."
 
   except Exception as e:
     await rollback_quietly(db)
@@ -110,6 +120,7 @@ async def get_paper_metadata(paper_id: int) -> str:
   """
   ctx = get_byo_context()
   db = ctx.extra.get("db_session")
+  user_id, is_admin = _agent_scope(ctx)
 
   if not db:
     return "Error: No database session available."
@@ -122,14 +133,21 @@ async def get_paper_metadata(paper_id: int) -> str:
 
     # Eager-load tags: a lazy relationship access on an async session raises
     # "greenlet_spawn has not been called".
-    result = await db.execute(
-      select(Paper).where(Paper.id == paper_id).options(selectinload(Paper.tags))
+    query = _visible_query(
+      select(Paper).where(Paper.id == paper_id).options(selectinload(Paper.tags)),
+      user_id,
+      is_admin,
     )
+    result = await db.execute(query)
     paper = result.scalar_one_or_none()
 
     if not paper:
-      return f"Paper {paper_id} not found."
+      return "Paper not found or not accessible."
 
+    collect_context_evidence(
+      ctx.extra,
+      [{"source": "library", "external_id": str(paper.id), "title": paper.title or "Untitled"}],
+    )
     lines = [
       f"Title: {paper.title or 'N/A'}",
       f"Authors: {authors_str(paper) or 'N/A'}",
@@ -164,6 +182,7 @@ async def search_papers(query: str, limit: int = 10) -> str:
   """
   ctx = get_byo_context()
   db = ctx.extra.get("db_session")
+  user_id, is_admin = _agent_scope(ctx)
 
   if not db:
     return "Error: No database session available."
@@ -181,12 +200,15 @@ async def search_papers(query: str, limit: int = 10) -> str:
       Paper.content_text.ilike(f"%{query}%"),
     )
 
-    result = await db.execute(
+    stmt = _visible_query(
       select(Paper)
       .where(search_filter)
       .limit(limit)
-      .options(selectinload(Paper.tags), selectinload(Paper.groups))
+      .options(selectinload(Paper.tags), selectinload(Paper.groups)),
+      user_id,
+      is_admin,
     )
+    result = await db.execute(stmt)
     papers = result.scalars().all()
 
     if not papers:
@@ -230,6 +252,7 @@ async def get_annotations(
   """
   ctx = get_byo_context()
   db = ctx.extra.get("db_session")
+  user_id, is_admin = _agent_scope(ctx)
 
   if not db:
     return "Error: No database session available."
@@ -239,9 +262,11 @@ async def get_annotations(
     from sqlalchemy.orm import selectinload
 
     from app.models.annotation import Annotation
+    from app.models.paper import Paper
 
     query = (
       select(Annotation)
+      .join(Paper, Paper.id == Annotation.paper_id)
       .where(
         Annotation.paper_id == paper_id,
         Annotation.type == "annotation",
@@ -251,6 +276,7 @@ async def get_annotations(
     if annotation_ids:
       query = query.where(Annotation.id.in_(annotation_ids))
 
+    query = _visible_query(query, user_id, is_admin)
     result = await db.execute(query)
     annotations = result.scalars().all()
 
@@ -296,6 +322,7 @@ async def get_notes(paper_id: int, note_ids: list[int] | None = None) -> str:
   """
   ctx = get_byo_context()
   db = ctx.extra.get("db_session")
+  user_id, is_admin = _agent_scope(ctx)
 
   if not db:
     return "Error: No database session available."
@@ -305,9 +332,11 @@ async def get_notes(paper_id: int, note_ids: list[int] | None = None) -> str:
     from sqlalchemy.orm import selectinload
 
     from app.models.annotation import Annotation
+    from app.models.paper import Paper
 
     query = (
       select(Annotation)
+      .join(Paper, Paper.id == Annotation.paper_id)
       .where(
         Annotation.paper_id == paper_id,
         Annotation.type == "note",
@@ -317,6 +346,7 @@ async def get_notes(paper_id: int, note_ids: list[int] | None = None) -> str:
     if note_ids:
       query = query.where(Annotation.id.in_(note_ids))
 
+    query = _visible_query(query, user_id, is_admin)
     result = await db.execute(query)
     notes = result.scalars().all()
 
@@ -356,18 +386,30 @@ async def get_citations(paper_id: int) -> str:
   """
   ctx = get_byo_context()
   db = ctx.extra.get("db_session")
+  user_id, is_admin = _agent_scope(ctx)
 
   if not db:
     return "Error: No database session available."
 
   try:
-    from sqlalchemy import select
+    from sqlalchemy import or_, select
 
+    from app.models.paper import Paper
     from app.models.paper_citation import PaperCitation
 
-    result = await db.execute(
-      select(PaperCitation).where(PaperCitation.paper_id == paper_id)
+    visible_ids = _visible_query(select(Paper.id), user_id, is_admin).scalar_subquery()
+    query = select(PaperCitation).where(
+      PaperCitation.paper_id == paper_id,
+      PaperCitation.paper_id.in_(visible_ids),
     )
+    if not is_admin:
+      query = query.where(
+        or_(
+          PaperCitation.cited_paper_id.is_(None),
+          PaperCitation.cited_paper_id.in_(visible_ids),
+        )
+      )
+    result = await db.execute(query)
     citations = result.scalars().all()
 
     if not citations:
@@ -409,6 +451,7 @@ async def get_paper_layout(paper_id: int) -> str:
   """
   ctx = get_byo_context()
   db = ctx.extra.get("db_session")
+  user_id, is_admin = _agent_scope(ctx)
 
   if not db:
     return "Error: No database session available."
@@ -421,15 +464,18 @@ async def get_paper_layout(paper_id: int) -> str:
 
     from app.models.paper import Paper
 
-    result = await db.execute(
+    query = _visible_query(
       select(Paper)
       .where(Paper.id == paper_id)
-      .options(selectinload(Paper.tags), selectinload(Paper.groups))
+      .options(selectinload(Paper.tags), selectinload(Paper.groups)),
+      user_id,
+      is_admin,
     )
+    result = await db.execute(query)
     paper = result.scalar_one_or_none()
 
     if not paper:
-      return f"Paper {paper_id} not found."
+      return "Paper not found or not accessible."
 
     blocks = paper.layout_blocks or []
     if not blocks:

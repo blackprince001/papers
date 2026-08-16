@@ -1,14 +1,15 @@
 ---
 type: Infrastructure
 title: Docker Compose
-description: The 7-service topology (traefik, postgres, redis, backend, celery-worker x2, celery-beat, frontend) across dev and prod, with the key differences between the two compose files.
+description: The 8-service topology (traefik, postgres, redis, backend, interactive celery-worker x2, dedicated research-worker, celery-beat, frontend) across dev and prod, with the key differences between the two compose files.
 resource: docker-compose.dev.yml
 tags: [infra, docker, compose, deployment]
 timestamp: 2026-06-28T00:00:00Z
 ---
 
-Both compose files share the same 7-service topology: **traefik, postgres,
-redis, backend, celery-worker (replicas: 2), celery-beat, frontend**. Note:
+Both compose files share the same 8-service topology: **traefik, postgres,
+redis, backend, interactive celery-worker (replicas: 2), dedicated
+research-worker, celery-beat, frontend**. Note:
 **there is NO `landing` service** — the landing site is built/published
 outside this stack (its `dist/` is served elsewhere).
 
@@ -20,7 +21,8 @@ outside this stack (its `dist/` is served elsewhere).
 | `postgres` | `pgvector/pgvector:pg16` (`:26`) | `5433:5432` (`:33-34`) | `postgres_data` + `./init-db.sql` mounted into init dir (`:36-37`) | off (`:46`) |
 | `redis` | `redis:7-alpine` (`:50`), `--appendonly yes` | `6379:6379` (`:53-54`) | `redis_data:/data` (`:56`) | off (`:65`) |
 | `backend` | `./backend/Dockerfile` (`:69-71`) | — | `storage_data:/app/storage` (`:105`) | `api.testing.maurc.org`, port 8000, healthcheck `/health` (`:113-123`) |
-| `celery-worker` | same Dockerfile (`:127-129`), **replicas: 2** (`:133`), `uv run celery … -Q ai,processing,discovery,research,dead_letter -c 4` (`:131`) | — | `storage_data:/app/storage` (`:165`) | off (`:174`) |
+| `celery-worker` | same Dockerfile, **replicas: 2**, interactive queues only (`ai,processing,discovery,dead_letter`) | — | `storage_data:/app/storage` | off |
+| `research-worker` | same Dockerfile, one worker on `research` with concurrency 1 | — | `storage_data:/app/storage` | off |
 | `celery-beat` | same Dockerfile (`:181-182`), `uv run celery -A app.celery_app beat -l info` (`:183`) | — | — | off (`:206`) |
 | `frontend` | `./frontend-v2/Dockerfile` (`:210-212`) build args `VITE_API_URL`, `VITE_GOOGLE_CLIENT_ID` | — | — | `testing.maurc.org`, port 4173, healthcheck `/` (`:221-231`) |
 

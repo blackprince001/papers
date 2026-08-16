@@ -90,9 +90,8 @@ class TestAdaptEvent:
   def test_non_text_raw_event_ignored(self):
     assert _adapt_event(non_text_raw(), full_content=[]) is None
 
-  def test_reasoning_delta_becomes_thought(self):
-    out = _adapt_event(reasoning_delta("thinking..."), full_content=[])
-    assert out == {"type": "thought", "content": "thinking..."}
+  def test_reasoning_delta_is_not_exposed(self):
+    assert _adapt_event(reasoning_delta("thinking..."), full_content=[]) is None
 
   def test_tool_call_event(self):
     ev = RunItemStreamEvent(

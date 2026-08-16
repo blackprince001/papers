@@ -54,14 +54,31 @@ docker compose -f docker-compose.dev.yml up -d postgres redis
   "Client sent AUTH, but no password is set".
 * Backend: `uv sync`, then `uv run alembic upgrade head` and
   `uv run fastapi dev app/main.py` (localhost:8000).
+* Deep-research mutation endpoints are frozen by default while the legacy lifecycle
+  is replaced. Keep `DEEP_RESEARCH_MUTATIONS_ENABLED=false` in the shell and
+  `VITE_DEEP_RESEARCH_MUTATIONS_ENABLED=false` in `frontend-v2/.env`.
 * Frontend: `bun install`, `.env` with
   `VITE_API_URL=http://localhost:8000/api/v1` + `VITE_GOOGLE_CLIENT_ID`,
   `bun run dev` (localhost:5173).
-* Celery is required for ingestion/AI tasks (same preamble, separate
-  terminal):
-  `uv run celery -A app.celery_app worker -l info -Q ai,processing,discovery,dead_letter`
-  (queue list must include **discovery** — matches the compose command);
-  beat (`uv run celery -A app.celery_app beat -l info`) is optional, for the
+* Celery is required for ingestion/AI tasks. Use separate terminals with the same
+  environment preamble:
+
+  ```bash
+  # Terminal 1 — API
+  uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+
+  # Terminal 2 — interactive worker; deliberately excludes research
+  uv run celery -A app.celery_app worker -l info -Q ai,processing,discovery,dead_letter -c 2 --hostname=lumen-interactive@%h
+
+  # Terminal 3 — dedicated research worker; starts idle while mutations are frozen
+  uv run celery -A app.celery_app worker -l info -Q research -c 1 --hostname=lumen-research@%h
+
+  # Terminal 4 — beat scheduler
+  uv run celery -A app.celery_app beat -l info
+  ```
+
+  The dedicated research worker is intentionally separate so the later queue
+  isolation work is observable locally. Beat is optional, but useful for the
   periodic retry sweep.
 * **All processes must share the same `JWT_SECRET_KEY` /
   `AI_KEY_ENCRYPTION_KEY`** — the worker decrypts user AI-provider keys the
@@ -69,6 +86,10 @@ docker compose -f docker-compose.dev.yml up -d postgres redis
   The keys are arbitrary secret strings (SHA-256-derived to Fernet keys in
   `app/core/encryption.py`); generate once (`openssl rand -hex 32`), keep in
   the root `.env`.
+
+For a single shell-managed run, keep each process's output in a separate log file
+under `.local/logs/` and use `tail -f .local/logs/<process>.log`. The browser targets
+`http://localhost:5173`; API health is `http://localhost:8000/health`.
 
 # Docker dev (`docker-compose.dev.yml`)
 

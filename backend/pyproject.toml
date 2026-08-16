@@ -43,6 +43,11 @@ dev = [
     "testcontainers[postgres]>=4.8.0",
 ]
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+asyncio_mode = "auto"
+markers = ["integration: requires local Postgres and Redis"]
+
 [tool.ruff]
 indent-width = 2
 line-length = 88

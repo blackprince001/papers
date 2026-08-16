@@ -1,6 +1,6 @@
 from typing import Literal
 
-from sqlalchemy import Select, case, func, or_, select
+from sqlalchemy import Select, case, false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.group import Group
@@ -93,3 +93,22 @@ async def get_effective_paper_permission(
   if group_rank == 1:
     return "viewer"
   return None
+
+
+def apply_agent_paper_visibility_filter(
+  query: Select,
+  user_id: int | None,
+  *,
+  is_admin: bool = False,
+) -> Select:
+  """Apply the fail-closed paper scope used by AI agent tools.
+
+  API routes use ``None`` to mean an administrator/no filter. Agent tools must
+  not inherit that convention: a missing identity returns zero rows unless the
+  request explicitly carries the administrator capability.
+  """
+  if is_admin:
+    return query
+  if user_id is None:
+    return query.where(false())
+  return query.where(visible_papers_clause(user_id))

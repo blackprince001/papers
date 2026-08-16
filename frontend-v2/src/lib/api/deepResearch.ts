@@ -1,6 +1,18 @@
 import { api } from './client';
 
-export type DeepResearchStatus = 'running' | 'paused' | 'completed' | 'failed';
+export type DeepResearchStatus =
+  | 'queued'
+  | 'planning'
+  | 'searching'
+  | 'reading'
+  | 'synthesizing'
+  | 'verifying'
+  | 'running'
+  | 'paused'
+  | 'completed'
+  | 'failed'
+  | 'cancel_requested'
+  | 'cancelled';
 
 export interface CitedSource {
   title: string;
@@ -23,6 +35,8 @@ export interface DeepResearchSession {
   last_error_code?: string | null;
   created_at: string;
   updated_at: string;
+  current_generation?: number;
+  lifecycle_version?: number;
 }
 
 export interface DeepResearchSessionDetail extends DeepResearchSession {
