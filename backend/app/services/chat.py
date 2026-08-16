@@ -368,6 +368,7 @@ class ChatService:
     user_id: int | None,
     provider_configs: list[ProviderRouteConfig],
     session_id: int | None = None,
+    is_admin: bool = False,
   ) -> None:
     """Set up the BYOContext for the current request.
 
@@ -380,6 +381,7 @@ class ChatService:
       BYOContext(
         user_id=user_id,
         provider_configs=provider_configs,
+        is_admin=is_admin,
         extra={"db_session": db_session, "session_id": session_id},
       )
     )
@@ -452,6 +454,7 @@ class ChatService:
     session_id: int | None = None,
     user_id: int | None = None,
     provider_id: int | None = None,
+    is_admin: bool = False,
   ) -> AsyncGenerator[dict[str, Any], None]:
     """Stream a chat message response.
 
@@ -531,7 +534,7 @@ class ChatService:
       agent_input = build_agent_input(history, user_message)
 
       self._setup_byo_context(
-        db_session, user_id, [r.route for r in resolved], session_id=session_pk
+        db_session, user_id, [r.route for r in resolved], session_id=session_pk, is_admin=is_admin
       )
       agent = create_paper_agent(paper)
 
@@ -610,6 +613,7 @@ class ChatService:
     session_id: int | None = None,
     user_id: int | None = None,
     provider_id: int | None = None,
+    is_admin: bool = False,
   ) -> ChatMessage | None:
     """Send a chat message and get a response (non-streaming, agent-only)."""
     chat_session, session_error = await self._get_or_create_session(
@@ -645,7 +649,7 @@ class ChatService:
       agent_input = build_agent_input(history, user_message)
 
       self._setup_byo_context(
-        db_session, user_id, [r.route for r in resolved], session_id=session_pk
+        db_session, user_id, [r.route for r in resolved], session_id=session_pk, is_admin=is_admin
       )
       agent = create_paper_agent(paper)
       primary = resolved[0]
@@ -780,6 +784,7 @@ class ChatService:
     user_message: str,
     references: dict[str, Any] | None = None,
     user_id: int | None = None,
+    is_admin: bool = False,
   ) -> AsyncGenerator[dict[str, Any], None]:
     """Stream AI response for a thread message.
 
@@ -872,7 +877,7 @@ class ChatService:
       )
 
       self._setup_byo_context(
-        db_session, user_id, [r.route for r in resolved], session_id=session_id
+        db_session, user_id, [r.route for r in resolved], session_id=session_id, is_admin=is_admin
       )
       agent = create_paper_agent(paper)
 
@@ -955,6 +960,7 @@ class ChatService:
     user_message: str,
     references: dict[str, Any] | None = None,
     user_id: int | None = None,
+    is_admin: bool = False,
   ) -> tuple[ChatMessage, ChatMessage]:
     """Send a thread message and get AI response (non-streaming)."""
     provider = await self._get_provider(db_session, user_id)

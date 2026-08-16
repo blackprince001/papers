@@ -24,6 +24,8 @@ export interface StreamEvent extends SSEEvent {
   from?: string;
   to?: string;
   reason?: string;
+  /** Opaque SSE resume cursor for reconnectable streams. */
+  id?: string;
 }
 
 export interface ChatStreamOptions {
@@ -33,6 +35,18 @@ export interface ChatStreamOptions {
   onRetry?: (attempt: number, error: Error) => void;
   /** Pin a specific user AI provider for this message. */
   providerId?: number;
+  /** Send an opaque Last-Event-ID cursor when reconnecting. */
+  cursor?: string;
+}
+
+export class StreamingHttpError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'StreamingHttpError';
+    this.status = status;
+  }
 }
 
 /**
@@ -132,36 +146,45 @@ async function streamingFetch(
 async function streamingFetchGet(
   url: string,
   signal?: AbortSignal,
+  cursor?: string,
 ): Promise<Response> {
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     method: 'GET',
-    headers: { Accept: 'text/event-stream', ...getAuthHeaders() },
+    headers: {
+      Accept: 'text/event-stream',
+      ...(cursor ? { 'Last-Event-ID': cursor } : {}),
+      ...getAuthHeaders(),
+    },
     signal,
   });
 
   if (response.status === 401) {
     const newToken = await tryRefreshToken();
     if (newToken) {
-      const retryResponse = await fetch(url, {
+      response = await fetch(url, {
         method: 'GET',
-        headers: { Accept: 'text/event-stream', Authorization: `Bearer ${newToken}` },
+        headers: {
+          Accept: 'text/event-stream',
+          ...(cursor ? { 'Last-Event-ID': cursor } : {}),
+          Authorization: `Bearer ${newToken}`,
+        },
         signal,
       });
-      if (retryResponse.ok) {
+      if (response.ok) {
         const { setTokenGetter } = await import('@/lib/api/client');
         setTokenGetter(() => newToken);
-        return retryResponse;
+        return response;
       }
     }
   }
 
   if (!response.ok) {
     const detail = await extractErrorBody(response);
-    throw new Error(detail);
+    throw new StreamingHttpError(response.status, detail);
   }
-
   return response;
 }
+
 
 /**
  * Client for all SSE streaming endpoints.
@@ -177,7 +200,7 @@ export const chatStreamClient = {
     options: ChatStreamOptions = {},
   ): AsyncGenerator<StreamEvent, void, unknown> {
     const url = `${API_BASE_URL}/deep-research/${sessionId}/stream`;
-    const response = await streamingFetchGet(url, options.signal);
+    const response = await streamingFetchGet(url, options.signal, options.cursor);
     const gen = parseSSE(response, { ...options });
     for await (const event of gen) {
       yield event as StreamEvent;

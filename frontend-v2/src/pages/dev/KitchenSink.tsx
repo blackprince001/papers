@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   Alert,
   Chip,
@@ -24,11 +24,14 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/Tabs';
 import { ArchiveIcon, PlusIcon, SearchIcon, TrashIcon } from '../../components/icons';
+import { MarkdownMessage } from '../../components/MarkdownMessage';
+import { StreamingMessage } from '../../components/ai/StreamingMessage';
+import type { ChatStreamState } from '../../hooks/use-chat-stream';
 
 /* Dev-only QA surface for the HeroUI theme bridge + Lumen facades.
  * Everything here must look native to Lumen in BOTH themes. */
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="space-y-3">
       <h2 className="text-caption font-semibold uppercase tracking-wide text-(--muted-foreground)">{title}</h2>
@@ -48,6 +51,26 @@ export default function KitchenSink() {
     return document.documentElement.classList.contains('dark');
   });
   const [tab, setTab] = useState('one');
+  const [motionMode, setMotionMode] = useState<'full' | 'reduced'>(() =>
+    new URLSearchParams(window.location.search).get('motion') === 'reduced' ? 'reduced' : 'full',
+  );
+  const [density, setDensity] = useState<'comfortable' | 'compact'>(() =>
+    new URLSearchParams(window.location.search).get('density') === 'compact' ? 'compact' : 'comfortable',
+  );
+  const [viewport, setViewport] = useState<'wide' | 'narrow'>(() =>
+    new URLSearchParams(window.location.search).get('width') === 'narrow' ? 'narrow' : 'wide',
+  );
+  const [offline, setOffline] = useState(false);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.reviewMotion = motionMode;
+    root.dataset.reviewDensity = density;
+    return () => {
+      delete root.dataset.reviewMotion;
+      delete root.dataset.reviewDensity;
+    };
+  }, [motionMode, density]);
 
   const toggleDark = () => {
     const root = document.documentElement;
@@ -57,14 +80,47 @@ export default function KitchenSink() {
   };
 
   return (
-    <div className="min-h-dvh bg-(--background) text-(--foreground) px-8 py-10">
-      <div className="mx-auto max-w-(--width-content-max) space-y-10">
+    <div data-review-viewport={viewport} className="min-h-dvh bg-(--background) text-(--foreground) px-8 py-10">
+      <div className={`mx-auto ${density === 'compact' ? 'space-y-4' : 'space-y-10'} ${viewport === 'narrow' ? 'max-w-xl' : 'max-w-(--width-content-max)'}`}>
         <header className="flex items-center gap-4">
           <h1>Kitchen Sink — HeroUI × Lumen</h1>
           <Button variant="outlined" size="sm" className="ml-auto" onClick={toggleDark}>
             {dark ? 'Dark' : 'Light'}
           </Button>
         </header>
+
+        <Section title="Review controls">
+          <label className="flex items-center gap-2 text-code">
+            Motion
+            <select aria-label="Review motion" value={motionMode} onChange={(e) => setMotionMode(e.target.value as 'full' | 'reduced')} className="h-9 rounded-lg border border-(--border) bg-(--white) px-2">
+              <option value="full">Full motion</option>
+              <option value="reduced">Reduced motion</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-code">
+            Density
+            <select aria-label="Review density" value={density} onChange={(e) => setDensity(e.target.value as 'comfortable' | 'compact')} className="h-9 rounded-lg border border-(--border) bg-(--white) px-2">
+              <option value="comfortable">Comfortable</option>
+              <option value="compact">Compact</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-code">
+            Width
+            <select aria-label="Review width" value={viewport} onChange={(e) => setViewport(e.target.value as 'wide' | 'narrow')} className="h-9 rounded-lg border border-(--border) bg-(--white) px-2">
+              <option value="wide">Wide</option>
+              <option value="narrow">Narrow</option>
+            </select>
+          </label>
+          <Button variant={offline ? 'destructive' : 'outlined'} size="sm" onClick={() => setOffline((value) => !value)}>
+            {offline ? 'Offline fixture on' : 'Show offline state'}
+          </Button>
+        </Section>
+
+        {offline && (
+          <Alert status="warning" role="status">
+            You are offline. Saved papers remain available, but new searches and AI requests will retry when the connection returns.
+          </Alert>
+        )}
 
         <Section title="Button facade — variants">
           <Button>Primary</Button>
@@ -171,6 +227,38 @@ export default function KitchenSink() {
             />
           </div>
         </div>
+
+        <section className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div className="rounded-2xl border border-(--border) bg-(--card) p-5 space-y-3">
+            <h2 className="text-subheading font-semibold">Long content fixture</h2>
+            <h3 className="text-body font-semibold truncate" title="A very long paper title that should remain understandable when the available reading width is narrow">
+              A very long paper title that should remain understandable when the available reading width is narrow
+            </h3>
+            <p className="text-code text-(--muted-foreground)">
+              This paragraph intentionally carries enough copy to expose wrapping, truncation, line-height, and action placement problems across wide and narrow review widths. It represents the kind of source title and evidence note that appears in a real research library.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-(--border) bg-(--card) p-5 space-y-3">
+            <h2 className="text-subheading font-semibold">AI activity fixture</h2>
+            <StreamingMessage
+              state={{
+                status: 'using_tool',
+                content: '',
+                displayedContent: '',
+                thoughts: [],
+                toolCalls: [{ tool: 'search_papers', arguments: { query: 'attention' }, timestamp: 0 }],
+                toolResults: [],
+                currentTool: 'search_papers',
+                error: null,
+                messageId: null,
+                sessionId: null,
+                referenceManifest: null,
+              } satisfies ChatStreamState & { displayedContent: string; autoRetryAt?: number | null }}
+              isStreaming
+            />
+            <MarkdownMessage content="The answer will appear here with **grounded citations** when the search completes." />
+          </div>
+        </section>
 
         <Section title="Tabs (ours) — segmented + underline">
           <Tabs value={tab} onValueChange={setTab} variant="segmented">

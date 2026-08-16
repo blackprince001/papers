@@ -1,6 +1,10 @@
 .env
 data
 letsencrypt/*
+.local/
+backend/celerybeat-schedule*
+frontend-v2/test-results/
+frontend-v2/playwright-report/
 
 .claude
 .cursor

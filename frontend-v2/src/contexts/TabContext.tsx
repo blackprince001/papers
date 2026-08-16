@@ -29,12 +29,23 @@ const TabContext = createContext<TabContextType | undefined>(undefined);
 function loadFromStorage(): { tabs: Tab[]; activeTabId: string | null } {
   try {
     const saved = localStorage.getItem('nexus-tabs');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return { tabs: parsed.tabs || [], activeTabId: parsed.activeTabId || null };
+    if (!saved) return { tabs: [], activeTabId: null };
+
+    const parsed = JSON.parse(saved) as { tabs?: Tab[]; activeTabId?: string | null };
+    const storedTabs = Array.isArray(parsed.tabs) ? parsed.tabs : [];
+    const activePaperId = storedTabs.find((tab) => tab.id === parsed.activeTabId)?.paperId;
+    const uniqueByPaper = new Map<number, Tab>();
+
+    for (const tab of storedTabs) {
+      if (!Number.isFinite(tab.paperId)) continue;
+      uniqueByPaper.set(tab.paperId, { ...tab, id: `tab-paper-${tab.paperId}` });
     }
+
+    const tabs = [...uniqueByPaper.values()].slice(-10);
+    const activeTab = tabs.find((tab) => tab.paperId === activePaperId) ?? tabs.at(-1);
+    return { tabs, activeTabId: activeTab?.id ?? null };
   } catch {
-    // Ignore
+    // Ignore malformed or unavailable browser storage.
   }
   return { tabs: [], activeTabId: null };
 }
@@ -69,7 +80,9 @@ export function TabProvider({ children }: { children: ReactNode }) {
 
         const newTabs = current.length >= 10 ? current.slice(1) : current;
         const newTab: Tab = {
-          id: `tab-${Date.now()}-${Math.random()}`,
+          // Stable per-paper IDs make registration idempotent under React
+          // Strict Mode, which intentionally replays mount effects in dev.
+          id: `tab-paper-${paperId}`,
           paperId,
           title: title.length > 30 ? title.substring(0, 30) + '...' : title,
           currentPage: 1,
@@ -159,6 +172,8 @@ export function TabProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// The hook intentionally shares this context module with its provider.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTabs() {
   const context = useContext(TabContext);
   if (context === undefined) {

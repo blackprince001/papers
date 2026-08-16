@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { chatStreamClient, type StreamEvent } from '@/lib/ai/chatStream';
+import { chatStreamClient, StreamingHttpError, type StreamEvent } from '@/lib/ai/chatStream';
 import {
   deepResearchApi,
   type CitedSource,
@@ -27,6 +27,7 @@ export interface DeepResearchStreamState {
   thinkingMs: number | null;
   error: string | null;
   errorCode: string | null;
+  reconnecting: boolean;
 }
 
 const INITIAL: DeepResearchStreamState = {
@@ -39,15 +40,19 @@ const INITIAL: DeepResearchStreamState = {
   thinkingMs: null,
   error: null,
   errorCode: null,
+  reconnecting: false,
 };
 
-const TERMINAL_EVENTS = new Set(['done', 'end', 'paused', 'error']);
+const TERMINAL_EVENTS = new Set(['done', 'end', 'paused', 'error', 'cancelled']);
 const TOOL_ERROR = /^error\b/i;
 
 let counter = 0;
 
 function reduce(evt: StreamEvent, prev: DeepResearchStreamState): DeepResearchStreamState {
   switch (evt.type) {
+    case 'retrying':
+      return { ...prev, status: 'running', reconnecting: true, error: (evt.error as string) ?? null, errorCode: (evt.error_code as string) ?? 'retrying' };
+
     case 'chunk':
       return { ...prev, report: prev.report + (evt.content ?? '') };
 
@@ -113,6 +118,8 @@ function reduce(evt: StreamEvent, prev: DeepResearchStreamState): DeepResearchSt
       };
     case 'done':
       return { ...prev, status: 'completed', report: (evt.content as string) || prev.report };
+    case 'cancelled':
+      return { ...prev, status: 'cancelled', error: (evt.error as string) ?? null };
     case 'end':
       return { ...prev, status: (evt.status as DeepResearchStatus) ?? prev.status };
     default:
@@ -160,19 +167,29 @@ export function useDeepResearchStream() {
       if (detail.status === 'completed' || detail.status === 'failed') return;
     }
 
-    // Live: stream with reconnect until a terminal event.
+    // Live: resume from the last durable cursor after a dropped connection.
     let terminal = false;
+    let cursor: string | undefined;
+    const seenCursors = new Set<string>();
+    let reconnectAttempt = 0;
+    const maxReconnects = 6;
+    setState((prev) => ({ ...prev, activity: [], report: '', reconnecting: false }));
+
     while (!controller.signal.aborted && genRef.current === myGen && !terminal) {
-      // The server replays the whole run on each connect, so rebuild from scratch.
-      counter = 0;
       const startedAt = Date.now();
       let answerMarked = false;
-      setState((prev) => ({ ...prev, activity: [], report: '' }));
       try {
         for await (const evt of chatStreamClient.streamDeepResearch(sessionId, {
           signal: controller.signal,
           timeoutMs: 45_000,
+          cursor,
         })) {
+          if (evt.id) {
+            if (seenCursors.has(evt.id)) continue;
+            if (seenCursors.size >= 2048) seenCursors.clear();
+            seenCursors.add(evt.id);
+            cursor = evt.id;
+          }
           if (evt.type === 'keepalive') continue;
           flushSync(() => setState((prev) => reduce(evt, prev)));
           if (evt.type === 'chunk' && !answerMarked) {
@@ -182,15 +199,36 @@ export function useDeepResearchStream() {
           }
           if (TERMINAL_EVENTS.has(evt.type)) terminal = true;
         }
+        if (!terminal) throw new Error('Research stream ended before a terminal event');
       } catch (err) {
         if (controller.signal.aborted) return;
-        logger.warn('deep research: stream error', err);
-      }
-      if (!terminal && !controller.signal.aborted && genRef.current === myGen) {
-        await new Promise((r) => setTimeout(r, 1_000)); // dropped — reconnect
+        if (err instanceof StreamingHttpError && (err.status === 403 || err.status === 404 || err.status === 409)) {
+          setState((prev) => ({
+            ...prev,
+            status: err.status === 409 ? 'paused' : 'failed',
+            error: err.message,
+            errorCode: `http_${err.status}`,
+            reconnecting: false,
+          }));
+          return;
+        }
+        reconnectAttempt += 1;
+        if (reconnectAttempt > maxReconnects) {
+          setState((prev) => ({
+            ...prev,
+            status: 'failed',
+            error: 'Research stream could not reconnect',
+            errorCode: 'network',
+            reconnecting: false,
+          }));
+          return;
+        }
+        const delay = Math.min(30_000, 500 * 2 ** (reconnectAttempt - 1));
+        setState((prev) => ({ ...prev, reconnecting: true, errorCode: 'network' }));
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        if (controller.signal.aborted || genRef.current !== myGen) return;
       }
     }
-
     // Reconcile with the persisted result.
     if (genRef.current === myGen && !controller.signal.aborted) {
       try {
@@ -201,6 +239,7 @@ export function useDeepResearchStream() {
           report: d.report ?? prev.report,
           sources: d.cited_sources ?? prev.sources,
           errorCode: d.last_error_code ?? prev.errorCode,
+          reconnecting: false,
         }));
       } catch (e) {
         logger.warn('deep research: failed to finalize', e);

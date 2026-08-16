@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl
 
 from app.schemas.tag import Tag
 
@@ -40,7 +40,7 @@ class PaperCreate(PaperBase):
 class PaperBatchCreate(BaseModel):
   """Batch ingestion of papers from multiple URLs."""
 
-  urls: List[HttpUrl]  # List of URLs to ingest
+  urls: List[HttpUrl] = Field(max_length=20)  # List of URLs to ingest
   group_ids: Optional[List[int]] = None  # Apply same groups to all papers
 
 

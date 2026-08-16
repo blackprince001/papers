@@ -34,38 +34,28 @@ celery_app.conf.update(
   # Task time limits (Issue #8: Prevent hanging tasks)
   task_soft_time_limit=300,  # 5 minutes soft limit (raises SoftTimeLimitExceeded)
   task_time_limit=360,  # 6 minutes hard limit (kills task)
-  # Queue configuration with Dead Letter Queue (Issue #12)
+  # Redis does not implement AMQP queue arguments. Keep the explicit
+  # dead_letter queue for application-level routing; do not claim broker-level
+  # dead-lettering here.
   task_default_queue="processing",
   task_queues=(
-    # Main processing queue with DLQ routing
+    # Main processing queue
     Queue(
       "processing",
       exchange=default_exchange,
       routing_key="processing",
-      queue_arguments={
-        "x-dead-letter-exchange": "dead_letter",
-        "x-dead-letter-routing-key": "dead_letter",
-      },
     ),
-    # AI queue with DLQ routing
+    # AI queue
     Queue(
       "ai",
       exchange=ai_exchange,
       routing_key="ai",
-      queue_arguments={
-        "x-dead-letter-exchange": "dead_letter",
-        "x-dead-letter-routing-key": "dead_letter",
-      },
     ),
     # Discovery queue — external API calls + AI enhancements for paper discovery
     Queue(
       "discovery",
       exchange=discovery_exchange,
       routing_key="discovery",
-      queue_arguments={
-        "x-dead-letter-exchange": "dead_letter",
-        "x-dead-letter-routing-key": "dead_letter",
-      },
     ),
     # Research queue — long-running, resumable deep-research runs, isolated so
     # they never starve fast AI features on the `ai` queue.
@@ -73,10 +63,6 @@ celery_app.conf.update(
       "research",
       exchange=research_exchange,
       routing_key="research",
-      queue_arguments={
-        "x-dead-letter-exchange": "dead_letter",
-        "x-dead-letter-routing-key": "dead_letter",
-      },
     ),
     # Dead letter queue for failed tasks after max retries
     Queue(
@@ -90,7 +76,8 @@ celery_app.conf.update(
     "app.tasks.paper_processing.*": {"queue": "processing"},
     "app.tasks.discovery_tasks.*": {"queue": "discovery"},
     "app.tasks.deep_research_tasks.*": {"queue": "research"},
-    "research.*": {"queue": "research"},
+    "research.run_deep_research": {"queue": "research"},
+    "research.dispatch_outbox": {"queue": "processing"},
   },
   # Retry policy defaults
   task_default_retry_delay=60,  # 1 minute default retry delay
@@ -103,6 +90,11 @@ celery_app.conf.update(
     "retry-incomplete-ai": {
       "task": "processing.retry_incomplete_ai",
       "schedule": 600.0,  # every 10 minutes
+      "options": {"queue": "processing"},
+    },
+    "dispatch-research-outbox": {
+      "task": "research.dispatch_outbox",
+      "schedule": 30.0,
       "options": {"queue": "processing"},
     },
   },

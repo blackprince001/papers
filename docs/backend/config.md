@@ -27,6 +27,7 @@ instantiated at import (`config.py:135`).
 | `SEMANTIC_SCHOLAR_API_KEY` | str | `""` | `:25` | Semantic Scholar discovery provider |
 | `OPENALEX_API_KEY` | str | `""` | `:26` | OpenAlex discovery provider |
 | `AGENT_MAX_TURNS` | int | `25` | `:29` | Max agent turns |
+| `DEEP_RESEARCH_MUTATIONS_ENABLED` | bool | `False` | `:32` | Temporary safety freeze; must remain false until the deep-research rewrite passes its release gates |
 | `DEBUG` | bool | `False` | `:30` | Debug flag |
 | `PORT` | int | `8000` | `:31` | Backend listen port |
 | `DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASSWORD`/`DB_NAME` | str | `""` | `:35-39` | Postgres components (dev fallbacks localhost:5433, user/pass `postgres`, db `nexus`) |
@@ -36,6 +37,7 @@ instantiated at import (`config.py:135`).
 | `GOOGLE_CLIENT_ID` | str | `""` | `:54` | Google OAuth client ID |
 | `ADMIN_USERNAME`/`ADMIN_PASSWORD` | str | `""` | `:57-58` | Admin creds (base64-encoded) |
 | `FRONTEND_URL` | str | `"http://localhost:5173"` | `:61` | CORS allow-list origin |
+In `DEBUG` mode, the API also allows `http://127.0.0.1:5173` (and the corresponding port `3000` origins) so local access works whether the browser uses `localhost` or `127.0.0.1`.
 | `RESEND_API_KEY`/`EMAIL_FROM`/`EMAIL_ENABLED` | varies | `None`/`"noreply@papers.local"`/`False` | `:64-66` | Resend email (optional, off by default) |
 | `APP_URL` | str | `"http://localhost:5173"` | `:67` | Application base URL |
 
@@ -58,11 +60,14 @@ instantiated at import (`config.py:135`).
 `Settings` does NOT declare `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or
 `DEEPSEEK_API_KEY` — chat providers are per-user BYO (see
 [ai-agent.md](/backend/services/ai-agent.md)), and the comment at
-`config.py:21-23` confirms this. There are **no deep-research env vars at all**:
-`ENABLE_DEEP_RESEARCH` was removed 2026-07-15 (the feature is now always-on),
-following `DEEP_RESEARCH_DAILY_CAP` / `_MODEL` / `_MCP_URL` / `_MCP_TOKEN`
-(removed 2026-07-01). Deep research runs with zero configuration — see
-[deep-research](/features/deep-research.md).
+`config.py:21-23` confirms this. Deep research has one temporary mutation gate:
+`DEEP_RESEARCH_MUTATIONS_ENABLED=false` freezes new starts and resumes in every
+deployment while the unsafe legacy lifecycle is replaced. It must not be enabled
+outside a deliberately reviewed local/test override. The old
+`ENABLE_DEEP_RESEARCH` feature flag and earlier `DEEP_RESEARCH_*` settings were
+removed; this gate controls safety during the rewrite, not product availability.
+See [deep-research](/features/deep-research.md) and the
+[reformation plan](/features/reader-ai-experience.md).
 
 # Citations
 

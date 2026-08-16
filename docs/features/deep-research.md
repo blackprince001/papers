@@ -15,9 +15,12 @@ replayable SSE event relay. Originally tracked as a plan referenced by the
 
 # Status
 
-**Implemented.** Model, schemas, migration, service, task, router, and both
-frontend pages/routes are live. The feature is always-on; the last remaining
-`ENABLE_DEEP_RESEARCH` flag was removed (see [Configuration](#configuration)).
+**Implemented, currently frozen for replacement.** The existing model, schemas,
+migration, service, task, router, and frontend pages are present, but new starts and
+resumes are disabled in every deployment by `DEEP_RESEARCH_MUTATIONS_ENABLED=false`
+while the unsafe lifecycle, replay, evidence, and authorization paths are replaced.
+Completed reports remain readable. This is a temporary safety gate, not a new product
+feature flag; see the [reformation plan](/features/reader-ai-experience.md).
 
 # Motivation
 
@@ -30,12 +33,11 @@ results — without occupying a regular chat worker slot for minutes.
 
 # Configuration
 
-**Zero environment variables.** Deep research is always-on. The
-`ENABLE_DEEP_RESEARCH` feature flag — the last deep-research env var — was
-removed from `backend/app/core/config.py`, the root `.env.example`, and both
-`docker-compose.dev.yml` / `docker-compose.prod.yml` (earlier drafts also
-carried `DEEP_RESEARCH_DAILY_CAP` / `_MODEL` / `_MCP_URL` / `_MCP_TOKEN`, all
-removed 2026-07-01). Turn budgets exist only as code constants
+The legacy implementation is frozen by default. Set
+`DEEP_RESEARCH_MUTATIONS_ENABLED=false` in every environment until the replacement
+passes its release gates. The old `ENABLE_DEEP_RESEARCH` product flag and earlier
+`DEEP_RESEARCH_*` settings were removed; the temporary mutation gate controls safety
+during the rewrite, not product availability. Turn budgets exist only as code constants
 (`SEGMENT_MAX_TURNS=8`, `MAX_TOTAL_SEGMENTS=30` in `deep_research_service.py`);
 there is no `DEEP_RESEARCH_MAX_TURNS` env var. The Celery worker `-Q` list in
 both compose files now includes the `research` queue. See

@@ -72,7 +72,12 @@ in `backend/app/schemas/` — one Pydantic v2 file per domain.
 |---|---|---|
 | `DiscoveredPaper` | `discovered_papers` (`discovery.py:48-51`) | `sessions` (M2M) |
 | `DiscoverySession` | `discovery_sessions` (`discovery.py:90-93`) | `user`, `papers` (M2M) |
-| `DeepResearchSession` | `deep_research_sessions` (`deep_research.py`) | `user` (FK ON DELETE SET NULL). Holds `question`, `title`, `status` (`running`/`paused`/`completed`/`failed`), `report` (Text), `cited_sources` (JSON), `run_state` (JSON — internal `to_input_list()` resume checkpoint, never serialized to clients), `last_error_code`, `attempt_count`, inline `created_at`/`updated_at`. See [/features/deep-research.md](/features/deep-research.md) |
+| `DeepResearchSession` | `deep_research_sessions` | Owner, user-facing question/report projection, checked lifecycle/version, current generation, correlation ID, and cancellation flag. Raw checkpoint data is never serialized. |
+| `DeepResearchGeneration` | `deep_research_generations` | One versioned run with lease, checkpoint, sequence, and terminal time. |
+| `DeepResearchEvent` | `deep_research_events` | Ordered, bounded generation event payloads; Postgres is the SSE replay source. |
+| `DeepResearchEvidence` | `deep_research_evidence` | Generation-scoped normalized evidence with stable provenance and authorization metadata. |
+| `DeepResearchMessage` | `deep_research_messages` | Bounded durable messages by generation and sequence. |
+| `DeepResearchOutbox` | `deep_research_outbox` | Transactional dispatch record with retry availability, publish time, and broker lease. |
 | `SavedSearch` | `saved_searches` (`saved_search.py:10-11`) | `user` |
 | `UserAIProvider` | `user_ai_providers` (`user_ai_provider.py:17-25`) | `user` backref `ai_providers` |
 | `UserAISettings` | `user_ai_settings` (`user_ai_settings.py:12-19`) | `user` backref `ai_settings` |

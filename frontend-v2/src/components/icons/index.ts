@@ -2,6 +2,7 @@
  * The factory in create-icon.tsx owns all geometry consistency; glyph files
  * carry only path data. Import icons ONLY from this barrel. */
 export { ICON_SIZES, type IconProps, type IconSize } from './create-icon';
+export { ICON_METADATA, type IconMetadata } from './metadata';
 
 export { AnnotationIcon } from './annotation';
 export { ArchiveIcon } from './archive';

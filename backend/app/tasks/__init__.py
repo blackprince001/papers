@@ -8,7 +8,10 @@ from app.tasks.ai_tasks import (
   generate_reading_guide_task,
   generate_summary_task,
 )
-from app.tasks.deep_research_tasks import run_deep_research_task
+from app.tasks.deep_research_tasks import (
+  dispatch_research_outbox,
+  run_deep_research_task,
+)
 from app.tasks.discovery_tasks import (
   ai_enhance_task,
   search_source_task,
@@ -32,5 +35,6 @@ __all__ = [
   "retry_incomplete_ai",
   "search_source_task",
   "ai_enhance_task",
+  "dispatch_research_outbox",
   "run_deep_research_task",
 ]

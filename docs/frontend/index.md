@@ -3,7 +3,7 @@
 `frontend-v2/` is the main single-page reader / library application. React 19 +
 Vite 7 + TypeScript (strict), Tailwind v4 (CSS-based config, no JS config),
 TanStack Query for server state, React Context for client state (no
-Zustand/Redux), PWA via `vite-plugin-pwa`. Package manager: bun or npm.
+Zustand/Redux), PWA via `vite-plugin-pwa`. Package manager: Bun; `frontend-v2/bun.lock` is canonical for new changes.
 
 # Concepts
 
@@ -19,3 +19,4 @@ Zustand/Redux), PWA via `vite-plugin-pwa`. Package manager: bun or npm.
 * [Styling](styling.md) - Tailwind v4 `@theme` tokens, near-monochrome + forest-green palette, 8 paper themes, dark mode.
 * [Icon system](icon-system.md) - in-house hand-drawn icon set (109 glyphs), createIcon factory, sizing/naming conventions.
 * [Build & config](build-config.md) - Vite + PWA, strict tsconfig, ESLint, env vars.
+* [Testing](testing.md) - Vitest component tests, Playwright browser smoke tests, and Bun commands.

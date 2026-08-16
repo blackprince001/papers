@@ -2,13 +2,14 @@ import asyncio
 import re
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urljoin
 
-import httpx
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import settings
 from app.core.logger import get_logger
 from app.models.group import Group
 from app.models.paper import Paper
@@ -17,6 +18,11 @@ from app.services.layout_extractor import extract_layout, layout_to_text
 from app.services.pdf_parser import pdf_parser
 from app.services.storage import storage_service
 from app.services.url_parser import url_parser
+from app.services.url_policy import (
+  URL_POLICY_ERROR,
+  fetch_pinned_url,
+  validate_public_url,
+)
 
 
 class DuplicatePaperError(Exception):
@@ -88,22 +94,42 @@ def should_use_metadata_title(
 
 class IngestionService:
   async def download_pdf(self, url: str) -> bytes:
+    await validate_public_url(url)
     parsed = url_parser.parse_url(url)
+    if parsed.error and not parsed.pdf_url:
+      raise ValueError(parsed.error)
     pdf_url = parsed.pdf_url or url
     headers = parsed.headers or {}
+    max_bytes = settings.INGESTION_MAX_DOWNLOAD_BYTES
+    max_redirects = settings.INGESTION_MAX_REDIRECTS
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
-      response = await client.get(pdf_url, follow_redirects=True, headers=headers)
-      response.raise_for_status()
+    current_url = pdf_url
+    for redirect_count in range(max_redirects + 1):
+      addresses = await validate_public_url(current_url)
+      status, response_headers, content = await asyncio.to_thread(
+        fetch_pinned_url, current_url, addresses, headers, max_bytes
+      )
+      if status in {301, 302, 303, 307, 308}:
+        location = response_headers.get("Location") or response_headers.get("location")
+        if not location or redirect_count >= max_redirects:
+          raise ValueError("Too many redirects while downloading paper")
+        current_url = urljoin(current_url, location)
+        continue
+      if status >= 400:
+        raise ValueError(f"Paper download failed with HTTP {status}")
+      if len(content) > max_bytes:
+        raise ValueError("Downloaded paper exceeds the size limit")
 
-      content_type = response.headers.get("content-type", "").lower()
+      content_type = response_headers.get("Content-Type", response_headers.get("content-type", "")).lower()
       is_html = "html" in content_type
-      is_not_pdf = "pdf" not in content_type and not pdf_url.endswith(".pdf")
-
+      is_not_pdf = "pdf" not in content_type and not current_url.lower().split("?", 1)[0].endswith(".pdf")
       if is_not_pdf and is_html:
         raise ValueError(f"URL does not point to a PDF: {url}")
+      if not content or not content.startswith(b"%PDF-"):
+        raise ValueError("Downloaded content is not a PDF")
+      return content
 
-      return response.content
+    raise ValueError(URL_POLICY_ERROR)
 
   async def extract_doi_from_url(self, url: str) -> str | None:
     parsed = url_parser.parse_url(url)

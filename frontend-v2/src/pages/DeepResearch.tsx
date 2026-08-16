@@ -24,6 +24,8 @@ import { toastError, toastSuccess } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils';
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
+const DEEP_RESEARCH_MUTATIONS_ENABLED =
+  import.meta.env.VITE_DEEP_RESEARCH_MUTATIONS_ENABLED === 'true';
 
 const EXAMPLES = [
   'What are the leading approaches to long-context retrieval, and how do they compare?',
@@ -109,6 +111,7 @@ export default function DeepResearch() {
   });
 
   const startResearch = async (q: string) => {
+    if (!DEEP_RESEARCH_MUTATIONS_ENABLED) return;
     const trimmed = q.trim();
     if (!trimmed) return;
     try {
@@ -129,7 +132,7 @@ export default function DeepResearch() {
   };
 
   const active = !!idParam && dr.sessionId != null;
-  const isRunning = dr.status === 'running';
+  const isRunning = !['idle', 'paused', 'completed', 'failed', 'cancelled'].includes(dr.status);
   const { body, followUps } = useMemo(() => parseReport(dr.report), [dr.report]);
   // Reveal the report with the same typewriter chat uses; flush instantly once done.
   const displayedBody = useTypewriter(body, dr.status !== 'running');
@@ -167,10 +170,20 @@ export default function DeepResearch() {
             <h1 className="text-center text-[1.75rem] sm:text-[2rem] font-semibold tracking-tight mb-6">
               What would you like to research today?
             </h1>
+            {!DEEP_RESEARCH_MUTATIONS_ENABLED && (
+              <div
+                role="status"
+                className="mb-4 rounded-xl border border-(--border) bg-(--muted)/40 px-4 py-3 text-code text-(--muted-foreground)"
+              >
+                Deep Research is temporarily paused while its safety and recovery
+                workflow is being rebuilt. Existing reports remain available.
+              </div>
+            )}
             <ResearchComposer
               value={question}
               onChange={setQuestion}
               onSubmit={() => startResearch(question)}
+              disabled={!DEEP_RESEARCH_MUTATIONS_ENABLED}
               autoFocus
             />
             <div className="mt-3 flex flex-col gap-1.5">
@@ -179,6 +192,7 @@ export default function DeepResearch() {
                   key={ex}
                   type="button"
                   onClick={() => startResearch(ex)}
+                  disabled={!DEEP_RESEARCH_MUTATIONS_ENABLED}
                   initial={{ opacity: 0, y: reduce ? 0 : 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2, delay: reduce ? 0 : 0.1 + i * 0.05, ease: EASE_OUT }}
@@ -252,9 +266,10 @@ export default function DeepResearch() {
                 <button
                   type="button"
                   onClick={() => dr.resume()}
-                  className="text-code font-medium text-(--foreground) rounded-lg border border-(--border) bg-(--card) px-3 h-8 hover:bg-(--muted) active:scale-[0.98] transition"
+                  disabled={!DEEP_RESEARCH_MUTATIONS_ENABLED}
+                  className="text-code font-medium text-(--foreground) rounded-lg border border-(--border) bg-(--card) px-3 h-8 hover:bg-(--muted) active:scale-[0.98] transition disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Resume
+                  Resume unavailable during rebuild
                 </button>
               </Banner>
             )}
@@ -334,7 +349,12 @@ export default function DeepResearch() {
             value={question}
             onChange={setQuestion}
             onSubmit={() => startResearch(question)}
-            placeholder="Ask a new research question…"
+            disabled={!DEEP_RESEARCH_MUTATIONS_ENABLED}
+            placeholder={
+              DEEP_RESEARCH_MUTATIONS_ENABLED
+                ? 'Ask a new research question…'
+                : 'Deep Research is temporarily paused'
+            }
           />
         </div>
       </div>

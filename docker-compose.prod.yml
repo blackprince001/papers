@@ -132,7 +132,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A app.celery_app worker -l info -Q ai,processing,discovery,research,dead_letter -c 4
+    command: celery -A app.celery_app worker -l info -Q ai,processing,discovery,dead_letter -c 4 --hostname=interactive@%h
     deploy:
       replicas: 2
     environment:
@@ -176,6 +176,53 @@ services:
 
   # Celery beat — schedules periodic jobs (the retry sweep for incomplete AI
   # processing). Run exactly one instance; the worker(s) above execute the jobs.
+  research-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.celery_app worker -l info -Q research -c 1 --hostname=research@%h
+    environment:
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME:-papers}
+      - DB_PORT=${DB_PORT:-5432}
+      - STORAGE_PATH=/app/storage/papers
+      - DEBUG=false
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - SEMANTIC_SCHOLAR_API_KEY=${SEMANTIC_SCHOLAR_API_KEY}
+      - SERPAPI_KEY=${SERPAPI_KEY}
+      - OPENALEX_API_KEY=${OPENALEX_API_KEY}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - AI_KEY_ENCRYPTION_KEY=${AI_KEY_ENCRYPTION_KEY}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - FRONTEND_URL=https://${FRONTEND_DOMAIN}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - EMAIL_FROM=${EMAIL_FROM}
+      - EMAIL_ENABLED=${EMAIL_ENABLED}
+      - APP_URL=https://${FRONTEND_DOMAIN}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-gemini-embedding-001}
+      - EMBEDDING_DIMENSION=${EMBEDDING_DIMENSION:-768}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network
+    volumes:
+      - ./backend/storage:/app/storage
+    labels:
+      - traefik.enable=false
+    restart: unless-stopped
+
+  # Celery beat — schedules periodic jobs (the retry sweep for incomplete AI
+  # processing). Run exactly one instance; the worker(s) above execute the jobs.
+
   celery-beat:
     build:
       context: ./backend

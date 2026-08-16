@@ -137,6 +137,8 @@ async def ingest_paper_endpoint(
 
 MAX_FILE_SIZE = 100 * 1024 * 1024
 MAX_FILES = 10
+MAX_BATCH_UPLOAD_BYTES = 200 * 1024 * 1024
+MAX_PASTED_URL_TEXT_BYTES = 1 * 1024 * 1024
 
 
 @router.post("/ingest/upload", response_model=PaperUploadResponse, status_code=201)
@@ -165,13 +167,14 @@ async def upload_files_endpoint(
 
   # Validate all files first
   file_contents = {}
+  total_upload_bytes = 0
   valid_files = []
   errors = []
   paper_ids = []
 
   for file in files:
     try:
-      content = await file.read()
+      content = await file.read(MAX_FILE_SIZE + 1)
 
       if len(content) > MAX_FILE_SIZE:
         errors.append(
@@ -179,6 +182,12 @@ async def upload_files_endpoint(
             "filename": file.filename,
             "error": f"File size exceeds {MAX_FILE_SIZE / (1024 * 1024)}MB limit",
           }
+        )
+        continue
+
+      if total_upload_bytes + len(content) > MAX_BATCH_UPLOAD_BYTES:
+        errors.append(
+          {"filename": file.filename, "error": "Combined upload size exceeds the batch limit"}
         )
         continue
 
@@ -198,6 +207,7 @@ async def upload_files_endpoint(
         continue
 
       file_contents[file.filename] = content
+      total_upload_bytes += len(content)
       valid_files.append(file)
     except Exception as e:
       errors.append({"filename": file.filename or "unknown", "error": str(e)})
@@ -396,6 +406,9 @@ async def ingest_urls_from_text_endpoint(
   all be ingested. Supports various academic sites including arXiv, ACM, IEEE,
   OpenReview, PMLR, NeurIPS, Nature, bioRxiv, and direct PDF links.
   """
+  if len(text.encode("utf-8")) > MAX_PASTED_URL_TEXT_BYTES:
+    raise HTTPException(status_code=413, detail="Pasted URL text exceeds the size limit")
+
   # Extract URLs from pasted text
   urls = url_parser.extract_urls_from_text(text)
 

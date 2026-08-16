@@ -11,7 +11,8 @@ list it below as it is added.
 
 # Plans
 
-* [Deep Research](deep-research.md) - **Implemented.** Multi-step, source-backed research sessions run by an agent on a dedicated Celery `research` queue, resumable via a run-state checkpoint + replayable Redis relay; always-on (no env flag). Originally referenced by the [reformation assessment](/reformation.md).
+* [Reader and AI Experience Reformation](reader-ai-experience.md) - **In progress.** Gated plan for reader improvements and the deep-research lifecycle rewrite. The mutation freeze remains until its safety and evaluation gates pass.
+* [Deep Research](deep-research.md) - **Implemented, replacement planned.** The current agent/Celery/Redis implementation; known security, resumability, evidence, worker-isolation, and test gaps are addressed by the [reformation plan](reader-ai-experience.md).
 
 # Related
 

@@ -82,6 +82,8 @@ async def view_figures(paper_id: int) -> str:
   """
   ctx = get_byo_context()
   db = ctx.extra.get("db_session")
+  user_id = ctx.user_id
+  is_admin = ctx.is_admin
 
   if not db:
     return "Error: No database session available."
@@ -91,16 +93,18 @@ async def view_figures(paper_id: int) -> str:
     from sqlalchemy.orm import selectinload
 
     from app.models.paper import Paper
+    from app.services.access import apply_agent_paper_visibility_filter
 
-    paper = (
-      await db.execute(
-        select(Paper)
-        .where(Paper.id == paper_id)
-        .options(selectinload(Paper.tags), selectinload(Paper.groups))
-      )
-    ).scalar_one_or_none()
+    query = apply_agent_paper_visibility_filter(
+      select(Paper)
+      .where(Paper.id == paper_id)
+      .options(selectinload(Paper.tags), selectinload(Paper.groups)),
+      user_id,
+      is_admin=is_admin,
+    )
+    paper = (await db.execute(query)).scalar_one_or_none()
     if not paper:
-      return f"Paper {paper_id} not found."
+      return "Paper not found or not accessible."
 
     figures = list_figures(paper.layout_blocks)
     if not figures:

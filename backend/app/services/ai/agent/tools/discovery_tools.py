@@ -26,6 +26,7 @@ from app.core.config import settings
 from app.core.logger import get_logger
 from app.services.ai.agent.context import get_byo_context
 from app.services.ai.agent.tools import with_timeout
+from app.services.deep_research.evidence import collect_context_evidence
 
 logger = get_logger(__name__)
 
@@ -42,9 +43,7 @@ def _collect_dr_sources(items: list[dict[str, Any]]) -> None:
   if not items:
     return
   try:
-    bucket = get_byo_context().extra.get("dr_sources")
-    if isinstance(bucket, list):
-      bucket.extend(items)
+    collect_context_evidence(get_byo_context().extra, items)
   except Exception:  # noqa: BLE001 — telemetry only, never break a tool
     pass
 

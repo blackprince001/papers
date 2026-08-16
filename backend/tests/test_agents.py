@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from app.services.ai.agent.agents import (
-  SYSTEM_PROMPT_SUFFIX,
   create_deep_research_agent,
   create_multi_paper_agent,
   create_paper_agent,
@@ -16,11 +15,16 @@ class MockPaper:
   """Minimal Paper mock for testing agents."""
 
   def __init__(
-    self, id: int = 1, title: str = "Test Paper", authors: str = "Test Author"
+    self,
+    id: int = 1,
+    title: str = "Test Paper",
+    authors: str = "Test Author",
+    layout_blocks: list[dict] | None = None,
   ):
     self.id = id
     self.title = title
     self.authors = authors
+    self.layout_blocks = layout_blocks or []
 
 
 class TestCreatePaperAgent:
@@ -45,7 +49,7 @@ class TestCreatePaperAgent:
   def test_instructions_contains_suffix(self):
     paper = MockPaper()
     agent = create_paper_agent(paper)
-    assert SYSTEM_PROMPT_SUFFIX.strip() in agent.instructions
+    assert "Available papers in context:" in agent.instructions
 
   def test_additional_tools_appended(self):
     paper = MockPaper()

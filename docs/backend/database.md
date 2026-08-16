@@ -45,7 +45,7 @@ engines.
 
 # Migrations
 
-Alembic at `backend/migrations/` — **45 revisions**, head
+Alembic at `backend/migrations/` — **46 revisions**, head
 `deep_research_001` (`deep_research_001.py`, `down_revision = "add_last_opened_at"`,
 2026-07-15; it creates `deep_research_sessions` — see
 [/features/deep-research.md](/features/deep-research.md)). `init-db.sql`

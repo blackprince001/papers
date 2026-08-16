@@ -111,7 +111,14 @@ register_exception_handlers(app)
 # CORS — allow configured frontend + localhost for dev
 allowed_origins = [settings.FRONTEND_URL]
 if settings.DEBUG:
-  allowed_origins.extend(["http://localhost:5173", "http://localhost:3000"])
+  allowed_origins.extend(
+    [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+    ]
+  )
 
 app.add_middleware(
   CORSMiddleware,  # type: ignore[arg-type]
@@ -226,7 +233,15 @@ async def health_check():
   """Health check including Redis and Celery status."""
   import redis
 
-  health = {"status": "healthy", "components": {"celery": "", "redis": ""}}
+  health = {
+    "status": "healthy",
+    "components": {
+      "celery": "",
+      "interactive_worker": "",
+      "research_worker": "",
+      "redis": "",
+    },
+  }
 
   # Check Redis
   try:
@@ -248,12 +263,31 @@ async def health_check():
     inspector = celery_app.control.inspect()
     stats = inspector.stats()
     if stats:
+      research_workers = [name for name in stats if "research" in name.lower()]
+      interactive_workers = [name for name in stats if name not in research_workers]
       health["components"]["celery"] = f"healthy ({len(stats)} workers)"
+      health["components"]["interactive_worker"] = (
+        f"healthy ({len(interactive_workers)} workers)"
+        if interactive_workers
+        else "no workers available"
+      )
+      health["components"]["research_worker"] = (
+        f"healthy ({len(research_workers)} workers)"
+        if research_workers
+        else "no research workers available"
+      )
+      if not interactive_workers or not research_workers:
+        health["status"] = "degraded"
     else:
       health["components"]["celery"] = "no workers available"
+      health["components"]["interactive_worker"] = "no workers available"
+      health["components"]["research_worker"] = "no research workers available"
       health["status"] = "degraded"
   except Exception as e:
-    health["components"]["celery"] = f"unhealthy: {str(e)}"
+    message = f"unhealthy: {str(e)}"
+    health["components"]["celery"] = message
+    health["components"]["interactive_worker"] = message
+    health["components"]["research_worker"] = message
     health["status"] = "degraded"
 
   return health

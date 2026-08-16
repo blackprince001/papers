@@ -17,6 +17,7 @@ except ImportError:
 from app.core.logger import get_logger
 from app.services.ai.agent.context import get_byo_context
 from app.services.ai.agent.tools import rollback_quietly, with_timeout
+from app.services.deep_research.evidence import collect_context_evidence
 from app.services.embeddings import embedding_service
 
 logger = get_logger(__name__)
@@ -42,6 +43,8 @@ async def semantic_search(query: str, limit: int = 5) -> str:
   """
   ctx = get_byo_context()
   db = ctx.extra.get("db_session")
+  user_id = ctx.user_id
+  is_admin = ctx.is_admin
 
   if not db:
     return "Error: No database session available."
@@ -53,28 +56,38 @@ async def semantic_search(query: str, limit: int = 5) -> str:
     if not embedding:
       return "Error: Could not generate embedding for the query."
 
-    from sqlalchemy import text
+    from sqlalchemy import select
 
     from app.models.paper import Paper
+    from app.services.access import apply_agent_paper_visibility_filter
 
-    vector_str = "[" + ",".join(str(v) for v in embedding) + "]"
-    sql = text(
-      """
-      SELECT id, title, metadata_json,
-             1 - (embedding <=> CAST(:vector AS vector)) AS similarity
-      FROM papers
-      WHERE embedding IS NOT NULL
-      ORDER BY embedding <=> CAST(:vector AS vector)
-      LIMIT :limit
-      """
+    distance = Paper.embedding.cosine_distance(embedding)
+    sql = (
+      select(
+        Paper.id,
+        Paper.title,
+        Paper.metadata_json,
+        (1 - distance).label("similarity"),
+      )
+      .where(Paper.embedding.is_not(None))
+      .order_by(distance)
+      .limit(limit)
     )
+    sql = apply_agent_paper_visibility_filter(sql, user_id, is_admin=is_admin)
 
-    result = await db.execute(sql, {"vector": vector_str, "limit": limit})
+    result = await db.execute(sql)
     rows = result.fetchall()
 
     if not rows:
       return "No semantically similar papers found."
 
+    collect_context_evidence(
+      ctx.extra,
+      [
+        {"source": "library", "external_id": str(row.id), "title": row.title or "Untitled"}
+        for row in rows
+      ],
+    )
     lines = [f"Top {len(rows)} semantically similar paper(s):\n"]
     for i, row in enumerate(rows, 1):
       score = float(row.similarity) if row.similarity is not None else 0.0
