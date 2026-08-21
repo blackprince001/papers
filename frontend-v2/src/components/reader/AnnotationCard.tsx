@@ -122,7 +122,7 @@ export function AnnotationCard({
                 setEditing(true);
               }}
               aria-label="Edit note"
-              className="rounded p-0.5 opacity-0 transition-opacity group-hover/card:opacity-60 hover:opacity-100!"
+              className="rounded p-0.5 opacity-0 transition-opacity group-hover/card:opacity-60 group-focus-within/card:opacity-60! hover:opacity-100!"
               style={{ color: `var(--theme-${theme}-text)` }}
             >
               <EditIcon size="xs" />
@@ -136,7 +136,7 @@ export function AnnotationCard({
                 onDelete();
               }}
               aria-label="Delete annotation"
-              className="rounded p-0.5 opacity-0 transition-opacity group-hover/card:opacity-60 hover:opacity-100!"
+              className="rounded p-0.5 opacity-0 transition-opacity group-hover/card:opacity-60 group-focus-within/card:opacity-60! hover:opacity-100!"
               style={{ color: `var(--theme-${theme}-text)` }}
             >
               <TrashIcon size="xs" />

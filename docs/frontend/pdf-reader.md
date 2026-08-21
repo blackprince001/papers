@@ -97,6 +97,29 @@ one `persistDraft` in ReaderShell, which reconstructs the same API payload on
 retry. E2E: `e2e/highlight-drafts.spec.ts` fails the first POST, asserts the
 failed chip, retries, and asserts recovery.
 
+# Reading position (RD-05)
+
+`lib/reading-position.ts` persists per-paper last page under
+`lumen:reading-position:<paperId>` with a probe-backed localStorage wrapper
+(memory fallback when storage is unavailable); corrupt entries parse as "no
+position". `reader/use-reading-position.ts` resolves the initial page once per
+paper (explicit `?page=N` deep link wins over storage), gates all recording on
+viewer readiness via ReaderShell's `onReady`, and treats a page-one report as
+progress only after another page was seen — load-time page-one signals can't
+clobber a stored position. E2E: `e2e/reading-position.spec.ts`.
+
+# Checkpoint D
+
+`e2e/checkpoint-d.spec.ts` runs the full selection/annotation flow against a
+stateful in-memory annotations API (collection GET/POST at
+`/papers/1/annotations`, item PATCH/DELETE at `/annotations/:id`) across the
+gate matrix: pointer create → keyboard edit → deferred delete with keyboard
+undo → window expiry commits DELETE, at 1920×1000; narrow desktop (800px) with
+inline-marker fallback; and the reader's real 200% zoom step (page outgrows the
+gutter, so replay falls back to inline markers). Found and fixed along the way:
+AnnotationCard's hover-revealed Edit/Delete controls are now also revealed on
+`group-focus-within` so keyboard users can see what they're operating.
+
 # Permissions
 
 `lib/utils/permissions.ts`: `isOwner`/`canEdit`/`canAnnotate`/`isViewer` gate
