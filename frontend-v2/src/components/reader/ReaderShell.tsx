@@ -70,6 +70,8 @@ interface ReaderShellProps {
   initialPage?: number;
   /** Item to focus on load, e.g. "annotation:22" or "note:10". */
   focusRef?: string;
+  /** Fired once when the PDF document is loaded and scroll targets resolve. */
+  onReady?: () => void;
 }
 
 export function ReaderShell({
@@ -79,11 +81,19 @@ export function ReaderShell({
   onCurrentPageChange,
   initialPage,
   focusRef,
+  onReady,
 }: ReaderShellProps) {
   const queryClient = useQueryClient();
   const { fileUrl, error: fileError } = usePaperFile(paper);
   const viewerRef = useRef<ReaderViewerHandle>(null);
   const [pdfProxy, setPdfProxy] = useState<PDFDocumentProxy | null>(null);
+  const readyNotifiedRef = useRef(false);
+  useEffect(() => {
+    if (pdfProxy && !readyNotifiedRef.current) {
+      readyNotifiedRef.current = true;
+      onReady?.();
+    }
+  }, [pdfProxy, onReady]);
   const [activePage, setActivePage] = useState(1);
   const {
     activeAnnotationId,

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { papersApi } from '@/lib/api/papers';
@@ -7,6 +7,7 @@ import { ReaderShell } from '@/components/reader/ReaderShell';
 import { ProcessingProgressPanel } from '@/components/ProcessingProgressPanel';
 import { useTabs } from '@/contexts/TabContext';
 import { useReadingSession } from '@/hooks/use-reading-session';
+import { useReadingPosition } from '@/hooks/use-reading-position';
 import { WarningIcon, FileTextIcon } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -40,6 +41,16 @@ export default function PaperDetail() {
   const currentPage = paperTab?.currentPage ?? 1;
   const isReadingActive = !!(paper?.file_url || paper?.file_path) && paperTab?.id === activeTabId;
   useReadingSession(paperId!, isReadingActive, currentPage);
+
+  // Restore the last reading position (deep-link page wins). Nothing is
+  // recorded until the viewer reports ready, so load-time page-one signals
+  // can't clobber a stored position.
+  const [readerReady, setReaderReady] = useState(false);
+  const { initialPage: storedInitialPage, recordPage } = useReadingPosition({
+    paperId,
+    explicitPage: initialPage,
+    ready: readerReady,
+  });
 
   // Register this paper in the tab system
   useEffect(() => {
@@ -95,13 +106,15 @@ export default function PaperDetail() {
         <ReaderShell
           paper={paper}
           annotations={annotations || []}
-          initialPage={initialPage}
+          initialPage={initialPage ?? storedInitialPage}
           focusRef={focusRef}
+          onReady={() => setReaderReady(true)}
           onAnnotationSuccess={() => {
             refetchAnnotations();
             refetchPaper();
           }}
           onCurrentPageChange={(page) => {
+            recordPage(page);
             const activeTab = tabs.find((t) => t.id === activeTabId);
             if (activeTab) updateTab(activeTab.id, { currentPage: page });
           }}
