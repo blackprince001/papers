@@ -37,13 +37,13 @@ import {
   validateNormalizedRect,
   type NormalizedRect,
 } from "./annotation-geometry";
-import { highlightTheme } from "./highlight-colors";
 import type { ThemeName } from "@/lib/paper-themes";
 import { HighlightOverlay } from "./HighlightOverlay";
 import type { HighlightDraft } from "./use-highlight-drafts";
 import { useHighlightDrafts } from "./use-highlight-drafts";
-import { AnnotationCard } from "./AnnotationCard";
 import { AnnotationMarker } from "./AnnotationMarker";
+import { MarginNotes } from "./MarginNotes";
+import { MARGIN_CARD_GAP } from "./margin-placement";
 import { OutlinePanel } from "./OutlinePanel";
 import { ReaderToolbarActions } from "./ReaderToolbarActions";
 import { HighlighterControl } from "./HighlighterControl";
@@ -60,8 +60,6 @@ const PDF_DOCUMENT_OPTIONS = {
 
 const MARGIN_CARD_MAX_WIDTH = 280;
 const MARGIN_CARD_MIN_WIDTH = 188;
-const MARGIN_CARD_GAP = 12;
-const MARGIN_CARD_MIN_HEIGHT = 76;
 
 interface ReaderShellProps {
   paper: Paper;
@@ -95,6 +93,10 @@ export function ReaderShell({
   } = useReader();
   const [selection, setSelection] = useState<SelectionState | null>(null);
   const [pendingAction, setPendingAction] = useState<AIActionKind | null>(null);
+  // Card currently hovered/focused in the margin; its highlight rects link.
+  const [hoveredAnnotationId, setHoveredAnnotationId] = useState<number | null>(
+    null,
+  );
 
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -505,26 +507,6 @@ export function ReaderShell({
         ),
       );
 
-      const cursorY = { left: 0, right: 0 };
-      const placed = marginMode
-        ? pageAnnotations
-            .map((ann) => {
-              const canonical = annotationRects(ann)[0];
-              return { ann, rect: canonical ? displayedRect(canonical) : undefined };
-            })
-            .filter((p): p is { ann: Annotation; rect: NormalizedRect } =>
-              Boolean(p.rect),
-            )
-            .map(({ ann, rect }) => {
-              const side: "left" | "right" =
-                cursorY.left <= cursorY.right ? "left" : "right";
-              const anchorY = rect.top * renderedHeight;
-              const top = Math.max(anchorY, cursorY[side]);
-              cursorY[side] = top + MARGIN_CARD_MIN_HEIGHT + MARGIN_CARD_GAP;
-              return { ann, rect, top, side };
-            })
-        : [];
-
       return (
         <>
           {/* Persisted highlights + in-flight drafts */}
@@ -538,80 +520,29 @@ export function ReaderShell({
             onRetryDraft={retryDraft}
             onDiscardDraft={discardDraft}
             deletingAnnotationId={deletingId}
+            linkedAnnotationId={hoveredAnnotationId}
           />
 
           {marginMode ? (
-            <>
-              {/* Leader lines from highlight → margin card */}
-              <svg
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 size-full overflow-visible"
-              >
-                {placed.map(({ ann, rect, top, side }) => {
-                  const theme = highlightTheme(
-                    ann.highlight_type,
-                    ann.selection_data,
-                  );
-                  const y1 = (rect.top + rect.height / 2) * renderedHeight;
-                  const y2 = top + 16;
-                  const x1 =
-                    side === "right"
-                      ? (rect.left + rect.width) * renderedWidth
-                      : rect.left * renderedWidth;
-                  const x2 =
-                    side === "right"
-                      ? renderedWidth + MARGIN_CARD_GAP
-                      : -MARGIN_CARD_GAP;
-                  return (
-                    <path
-                      key={ann.id}
-                      d={`M ${x1} ${y1} C ${(x1 + x2) / 2} ${y1}, ${(x1 + x2) / 2} ${y2}, ${x2} ${y2}`}
-                      fill="none"
-                      strokeWidth={1.25}
-                      style={{ stroke: `var(--theme-${theme}-action)` }}
-                      opacity={activeAnnotationId === ann.id ? 0.95 : 0.5}
-                    />
-                  );
-                })}
-              </svg>
-              {placed.map(({ ann, top, side }) => (
-                <div
-                  key={ann.id}
-                  className="absolute"
-                  style={{
-                    top,
-                    width: cardWidth,
-                    zIndex: activeAnnotationId === ann.id ? 40 : 20,
-                    ...(side === "right"
-                      ? { left: renderedWidth + MARGIN_CARD_GAP }
-                      : { right: renderedWidth + MARGIN_CARD_GAP }),
-                  }}
-                >
-                  <AnnotationCard
-                    annotation={ann}
-                    active={activeAnnotationId === ann.id}
-                    compact
-                    onClick={() => setActiveAnnotationId(ann.id)}
-                    deleting={deletingId === ann.id}
-                    onDelete={
-                      canAnnotate(paper)
-                        ? () => scheduleDelete(ann.id)
-                        : undefined
-                    }
-                    onUpdateContent={
-                      canAnnotate(paper)
-                        ? (content) => handleUpdateContent(ann.id, content)
-                        : undefined
-                    }
-                    onRecolor={
-                      canAnnotate(paper)
-                        ? (color) => handleRecolor(ann, color)
-                        : undefined
-                    }
-                  />
-                </div>
-              ))}
-            </>
+            /* Measured two-column stacking in the gutters */
+            <MarginNotes
+              annotations={pageAnnotations}
+              rotation={rotation}
+              renderedWidth={renderedWidth}
+              renderedHeight={renderedHeight}
+              cardWidth={cardWidth}
+              activeAnnotationId={activeAnnotationId}
+              deletingAnnotationId={deletingId}
+              onSelectAnnotation={setActiveAnnotationId}
+              onHoverAnnotation={setHoveredAnnotationId}
+              onDelete={canAnnotate(paper) ? (ann) => scheduleDelete(ann.id) : undefined}
+              onUpdateContent={
+                canAnnotate(paper)
+                  ? (ann, content) => handleUpdateContent(ann.id, content)
+                  : undefined
+              }
+              onRecolor={canAnnotate(paper) ? handleRecolor : undefined}
+            />
           ) : (
             /* Inline anchored note markers (popover on hover / click to pin) */
             pageAnnotations.map((ann) => {

@@ -30,6 +30,7 @@ export function HighlightOverlay({
   onRetryDraft,
   onDiscardDraft,
   deletingAnnotationId,
+  linkedAnnotationId,
 }: {
   annotations: Annotation[]
   drafts: HighlightDraft[]
@@ -42,6 +43,8 @@ export function HighlightOverlay({
   onDiscardDraft: (id: string) => void
   /** Annotation waiting out its undo window; its rects fade. */
   deletingAnnotationId?: number | null
+  /** Annotation whose margin card is hovered/focused; its rects link up. */
+  linkedAnnotationId?: number | null
 }) {
   const chipLabelId = useId();
 
@@ -72,8 +75,8 @@ export function HighlightOverlay({
                 isDark ? 'mix-blend-screen' : 'mix-blend-multiply',
                 deleting
                   ? 'pointer-events-none opacity-25 ring-1 ring-(--destructive)'
-                  : activeAnnotationId === ann.id
-                    ? 'opacity-90'
+                  : activeAnnotationId === ann.id || linkedAnnotationId === ann.id
+                    ? 'opacity-95'
                     : 'opacity-60 hover:opacity-80',
               )}
               style={{
