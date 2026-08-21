@@ -29,6 +29,7 @@ export function HighlightOverlay({
   onSelectAnnotation,
   onRetryDraft,
   onDiscardDraft,
+  deletingAnnotationId,
 }: {
   annotations: Annotation[]
   drafts: HighlightDraft[]
@@ -39,6 +40,8 @@ export function HighlightOverlay({
   onSelectAnnotation: (id: number) => void
   onRetryDraft: (id: string) => void
   onDiscardDraft: (id: string) => void
+  /** Annotation waiting out its undo window; its rects fade. */
+  deletingAnnotationId?: number | null
 }) {
   const chipLabelId = useId();
 
@@ -52,20 +55,26 @@ export function HighlightOverlay({
         const theme = highlightTheme(ann.highlight_type, ann.selection_data);
         return annotationRects(ann).map((canonical, i) => {
           const rect = displayed(canonical);
+          const deleting = deletingAnnotationId === ann.id;
           return (
             <button
               key={`${ann.id}-${i}`}
               type="button"
-              aria-label="Annotation highlight"
+              aria-label={
+                deleting ? 'Deleting highlight' : 'Annotation highlight'
+              }
+              disabled={deleting}
               onClick={() => {
                 onSelectAnnotation(ann.id);
               }}
               className={cn(
                 'absolute rounded-[2px] transition-opacity',
                 isDark ? 'mix-blend-screen' : 'mix-blend-multiply',
-                activeAnnotationId === ann.id
-                  ? 'opacity-90'
-                  : 'opacity-60 hover:opacity-80',
+                deleting
+                  ? 'pointer-events-none opacity-25 ring-1 ring-(--destructive)'
+                  : activeAnnotationId === ann.id
+                    ? 'opacity-90'
+                    : 'opacity-60 hover:opacity-80',
               )}
               style={{
                 left: `${rect.left * 100}%`,

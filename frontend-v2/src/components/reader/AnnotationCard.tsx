@@ -1,6 +1,8 @@
-import { TrashIcon } from "@/components/icons";
+import { useEffect, useRef, useState } from "react";
+import { CloseIcon, CheckIcon, EditIcon, TrashIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
-import { highlightLabel, highlightTheme } from "./highlight-colors";
+import type { ThemeName } from "@/lib/paper-themes";
+import { THEME_NAMES, highlightLabel, highlightTheme } from "./highlight-colors";
 import type { Annotation } from "@/lib/api/annotations";
 
 export function AnnotationCard({
@@ -9,13 +11,36 @@ export function AnnotationCard({
   compact = false,
   onClick,
   onDelete,
+  onUpdateContent,
+  onRecolor,
+  deleting = false,
 }: {
   annotation: Annotation;
   active?: boolean;
   compact?: boolean;
   onClick?: () => void;
   onDelete?: () => void;
+  /** Present → the card offers inline note editing (at-mark). */
+  onUpdateContent?: (content: string) => void;
+  /** Present → the card offers a recolor swatch row (highlights only). */
+  onRecolor?: (color: ThemeName) => void;
+  /** Delete is pending behind an undo window; fade without removing. */
+  deleting?: boolean;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(annotation.content);
+  const editRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!editing) return;
+    // Focus after mount so keyboard users land in the textarea directly.
+    editRef.current?.focus();
+    editRef.current?.setSelectionRange(
+      editRef.current.value.length,
+      editRef.current.value.length,
+    );
+  }, [editing]);
+
   const theme = highlightTheme(
     annotation.highlight_type,
     annotation.selection_data,
@@ -28,6 +53,15 @@ export function AnnotationCard({
   const showQuote =
     annotation.highlighted_text &&
     annotation.highlighted_text !== annotation.content;
+  const canRecolor = Boolean(onRecolor) && active && annotation.type !== "note";
+
+  const saveEdit = () => {
+    const text = draft.trim();
+    setEditing(false);
+    if (onUpdateContent && text && text !== annotation.content) {
+      onUpdateContent(text);
+    }
+  };
 
   const expandText = active;
 
@@ -55,6 +89,7 @@ export function AnnotationCard({
           : active
             ? "shadow-(--shadow-elevated)"
             : "shadow-(--shadow-subtle)",
+        deleting && "pointer-events-none opacity-40",
       )}
       style={{
         backgroundColor: `var(--theme-${theme}-bg)`,
@@ -77,20 +112,37 @@ export function AnnotationCard({
           {label}
           {annotation.auto_highlighted ? " · AI" : ""}
         </span>
-        {onDelete && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete();
-            }}
-            aria-label="Delete annotation"
-            className="rounded p-0.5 opacity-0 transition-opacity group-hover/card:opacity-60 hover:opacity-100!"
-            style={{ color: `var(--theme-${theme}-text)` }}
-          >
-            <TrashIcon size="xs" />
-          </button>
-        )}
+        <div className="flex items-center gap-0.5">
+          {onUpdateContent && !editing && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setDraft(annotation.content);
+                setEditing(true);
+              }}
+              aria-label="Edit note"
+              className="rounded p-0.5 opacity-0 transition-opacity group-hover/card:opacity-60 hover:opacity-100!"
+              style={{ color: `var(--theme-${theme}-text)` }}
+            >
+              <EditIcon size="xs" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onDelete();
+              }}
+              aria-label="Delete annotation"
+              className="rounded p-0.5 opacity-0 transition-opacity group-hover/card:opacity-60 hover:opacity-100!"
+              style={{ color: `var(--theme-${theme}-text)` }}
+            >
+              <TrashIcon size="xs" />
+            </button>
+          )}
+        </div>
       </div>
 
       {showQuote && (
@@ -112,15 +164,81 @@ export function AnnotationCard({
         </p>
       )}
 
-      <p
-        className={cn(
-          "text-caption leading-relaxed",
-          expandText || !compact ? "whitespace-pre-wrap" : "line-clamp-4",
-        )}
-        style={{ color: `var(--theme-${theme}-text)` }}
-      >
-        {annotation.content}
-      </p>
+      {editing ? (
+        <div onClick={(event) => event.stopPropagation()}>
+          <textarea
+            ref={editRef}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            rows={3}
+            aria-label="Edit note text"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.stopPropagation();
+                setEditing(false);
+              }
+              if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault();
+                saveEdit();
+              }
+            }}
+            className="w-full resize-none rounded-lg border border-(--border) bg-(--white) px-2 py-1.5 text-caption outline-none focus:border-(--foreground)"
+            style={{ color: "var(--foreground)" }}
+          />
+          <div className="mt-1 flex justify-end gap-1">
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="flex items-center gap-1 rounded px-2 py-0.5 text-caption text-(--muted-foreground) hover:bg-(--accent)"
+            >
+              <CloseIcon size="xs" /> Cancel
+            </button>
+            <button
+              type="button"
+              onClick={saveEdit}
+              className="flex items-center gap-1 rounded bg-(--primary) px-2 py-0.5 text-caption font-medium text-(--primary-foreground) hover:opacity-90"
+            >
+              <CheckIcon size="xs" /> Save
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p
+          className={cn(
+            "text-caption leading-relaxed",
+            expandText || !compact ? "whitespace-pre-wrap" : "line-clamp-4",
+          )}
+          style={{ color: `var(--theme-${theme}-text)` }}
+        >
+          {annotation.content}
+        </p>
+      )}
+
+      {canRecolor && (
+        <div
+          className="mt-1.5 flex items-center gap-1.5 border-t pt-1.5"
+          style={{ borderColor: `var(--theme-${theme}-border)` }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {THEME_NAMES.map((name) => {
+            const current = name === theme;
+            return (
+              <button
+                key={name}
+                type="button"
+                onClick={() => onRecolor?.(name)}
+                aria-label={`Recolor ${name}`}
+                aria-pressed={current}
+                className={cn(
+                  "size-4 rounded-full border border-(--border) transition-transform hover:scale-125",
+                  current && "ring-2 ring-offset-1 ring-(--foreground)",
+                )}
+                style={{ backgroundColor: `var(--theme-${name}-action)` }}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

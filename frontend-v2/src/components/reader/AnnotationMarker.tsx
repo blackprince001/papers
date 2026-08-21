@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnnotationIcon, CloseIcon } from '@/components/icons';
+import type { ThemeName } from '@/lib/paper-themes';
 import { cn } from '@/lib/utils';
 import { highlightTheme } from './highlight-colors';
 import { AnnotationCard } from './AnnotationCard';
@@ -15,6 +16,9 @@ export function AnnotationMarker({
   onSelect,
   onClose,
   onDelete,
+  onUpdateContent,
+  onRecolor,
+  deleting = false,
 }: {
   annotation: Annotation;
   rect: NormalizedRect;
@@ -22,6 +26,9 @@ export function AnnotationMarker({
   onSelect: () => void;
   onClose: () => void;
   onDelete?: () => void;
+  onUpdateContent?: (content: string) => void;
+  onRecolor?: (color: ThemeName) => void;
+  deleting?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
   const closeTimer = useRef(0);
@@ -88,6 +95,9 @@ export function AnnotationMarker({
               compact
               onClick={onSelect}
               onDelete={onDelete}
+              onUpdateContent={onUpdateContent}
+              onRecolor={onRecolor}
+              deleting={deleting}
             />
             <button
               type="button"

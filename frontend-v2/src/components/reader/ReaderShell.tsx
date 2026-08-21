@@ -6,7 +6,11 @@ import {
   MinimizeIcon,
   WarningIcon,
 } from "@/components/icons";
-import { annotationsApi, type Annotation } from "@/lib/api/annotations";
+import {
+  annotationsApi,
+  type Annotation,
+  type AnnotationUpdate,
+} from "@/lib/api/annotations";
 import { aiFeaturesApi, type AIActionKind } from "@/lib/api/aiFeatures";
 import { type Paper } from "@/lib/api/papers";
 import { PDFViewer } from "@/components/shadcn/pdf-viewer";
@@ -22,6 +26,8 @@ import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
 import { useReader } from "@/contexts/ReaderContext";
 import { usePaperFile } from "./use-paper-file";
+import { useDeferredDelete } from "@/hooks/use-deferred-delete";
+import { UndoNotice } from "@/components/ui/UndoNotice";
 import {
   annotationPage,
   annotationRects,
@@ -244,6 +250,38 @@ export function ReaderShell({
     onSuccess: invalidateAnnotations,
     onError: () => toastError("Failed to delete annotation"),
   });
+
+  // Deletes wait behind a five-second undo window before hitting the API;
+  // unmount commits whatever is still pending so intent is never lost.
+  const {
+    pendingItem: deletingId,
+    schedule: scheduleDelete,
+    undo: undoDelete,
+  } = useDeferredDelete<number>({
+    onDelete: (id) => deleteMutation.mutate(id),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: number; updates: AnnotationUpdate }) =>
+      annotationsApi.update(id, updates),
+    onSuccess: invalidateAnnotations,
+    onError: () => toastError("Failed to update annotation"),
+  });
+
+  /** At-mark note editing (AnnotationCard inline editor). */
+  const handleUpdateContent = useCallback((id: number, content: string) => {
+    updateMutation.mutate({ id, updates: { content } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** At-mark recolor; selection_data.color overrides the type theme. */
+  const handleRecolor = useCallback((ann: Annotation, color: ThemeName) => {
+    updateMutation.mutate({
+      id: ann.id,
+      updates: { selection_data: { ...ann.selection_data, color } },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleAIAction = async (kind: AIActionKind) => {
     if (!selection) return;
@@ -499,6 +537,7 @@ export function ReaderShell({
             onSelectAnnotation={setActiveAnnotationId}
             onRetryDraft={retryDraft}
             onDiscardDraft={discardDraft}
+            deletingAnnotationId={deletingId}
           />
 
           {marginMode ? (
@@ -553,9 +592,20 @@ export function ReaderShell({
                     active={activeAnnotationId === ann.id}
                     compact
                     onClick={() => setActiveAnnotationId(ann.id)}
+                    deleting={deletingId === ann.id}
                     onDelete={
                       canAnnotate(paper)
-                        ? () => deleteMutation.mutate(ann.id)
+                        ? () => scheduleDelete(ann.id)
+                        : undefined
+                    }
+                    onUpdateContent={
+                      canAnnotate(paper)
+                        ? (content) => handleUpdateContent(ann.id, content)
+                        : undefined
+                    }
+                    onRecolor={
+                      canAnnotate(paper)
+                        ? (color) => handleRecolor(ann, color)
                         : undefined
                     }
                   />
@@ -576,9 +626,20 @@ export function ReaderShell({
                   active={activeAnnotationId === ann.id}
                   onSelect={() => setActiveAnnotationId(ann.id)}
                   onClose={() => setActiveAnnotationId(null)}
+                  deleting={deletingId === ann.id}
                   onDelete={
                     canAnnotate(paper)
-                      ? () => deleteMutation.mutate(ann.id)
+                      ? () => scheduleDelete(ann.id)
+                      : undefined
+                  }
+                  onUpdateContent={
+                    canAnnotate(paper)
+                      ? (content) => handleUpdateContent(ann.id, content)
+                      : undefined
+                  }
+                  onRecolor={
+                    canAnnotate(paper)
+                      ? (color) => handleRecolor(ann, color)
                       : undefined
                   }
                 />
@@ -599,6 +660,10 @@ export function ReaderShell({
       draftsByPage,
       retryDraft,
       discardDraft,
+      deletingId,
+      scheduleDelete,
+      handleUpdateContent,
+      handleRecolor,
     ],
   );
 
@@ -678,6 +743,10 @@ export function ReaderShell({
             onColorChange={setHighlighterColor}
           />
         </div>
+      )}
+
+      {fileUrl && deletingId !== null && (
+        <UndoNotice message="Highlight deleted" onUndo={undoDelete} />
       )}
 
       {fileUrl && (
