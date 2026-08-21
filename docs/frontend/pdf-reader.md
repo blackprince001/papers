@@ -83,6 +83,20 @@ Engines import the contract — callers never import engine types.
 contract types. Overlay consumers derive rendered size via
 `renderedPageSize` only, so scale is never applied twice.
 
+# Highlight lifecycle (RD-02)
+
+Highlight and comment creation flows through a visible draft lifecycle
+(`reader/use-highlight-drafts.ts` + `reader/HighlightOverlay.tsx`):
+draft → committing → persisted (draft removed, persisted annotation replaces
+it) or draft → failed → retry/discard. Drafts render immediately as dashed
+rects in the page overlay; committing shows solid fill with a "Saving
+highlight" status; failure tints the rects destructive and shows keyboard-
+operable Retry/Discard buttons under the first rect. All three creation paths
+(SelectionPopover swatches, active highlighter, comment submit) funnel through
+one `persistDraft` in ReaderShell, which reconstructs the same API payload on
+retry. E2E: `e2e/highlight-drafts.spec.ts` fails the first POST, asserts the
+failed chip, retries, and asserts recovery.
+
 # Permissions
 
 `lib/utils/permissions.ts`: `isOwner`/`canEdit`/`canAnnotate`/`isViewer` gate

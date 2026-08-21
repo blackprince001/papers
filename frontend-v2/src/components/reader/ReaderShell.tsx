@@ -33,11 +33,17 @@ import {
 } from "./annotation-geometry";
 import { highlightTheme } from "./highlight-colors";
 import type { ThemeName } from "@/lib/paper-themes";
+import { HighlightOverlay } from "./HighlightOverlay";
+import type { HighlightDraft } from "./use-highlight-drafts";
+import { useHighlightDrafts } from "./use-highlight-drafts";
 import { AnnotationCard } from "./AnnotationCard";
 import { AnnotationMarker } from "./AnnotationMarker";
 import { OutlinePanel } from "./OutlinePanel";
 import { ReaderToolbarActions } from "./ReaderToolbarActions";
 import { HighlighterControl } from "./HighlighterControl";
+
+/** Stable empty reference so overlay props don't churn. */
+const EMPTY_DRAFTS: HighlightDraft[] = [];
 import { SelectionPopover, type SelectionState } from "./SelectionPopover";
 
 const PDF_DOCUMENT_OPTIONS = {
@@ -230,6 +236,9 @@ export function ReaderShell({
     onAnnotationSuccess();
   };
 
+  const { drafts, draftsByPage, addDraft, setDraftStatus, removeDraft } =
+    useHighlightDrafts();
+
   const deleteMutation = useMutation({
     mutationFn: (id: number) => annotationsApi.delete(id),
     onSuccess: invalidateAnnotations,
@@ -257,64 +266,99 @@ export function ReaderShell({
     }
   };
 
-  const handleComment = async (text: string) => {
-    if (!selection) return;
-    try {
-      const annotation = await annotationsApi.create({
-        paper_id: paper.id,
-        content: text,
-        type: "annotation",
-        highlighted_text: selection.text,
-        selection_data: { rects: selection.rects },
-        coordinate_data: {
-          page: selection.page,
-          x: selection.rects[0]
-            ? selection.rects[0].left + selection.rects[0].width / 2
-            : 0.5,
-          y: selection.rects[0]?.top ?? 0,
-        },
-      });
-      invalidateAnnotations();
-      setSelection(null);
-      setActiveAnnotationId(annotation.id);
-    } catch {
-      toastError("Failed to save comment");
-    }
-  };
-
-  /** Create a color-only highlight annotation from text selection. */
-  const createHighlight = useCallback(
-    async (color: ThemeName, sel: SelectionState) => {
+  /**
+   * Persist one draft annotation through its visible lifecycle:
+   * committing → removed on success (the persisted copy replaces it) or
+   * failed with retry/discard offered in the overlay.
+   */
+  const persistDraft = useCallback(
+    async (draft: HighlightDraft) => {
+      setDraftStatus(draft.id, "committing");
       try {
         const annotation = await annotationsApi.create({
           paper_id: paper.id,
-          content: sel.text,
+          content: draft.text,
           type: "annotation",
-          highlighted_text: sel.text,
-          selection_data: { rects: sel.rects, color },
+          highlighted_text: draft.text,
+          selection_data: draft.color
+            ? { rects: draft.rects, color: draft.color }
+            : { rects: draft.rects },
           coordinate_data: {
-            page: sel.page,
-            x: sel.rects[0] ? sel.rects[0].left + sel.rects[0].width / 2 : 0.5,
-            y: sel.rects[0]?.top ?? 0,
+            page: draft.page,
+            x: draft.rects[0]
+              ? draft.rects[0].left + draft.rects[0].width / 2
+              : 0.5,
+            y: draft.rects[0]?.top ?? 0,
           },
         });
+        removeDraft(draft.id);
         invalidateAnnotations();
-        setSelection(null);
         setActiveAnnotationId(annotation.id);
       } catch {
-        toastError("Failed to create highlight");
+        setDraftStatus(draft.id, "failed");
+        toastError(
+          draft.kind === "comment"
+            ? "Failed to save comment"
+            : "Failed to save highlight",
+        );
       }
     },
-    [paper.id, invalidateAnnotations],
+    [paper.id, invalidateAnnotations, setDraftStatus, removeDraft],
+  );
+
+  /** Create a color-only highlight annotation from a selection via a draft. */
+  const createHighlight = useCallback(
+    (color: ThemeName, sel: SelectionState) => {
+      const draft = addDraft({
+        kind: "highlight",
+        page: sel.page,
+        rects: sel.rects,
+        color,
+        text: sel.text,
+      });
+      void persistDraft(draft);
+    },
+    [addDraft, persistDraft],
   );
 
   /** Called from SelectionPopover swatch row. */
   const handleHighlight = useCallback(
     (color: ThemeName) => {
       if (!selection) return;
-      void createHighlight(color, selection);
+      createHighlight(color, selection);
+      setSelection(null);
     },
     [selection, createHighlight],
+  );
+
+  const handleComment = useCallback(
+    (text: string) => {
+      if (!selection) return;
+      const draft = addDraft({
+        kind: "comment",
+        page: selection.page,
+        rects: selection.rects,
+        text,
+      });
+      void persistDraft(draft);
+      setSelection(null);
+    },
+    [selection, addDraft, persistDraft],
+  );
+
+  const retryDraft = useCallback(
+    (id: string) => {
+      const draft = drafts.find((d) => d.id === id);
+      if (draft) void persistDraft(draft);
+    },
+    [drafts, persistDraft],
+  );
+
+  const discardDraft = useCallback(
+    (id: string) => {
+      removeDraft(id);
+    },
+    [removeDraft],
   );
 
   /* ── text selection capture ─────────────────────────────────────────── */
@@ -376,7 +420,7 @@ export function ReaderShell({
 
         // Instant highlight when toolbar highlighter is active.
         if (highlighterActive) {
-          void createHighlight(highlighterColor, {
+          createHighlight(highlighterColor, {
             page: pageNumber,
             text,
             rects,
@@ -445,40 +489,17 @@ export function ReaderShell({
 
       return (
         <>
-          {/* Highlight rects */}
-          {pageAnnotations.map((ann) => {
-            const theme = highlightTheme(
-              ann.highlight_type,
-              ann.selection_data,
-            );
-            return annotationRects(ann).map((canonical, i) => {
-              const rect = displayedRect(canonical);
-              return (
-              <button
-                key={`${ann.id}-${i}`}
-                type="button"
-                aria-label="Annotation highlight"
-                onClick={() => {
-                  setActiveAnnotationId(ann.id);
-                }}
-                className={cn(
-                  "absolute rounded-[2px] transition-opacity",
-                  isDark ? "mix-blend-screen" : "mix-blend-multiply",
-                  activeAnnotationId === ann.id
-                    ? "opacity-90"
-                    : "opacity-60 hover:opacity-80",
-                )}
-                style={{
-                  left: `${rect.left * 100}%`,
-                  top: `${rect.top * 100}%`,
-                  width: `${rect.width * 100}%`,
-                  height: `${rect.height * 100}%`,
-                  backgroundColor: `var(--theme-${theme}-action)`,
-                }}
-              />
-              );
-            });
-          })}
+          {/* Persisted highlights + in-flight drafts */}
+          <HighlightOverlay
+            annotations={pageAnnotations}
+            drafts={draftsByPage.get(pageNumber) ?? EMPTY_DRAFTS}
+            rotation={rotation}
+            activeAnnotationId={activeAnnotationId}
+            isDark={isDark}
+            onSelectAnnotation={setActiveAnnotationId}
+            onRetryDraft={retryDraft}
+            onDiscardDraft={discardDraft}
+          />
 
           {marginMode ? (
             <>
@@ -568,7 +589,17 @@ export function ReaderShell({
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [byPage, activeAnnotationId, paper, isDark, containerWidth, zen],
+    [
+      byPage,
+      activeAnnotationId,
+      paper,
+      isDark,
+      containerWidth,
+      zen,
+      draftsByPage,
+      retryDraft,
+      discardDraft,
+    ],
   );
 
   /* ── render ─────────────────────────────────────────────────────────── */
