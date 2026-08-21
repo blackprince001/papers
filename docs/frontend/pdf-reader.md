@@ -58,6 +58,31 @@ rects with fallback to legacy `boundingBox`), `annotationAnchorY`. Types:
 `annotation` (highlights/comments) vs `note` (freeform); `type`/`highlight_type`
 drive the color theme mapping in `highlight-colors.ts:6-14`.
 
+**Canonical space (RD-01).** Stored rects are fractions of the UNROTATED page;
+at rotation 0 canonical and displayed space are identical, so all legacy data
+stays valid without migration. The module provides `validateNormalizedRect`
+(clamps into [0,1]², rejects non-finite/empty), `rectFromCanonical` /
+`rectToCanonical` (displayed↔canonical for 0/90/180/270°), `renderedPageSize`
+(unrotated dims × scale, swapped on quarter turns), and `rectToPixels`
+(canonical → CSS px inside the rendered box). Capture converts displayed→canonical
+using the page's effective rotation (`ReaderShell.handlePagePointerUp`);
+overlay replay converts back. Unit tests: `src/test/annotation-geometry.test.ts`.
+
+# Viewer contract (RD-01)
+
+`reader/viewer-contract.ts` is the engine-neutral seam between `ReaderShell`
+and a PDF engine (currently pdf.js via `shadcn/pdf-viewer`). It defines
+1-based page numbering; `ReaderPageMetrics` (`pageWidth`/`pageHeight` are
+UNROTATED CSS px at scale 1, `scale` unitless, `rotation` 0/90/180/270);
+percent-of-rendered-page scroll areas; readiness (`onReady`) and current-page
+notification (`onActivePageChange`); the overlay slot; metrics-aware pointer
+callbacks; and the imperative handle (`getPageMetrics`, `scrollToPage`,
+`scrollToPageArea`, viewport access, zoom clamp/get/set, thumbnail sidebar).
+Engines import the contract — callers never import engine types.
+`PDFViewerHandle`/`PDFViewerPageOverlayProps` in the engine are aliases of the
+contract types. Overlay consumers derive rendered size via
+`renderedPageSize` only, so scale is never applied twice.
+
 # Permissions
 
 `lib/utils/permissions.ts`: `isOwner`/`canEdit`/`canAnnotate`/`isViewer` gate

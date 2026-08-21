@@ -9,11 +9,12 @@ import {
 import { annotationsApi, type Annotation } from "@/lib/api/annotations";
 import { aiFeaturesApi, type AIActionKind } from "@/lib/api/aiFeatures";
 import { type Paper } from "@/lib/api/papers";
-import {
-  PDFViewer,
-  type PDFViewerHandle,
-  type PDFViewerPageOverlayProps,
-} from "@/components/shadcn/pdf-viewer";
+import { PDFViewer } from "@/components/shadcn/pdf-viewer";
+import type {
+  ReaderPageMetrics,
+  ReaderPageOverlayProps,
+  ReaderViewerHandle,
+} from "./viewer-contract";
 import { canAnnotate } from "@/lib/utils/permissions";
 import { toastError, toastSuccess } from "@/lib/utils/toast";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -24,6 +25,10 @@ import { usePaperFile } from "./use-paper-file";
 import {
   annotationPage,
   annotationRects,
+  rectFromCanonical,
+  rectToCanonical,
+  renderedPageSize,
+  validateNormalizedRect,
   type NormalizedRect,
 } from "./annotation-geometry";
 import { highlightTheme } from "./highlight-colors";
@@ -67,7 +72,7 @@ export function ReaderShell({
 }: ReaderShellProps) {
   const queryClient = useQueryClient();
   const { fileUrl, error: fileError } = usePaperFile(paper);
-  const viewerRef = useRef<PDFViewerHandle>(null);
+  const viewerRef = useRef<ReaderViewerHandle>(null);
   const [pdfProxy, setPdfProxy] = useState<PDFDocumentProxy | null>(null);
   const [activePage, setActivePage] = useState(1);
   const {
@@ -154,14 +159,19 @@ export function ReaderShell({
     const rect = annotationRects(annotation)[0];
     if (page === null) return;
     setActiveAnnotationId(annotation.id);
+    // Scroll areas are percent of the DISPLAYED page box; stored rects are
+    // canonical, so convert using the page's current effective rotation.
+    const rotation =
+      viewerRef.current?.getPageMetrics(page)?.rotation ?? 0;
+    const displayed = rect ? rectFromCanonical(rect, rotation) : undefined;
     viewerRef.current?.scrollToPageArea(
       page,
-      rect
+      displayed
         ? {
-            left: rect.left * 100,
-            top: rect.top * 100,
-            width: rect.width * 100,
-            height: rect.height * 100,
+            left: displayed.left * 100,
+            top: displayed.top * 100,
+            width: displayed.width * 100,
+            height: displayed.height * 100,
           }
         : { top: 0 },
       { behavior: "smooth" },
@@ -195,12 +205,15 @@ export function ReaderShell({
 
     if (focused) setActiveAnnotationId(focused.id);
     const rect = focused ? annotationRects(focused)[0] : undefined;
-    const area = rect
+    const rotation =
+      viewerRef.current?.getPageMetrics(page)?.rotation ?? 0;
+    const displayed = rect ? rectFromCanonical(rect, rotation) : undefined;
+    const area = displayed
       ? {
-          left: rect.left * 100,
-          top: rect.top * 100,
-          width: rect.width * 100,
-          height: rect.height * 100,
+          left: displayed.left * 100,
+          top: displayed.top * 100,
+          width: displayed.width * 100,
+          height: displayed.height * 100,
         }
       : { top: 0 };
 
@@ -307,8 +320,9 @@ export function ReaderShell({
   /* ── text selection capture ─────────────────────────────────────────── */
 
   const handlePagePointerUp = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>, pageNumber: number) => {
+    (event: React.PointerEvent<HTMLDivElement>, metrics: ReaderPageMetrics) => {
       if (!canAnnotate(paper)) return;
+      const pageNumber = metrics.pageNumber;
       const pageElement = event.currentTarget;
 
       // The browser finalizes the selection after pointerup.
@@ -324,27 +338,39 @@ export function ReaderShell({
         const pageRect = reference.getBoundingClientRect();
         if (pageRect.width === 0 || pageRect.height === 0) return;
 
+        // Capture happens in DISPLAYED space (the canvas is rendered with the
+        // page's effective rotation applied). Stored rects are canonical
+        // (unrotated page fractions), so convert before persisting — see
+        // annotation-geometry.ts.
         const rects: NormalizedRect[] = [];
         const clientRects = range.getClientRects();
         for (const r of clientRects) {
           if (r.width < 1 || r.height < 1) continue;
-          const left = Math.max(
+          const displayed: NormalizedRect = {
+            left: Math.max(
+              0,
+              Math.min(1, (r.left - pageRect.left) / pageRect.width),
+            ),
+            top: Math.max(
+              0,
+              Math.min(1, (r.top - pageRect.top) / pageRect.height),
+            ),
+            width: 0,
+            height: 0,
+          };
+          displayed.width = Math.max(
             0,
-            Math.min(1, (r.left - pageRect.left) / pageRect.width),
+            Math.min(1, (r.right - pageRect.left) / pageRect.width) -
+              displayed.left,
           );
-          const top = Math.max(
+          displayed.height = Math.max(
             0,
-            Math.min(1, (r.top - pageRect.top) / pageRect.height),
+            Math.min(1, (r.bottom - pageRect.top) / pageRect.height) -
+              displayed.top,
           );
-          const right = Math.max(
-            0,
-            Math.min(1, (r.right - pageRect.left) / pageRect.width),
-          );
-          const bottom = Math.max(
-            0,
-            Math.min(1, (r.bottom - pageRect.top) / pageRect.height),
-          );
-          rects.push({ left, top, width: right - left, height: bottom - top });
+          const valid = validateNormalizedRect(displayed);
+          if (!valid) continue;
+          rects.push(rectToCanonical(valid, metrics.rotation));
         }
         if (rects.length === 0) return;
 
@@ -374,15 +400,17 @@ export function ReaderShell({
   );
 
   const renderPageOverlay = useCallback(
-    ({
-      pageNumber,
-      pageWidth,
-      pageHeight,
-      scale,
-    }: PDFViewerPageOverlayProps) => {
+    (props: ReaderPageOverlayProps) => {
+      const { pageNumber, rotation } = props;
       const pageAnnotations = byPage.get(pageNumber) ?? [];
-      const renderedWidth = pageWidth * scale;
-      const renderedHeight = pageHeight * scale;
+      // Contract metrics are unrotated at scale 1; derive the rendered box
+      // (quarter turns swap width/height) in one place.
+      const { width: renderedWidth, height: renderedHeight } =
+        renderedPageSize(props.pageWidth, props.pageHeight, props.scale, rotation);
+      // Stored rects are canonical (unrotated) fractions; overlays position in
+      // percent of the DISPLAYED page box, so convert with this page's rotation.
+      const displayedRect = (rect: NormalizedRect): NormalizedRect =>
+        rectFromCanonical(rect, rotation);
 
       const sideGutter = (containerWidth - renderedWidth) / 2;
       const marginMode =
@@ -398,7 +426,10 @@ export function ReaderShell({
       const cursorY = { left: 0, right: 0 };
       const placed = marginMode
         ? pageAnnotations
-            .map((ann) => ({ ann, rect: annotationRects(ann)[0] }))
+            .map((ann) => {
+              const canonical = annotationRects(ann)[0];
+              return { ann, rect: canonical ? displayedRect(canonical) : undefined };
+            })
             .filter((p): p is { ann: Annotation; rect: NormalizedRect } =>
               Boolean(p.rect),
             )
@@ -420,7 +451,9 @@ export function ReaderShell({
               ann.highlight_type,
               ann.selection_data,
             );
-            return annotationRects(ann).map((rect, i) => (
+            return annotationRects(ann).map((canonical, i) => {
+              const rect = displayedRect(canonical);
+              return (
               <button
                 key={`${ann.id}-${i}`}
                 type="button"
@@ -443,7 +476,8 @@ export function ReaderShell({
                   backgroundColor: `var(--theme-${theme}-action)`,
                 }}
               />
-            ));
+              );
+            });
           })}
 
           {marginMode ? (
@@ -510,8 +544,9 @@ export function ReaderShell({
           ) : (
             /* Inline anchored note markers (popover on hover / click to pin) */
             pageAnnotations.map((ann) => {
-              const rect = annotationRects(ann)[0];
-              if (!rect) return null;
+              const canonical = annotationRects(ann)[0];
+              if (!canonical) return null;
+              const rect = displayedRect(canonical);
               return (
                 <AnnotationMarker
                   key={ann.id}

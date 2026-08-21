@@ -46,6 +46,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/shadcn/tooltip"
+import type {
+  ReaderPageMetrics,
+  ReaderPageOverlayProps,
+  ReaderViewerHandle,
+} from "@/components/reader/viewer-contract"
+
+type ReaderViewerContractCallback = (
+  event: React.PointerEvent<HTMLDivElement>,
+  metrics: ReaderPageMetrics
+) => void
 
 type ReactPdfModule = typeof ReactPdf
 type PageRotationDeltas = Map<number, number>
@@ -56,29 +66,12 @@ type PDFPageMetrics = {
   rotation: number
 }
 
-export type PDFViewerPageOverlayProps = {
-  pageNumber: number
-  pageWidth: number
-  pageHeight: number
-  scale: number
-  rotation: number
-}
-
-export type PDFViewerHandle = {
-  scrollToPage: (pageNumber: number, options?: ScrollIntoViewOptions) => void
-  scrollToPageArea: (
-    pageNumber: number,
-    area: { top: number; left?: number; width?: number; height?: number },
-    options?: ScrollToOptions
-  ) => void
-  getViewportElement: () => HTMLDivElement | null
-  // PAPERS-FORK: let callers drive zoom (e.g. zen reading mode).
-  setZoom: (zoom: number) => void
-  getZoom: () => number
-  // PAPERS-FORK: let callers collapse the thumbnail/outline sidebar (e.g. zen reading mode).
-  setThumbnailSidebarOpen: (open: boolean) => void
-  getThumbnailSidebarOpen: () => boolean
-}
+/**
+ * The engine implements the neutral reader viewer contract (RD-01). These
+ * aliases keep the historical engine-local names for existing consumers.
+ */
+export type PDFViewerPageOverlayProps = ReaderPageOverlayProps
+export type PDFViewerHandle = ReaderViewerHandle
 
 export type PDFViewerScrollDirection = "forward" | "backward" | "none"
 
@@ -125,22 +118,10 @@ export type PDFViewerProps = {
   // PAPERS-FORK: optional outline/TOC panel rendered inside the sidebar.
   outlinePanel?: React.ReactNode
   onPdfUpload?: (file: File) => void
-  onPagePointerDown?: (
-    event: React.PointerEvent<HTMLDivElement>,
-    pageNumber: number
-  ) => void
-  onPagePointerMove?: (
-    event: React.PointerEvent<HTMLDivElement>,
-    pageNumber: number
-  ) => void
-  onPagePointerUp?: (
-    event: React.PointerEvent<HTMLDivElement>,
-    pageNumber: number
-  ) => void
-  onPagePointerCancel?: (
-    event: React.PointerEvent<HTMLDivElement>,
-    pageNumber: number
-  ) => void
+  onPagePointerDown?: ReaderViewerContractCallback
+  onPagePointerMove?: ReaderViewerContractCallback
+  onPagePointerUp?: ReaderViewerContractCallback
+  onPagePointerCancel?: ReaderViewerContractCallback
 }
 
 const DEFAULT_PAGE_WIDTH = 612
@@ -554,6 +535,8 @@ function PDFViewerPage({
   effectiveRotation,
   reactPdf,
   pageNumber,
+  pageWidth,
+  pageHeight,
   pageStyle,
   renderedPageWidth,
   zoom,
@@ -572,6 +555,10 @@ function PDFViewerPage({
   effectiveRotation: number
   reactPdf: ReactPdfModule
   pageNumber: number
+  /** Unrotated page width in CSS px at scale 1 (contract semantics). */
+  pageWidth: number
+  /** Unrotated page height in CSS px at scale 1 (contract semantics). */
+  pageHeight: number
   pageStyle: React.CSSProperties & { width: number; height: number }
   renderedPageWidth: number
   zoom: number
@@ -584,22 +571,10 @@ function PDFViewerPage({
     devicePixelRatioLimit: number,
     trackLowResolution: boolean
   ) => void
-  onPagePointerDown?: (
-    event: React.PointerEvent<HTMLDivElement>,
-    pageNumber: number
-  ) => void
-  onPagePointerMove?: (
-    event: React.PointerEvent<HTMLDivElement>,
-    pageNumber: number
-  ) => void
-  onPagePointerUp?: (
-    event: React.PointerEvent<HTMLDivElement>,
-    pageNumber: number
-  ) => void
-  onPagePointerCancel?: (
-    event: React.PointerEvent<HTMLDivElement>,
-    pageNumber: number
-  ) => void
+  onPagePointerDown?: ReaderViewerContractCallback
+  onPagePointerMove?: ReaderViewerContractCallback
+  onPagePointerUp?: ReaderViewerContractCallback
+  onPagePointerCancel?: ReaderViewerContractCallback
 }) {
   const pageRef = React.useRef<HTMLDivElement>(null)
   const [searchHighlights, setSearchHighlights] = React.useState<
@@ -681,16 +656,27 @@ function PDFViewerPage({
     updateSearchHighlights,
   ])
 
+  // Contract metrics for overlay and pointer callbacks: unrotated dimensions
+  // at scale 1 plus the effective zoom and rotation. Consumers derive rendered
+  // size themselves (dimension * scale, swapped on quarter turns).
+  const pageMetrics: ReaderPageMetrics = {
+    pageNumber,
+    pageWidth,
+    pageHeight,
+    scale: zoom,
+    rotation: effectiveRotation,
+  }
+
   return (
     <div
       ref={pageRef}
       data-pdf-viewer-page={pageNumber}
       className={cn("relative", pageClassName?.(pageNumber))}
       style={pageStyle}
-      onPointerDown={(event) => onPagePointerDown?.(event, pageNumber)}
-      onPointerMove={(event) => onPagePointerMove?.(event, pageNumber)}
-      onPointerUp={(event) => onPagePointerUp?.(event, pageNumber)}
-      onPointerCancel={(event) => onPagePointerCancel?.(event, pageNumber)}
+      onPointerDown={(event) => onPagePointerDown?.(event, pageMetrics)}
+      onPointerMove={(event) => onPagePointerMove?.(event, pageMetrics)}
+      onPointerUp={(event) => onPagePointerUp?.(event, pageMetrics)}
+      onPointerCancel={(event) => onPagePointerCancel?.(event, pageMetrics)}
     >
       {shouldRenderPage ? (
         <>
@@ -741,13 +727,7 @@ function PDFViewerPage({
       ) : (
         <div className="size-full border bg-(--card) shadow-xs" />
       )}
-      {renderPageOverlay?.({
-        pageNumber,
-        pageWidth: pageStyle.width,
-        pageHeight: pageStyle.height,
-        scale: zoom,
-        rotation: effectiveRotation,
-      })}
+      {renderPageOverlay?.(pageMetrics)}
     </div>
   )
 }
@@ -1437,6 +1417,17 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
             behavior: "smooth",
             ...options,
           })
+        },
+        getPageMetrics: (pageNumber) => {
+          const metrics = getPageMetrics(pageNumber)
+          const rotationDelta = pageRotationDeltas.get(pageNumber) ?? 0
+          return {
+            pageNumber,
+            pageWidth: metrics.width,
+            pageHeight: metrics.height,
+            scale: zoom,
+            rotation: normalizeRotation(metrics.rotation + rotationDelta),
+          }
         },
         getViewportElement: () => viewportRef.current,
         // PAPERS-FORK: clamp to the supported zoom range and apply.
@@ -2156,6 +2147,8 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
                             effectiveRotation={effectiveRotation}
                             reactPdf={reactPdf}
                             pageNumber={pageNumber}
+                            pageWidth={metrics.width}
+                            pageHeight={metrics.height}
                             pageStyle={pageStyle}
                             renderedPageWidth={pageStyle.width}
                             zoom={zoom}
