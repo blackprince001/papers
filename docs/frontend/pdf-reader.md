@@ -14,13 +14,24 @@ deep-linking.
 # `components/shadcn/pdf-viewer.tsx` — the viewer
 
 Built on **`react-pdf@10.4.1`** + **`pdfjs-dist@5.4.296`**. `react-pdf` is
-**dynamically imported** (`pdf-viewer.tsx:858-879`); `pdfjs.GlobalWorkerOptions.workerSrc`
-is set to the unpkg worker for the matching version (`:179-181`, `:860-862`).
+**dynamically imported** (`pdf-viewer.tsx:858-875`); `pdfjs.GlobalWorkerOptions.workerSrc`
+is set to the same-origin `/pdfjs/pdf.worker.min.mjs` (`getPdfWorkerUrl`,
+`:182-185`, applied at `:858-862`). All pdf.js assets are **self-hosted — no CDN
+requests at runtime**: the `copy-pdfjs` postinstall script (`package.json:11-12`)
+copies the worker, cmaps, and standard fonts from the installed `pdfjs-dist`
+into `public/pdfjs/`, so the served worker always matches the resolved package
+version (a single `pdfjs-dist@5.4.296` is shared by react-pdf and the app).
+The VitePWA config precaches `pdfjs/*.mjs` (`vite.config.ts:13`).
 
-CMaps/standard fonts: `getDefaultPdfDocumentOptions` points at unpkg
-(`:183-197`), but the **reader** overrides this to self-hosted
-`/pdfjs/cmaps/` and `/pdfjs/standard_fonts/` (copied by the `copy-pdfjs`
-postinstall script, `package.json:11-12`). `public/pdfjs/` exists.
+CMaps/standard fonts: `getDefaultPdfDocumentOptions` returns same-origin
+`/pdfjs/cmaps/` and `/pdfjs/standard_fonts/`; `file-system.tsx` passes the same
+paths explicitly for its dialog viewer.
+
+E2E coverage: `e2e/authenticated-reader-chat.spec.ts` ("reader loads pdf.js
+worker and assets from same origin only") fails on any unpkg/jsdelivr/cdnjs
+request or any 4xx+ fetch under `/pdfjs/`, and asserts the served worker body
+contains the installed `pdfjs-dist` version. Shared reader fixtures live in
+`e2e/support/reader-fixtures.ts`.
 
 - **Virtualized continuous scroll** via `@tanstack/react-virtual` `useVirtualizer` (`:954-963`), with scroll-velocity-aware render buffering (`fastAheadBuffer`/`fastBehindBuffer`, `:1120-1171`).
 - DPR-drop-while-zooming then re-raster on settle (`:889-904`); per-page metrics caching (`:999-1059`); thumbnail sidebar virtualizer (`:1109-1118`); in-document text search highlighting (`:602-679`); rotate + download-with-rotations via `pdf-lib` (`:261-302`).

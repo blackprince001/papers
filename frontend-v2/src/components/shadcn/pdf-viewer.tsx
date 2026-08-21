@@ -179,18 +179,18 @@ function areNumberSetsEqual(left: Set<number>, right: Set<number>) {
   return true
 }
 
-function getPdfWorkerUrl(pdfjsVersion: string) {
-  return `//unpkg.com/pdfjs-dist@${pdfjsVersion}/legacy/build/pdf.worker.min.mjs`
+// PAPERS-FORK: self-hosted pdfjs assets instead of unpkg (RD-00). The copy-pdfjs
+// script pins these files to the installed pdfjs-dist version at install time.
+function getPdfWorkerUrl() {
+  return "/pdfjs/pdf.worker.min.mjs"
 }
 
-function getPdfAssetBaseUrl(pdfjsVersion: string) {
-  return `https://unpkg.com/pdfjs-dist@${pdfjsVersion}`
+function getPdfAssetBaseUrl() {
+  return "/pdfjs"
 }
 
-function getDefaultPdfDocumentOptions(
-  pdfjsVersion: string
-): ReactPdf.DocumentProps["options"] {
-  const assetBaseUrl = getPdfAssetBaseUrl(pdfjsVersion)
+function getDefaultPdfDocumentOptions(): ReactPdf.DocumentProps["options"] {
+  const assetBaseUrl = getPdfAssetBaseUrl()
 
   return {
     cMapPacked: true,
@@ -860,9 +860,7 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
 
       void import("react-pdf")
         .then((module) => {
-          module.pdfjs.GlobalWorkerOptions.workerSrc = getPdfWorkerUrl(
-            module.pdfjs.version
-          )
+          module.pdfjs.GlobalWorkerOptions.workerSrc = getPdfWorkerUrl()
 
           if (mounted) {
             setReactPdf(module)
@@ -1067,7 +1065,7 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
     const defaultDocumentOptions = React.useMemo(
       () =>
         reactPdf
-          ? getDefaultPdfDocumentOptions(reactPdf.pdfjs.version)
+          ? getDefaultPdfDocumentOptions()
           : undefined,
       [reactPdf]
     )

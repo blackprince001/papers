@@ -1,5 +1,9 @@
 # Bundle Update Log
 
+## 2026-08-21
+
+* **Update**: RD-00 — self-hosted the pinned pdf.js worker (reader-ai-experience Phase 3). The `copy-pdfjs` postinstall script now also copies `pdf.worker.min.mjs` from the installed `pdfjs-dist` into `public/pdfjs/`; `getPdfWorkerUrl`/`getPdfAssetBaseUrl` in [pdf-viewer](/frontend/pdf-reader.md) point at same-origin `/pdfjs/` paths instead of unpkg, so worker, cmaps, and standard fonts all load locally with a version guaranteed to match the resolved package. VitePWA precaches `pdfjs/*.mjs`. New e2e test asserts zero CDN requests and no missing `/pdfjs/` assets when opening a paper; reader fixtures extracted to `e2e/support/reader-fixtures.ts`. Unit, e2e, and production build all pass.
+
 ## 2026-08-16
 
 * **Release decision**: Enabled deep-research starts and resumes after the deterministic lifecycle gate passed. The default `DEEP_RESEARCH_MUTATIONS_ENABLED` setting is now `true`; set it to `false` to stop new starts and resumes immediately. Runs without a configured BYO provider pause safely. Live-provider evaluation remains follow-up work owned by the operator.

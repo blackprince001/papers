@@ -10,7 +10,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['logo.png', 'apple-touch-icon.png', 'fonts/*.woff2'],
+      includeAssets: ['logo.png', 'apple-touch-icon.png', 'fonts/*.woff2', 'pdfjs/*.mjs'],
       manifest: {
         name: 'Lumen',
         short_name: 'Lumen',
