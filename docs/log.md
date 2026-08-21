@@ -2,6 +2,7 @@
 
 ## 2026-08-21
 
+* **Update**: RD-05 — safe reading-position restore. New localStorage-backed position store with in-memory fallback; deep-link pages win, restore goes through the readiness-gated scroll path, and load-time page-one signals can't clobber a stored position. Closes phase 3 of the reader plan. Affected [pdf-reader](/frontend/pdf-reader.md).
 * **Update**: RD-04 — measured margin stacking. New `MarginNotes` layer measures real card heights via ResizeObserver and packs margin notes with a pure greedy two-column packing (`margin-placement.ts`), eliminating overlaps on any content size; hover/focus links cards to their highlight rects, leader lines live in the layer, narrow widths keep the inline-marker fallback. Affected [pdf-reader](/frontend/pdf-reader.md).
 * **Update**: RD-03 — at-mark editing and deferred delete. Active annotation cards gain inline note editing and a recolor swatch row (`selection_data.color` override); deletes wait behind a five-second undo window (`use-deferred-delete.ts`, `UndoNotice.tsx`) with unmount-safe commit, visible pending fade on rects/cards, and keyboard-operable Undo. Affected [pdf-reader](/frontend/pdf-reader.md).
 
