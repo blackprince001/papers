@@ -8,4 +8,5 @@ export const ArrowUpRightIcon = createIcon({
       <path d="M9 6h9v9" />
     </>
   ),
+  secondaryPath: <path d="M8 16h3.5l5-5V14h2V7h-7v2h3.5l-7 7z" />,
 });

@@ -383,7 +383,7 @@ const VIEWER_DIALOG_CLASSNAMES: Record<FileSystemViewerKind, string> = {
 function FileSystemViewerLoading() {
   return (
     <div className="grid h-full min-h-48 flex-1 place-items-center bg-background">
-      <Spinner className="size-4 text-muted-foreground" />
+      <Spinner className="size-5 text-muted-foreground" />
     </div>
   )
 }
@@ -931,7 +931,7 @@ function FileGenericPreview({ file }: { file: FileEntry }) {
       data-file-system-on-light=""
       className="flex size-full flex-col items-center justify-center gap-1.5 bg-white text-neutral-400 dark:bg-neutral-100"
     >
-      <FileTypeIcon fileName={file.name} className="size-1/3 min-h-4 min-w-4" />
+      <FileTypeIcon fileName={file.name} className="size-1/3 min-h-5 min-w-5" />
       {extension ? (
         <span className="text-[min(0.625rem,18cqw)] font-semibold tracking-wide uppercase">
           {extension}
@@ -1231,7 +1231,7 @@ function FileVisual({
           onDoubleClick={(event) => event.stopPropagation()}
           className="flex size-6 items-center justify-center rounded-md bg-background/80 text-foreground shadow-xs backdrop-blur-sm transition-colors outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
         >
-          <ChevronLeftIcon className="size-3.5" />
+          <ChevronLeftIcon className="size-4" />
         </button>
         <span className="rounded-md bg-background/80 px-1.5 py-0.5 text-[0.625rem] font-medium text-muted-foreground tabular-nums shadow-xs backdrop-blur-sm">
           {clampedPageIndex + 1}/{totalPages}
@@ -1248,7 +1248,7 @@ function FileVisual({
           onDoubleClick={(event) => event.stopPropagation()}
           className="flex size-6 items-center justify-center rounded-md bg-background/80 text-foreground shadow-xs backdrop-blur-sm transition-colors outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
         >
-          <ChevronRightIcon className="size-3.5" />
+          <ChevronRightIcon className="size-4" />
         </button>
       </div>
     </div>
@@ -2035,7 +2035,7 @@ export function FileSystem({
       aria-label="Close preview"
       render={<Button type="button" variant="ghost" size="icon-sm" />}
     >
-      <CloseIcon className="size-4" />
+      <CloseIcon className="size-5" />
     </DialogClose>
   )
 
@@ -2073,7 +2073,7 @@ export function FileSystem({
             onClick={goBack}
             className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none max-sm:size-10 hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
           >
-            <ChevronLeftIcon className="size-4.5" />
+            <ChevronLeftIcon className="size-5" />
           </button>
           <button
             type="button"
@@ -2083,7 +2083,7 @@ export function FileSystem({
             onClick={goForward}
             className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none max-sm:size-10 hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
           >
-            <ChevronRightIcon className="size-4.5" />
+            <ChevronRightIcon className="size-5" />
           </button>
           {headerLayout !== "minimal" ? (
             <span className="ml-1.5 truncate text-sm font-semibold">
@@ -2102,11 +2102,11 @@ export function FileSystem({
               // Icon-only like the sort select: sheds the base min-width to
               // hug icon + chevron at the filter button's 28px height.
               // 40px tall below `sm` for a comfortable touch target.
-              className="h-7 min-h-7 w-auto min-w-0 max-sm:h-10 max-sm:min-h-10 [&_svg]:size-4"
+              className="h-7 min-h-7 w-auto min-w-0 max-sm:h-10 max-sm:min-h-10 [&_svg]:size-5"
             >
               <SelectValue>
                 {activeViewOption ? (
-                  <activeViewOption.icon className="size-4" />
+                  <activeViewOption.icon className="size-5" />
                 ) : null}
               </SelectValue>
             </SelectTrigger>
@@ -2114,7 +2114,7 @@ export function FileSystem({
               {VIEW_OPTIONS.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   <span className="flex items-center gap-2">
-                    <option.icon className="size-4" />
+                    <option.icon className="size-5" />
                     {option.label}
                   </span>
                 </SelectItem>
@@ -2136,7 +2136,7 @@ export function FileSystem({
                   title={option.label}
                   className="h-7 grow-0 px-2.5 sm:h-7"
                 >
-                  <option.icon className="size-4" />
+                  <option.icon className="size-5" />
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -2382,7 +2382,7 @@ function FileSystemSearchField({
         isInline && "max-w-56"
       )}
     >
-      <SearchIcon className="pointer-events-none absolute left-2 size-3.5 text-muted-foreground" />
+      <SearchIcon className="pointer-events-none absolute left-2 size-4 text-muted-foreground" />
       <input
         ref={inputRef}
         type="text"
@@ -2414,7 +2414,7 @@ function FileSystemSearchField({
           }}
           className="absolute right-1 flex size-5 items-center justify-center rounded-sm text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <CloseIcon className="size-3" />
+          <CloseIcon className="size-4" />
         </button>
       ) : null}
     </div>
@@ -2439,7 +2439,7 @@ function FileSystemSearchField({
           />
         }
       >
-        <SearchIcon className="size-4" />
+        <SearchIcon className="size-5" />
         {value ? (
           <span className="absolute top-1 right-1 size-1.5 rounded-full bg-primary" />
         ) : null}
@@ -2479,11 +2479,11 @@ function FileSystemSortSelect({
         size="sm"
         aria-label="Sort by"
         title="Sort by"
-        className="h-7 min-h-7 w-auto min-w-0 shrink-0 max-sm:h-10 max-sm:min-h-10 [&_svg]:size-4"
+        className="h-7 min-h-7 w-auto min-w-0 shrink-0 max-sm:h-10 max-sm:min-h-10 [&_svg]:size-5"
       >
         <SelectValue>
           <span className="flex items-center gap-1.5">
-            <SortIcon className="size-4" />
+            <SortIcon className="size-5" />
             {layout === "full" && showLabel ? activeOption?.triggerLabel : null}
           </span>
         </SelectValue>
@@ -2555,13 +2555,13 @@ function FileSystemFileTypeCommand({
                 >
                   <CheckIcon
                     className={cn(
-                      "size-4 text-foreground",
+                      "size-5 text-foreground",
                       !isChecked && "opacity-0"
                     )}
                   />
                   <FileTypeIcon
                     fileName={option.iconFileName}
-                    className="size-4"
+                    className="size-5"
                   />
                   {option.label}
                 </CommandItem>
@@ -2606,7 +2606,7 @@ function FileSystemFilterMenu({
           />
         }
       >
-        <FilterIcon className="size-4" />
+        <FilterIcon className="size-5" />
         {filters.length > 0 ? (
           <span className="absolute top-1 right-1 size-1.5 rounded-full bg-primary" />
         ) : null}
@@ -2614,7 +2614,7 @@ function FileSystemFilterMenu({
       <DropdownMenuContent align="end" className="min-w-44">
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
-            <FileIcon className="size-4 text-muted-foreground" />
+            <FileIcon className="size-5 text-muted-foreground" />
             File type
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-60">
@@ -2628,7 +2628,7 @@ function FileSystemFilterMenu({
         {(["dateModified", "dateCreated"] as const).map((type) => (
           <DropdownMenuSub key={type}>
             <DropdownMenuSubTrigger>
-              <CalendarIcon className="size-4 text-muted-foreground" />
+              <CalendarIcon className="size-5 text-muted-foreground" />
               {FILTER_TYPE_LABELS[type]}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
@@ -2701,9 +2701,9 @@ function FileSystemFilterPill({
         )}
       >
         {filter.type === "fileType" ? (
-          <FileIcon className="size-3" />
+          <FileIcon className="size-4" />
         ) : (
-          <CalendarIcon className="size-3" />
+          <CalendarIcon className="size-4" />
         )}
         {FILTER_TYPE_LABELS[filter.type]}
       </span>
@@ -2797,7 +2797,7 @@ function FileSystemFilterPill({
           "rounded-r-md px-1 text-muted-foreground hover:text-foreground"
         )}
       >
-        <CloseIcon className="size-3" />
+        <CloseIcon className="size-4" />
       </button>
     </div>
   )
@@ -2924,7 +2924,7 @@ function FileSystemRangeCalendar({
         }
         className="absolute top-0 left-0 flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <ChevronLeftIcon className="size-4" />
+        <ChevronLeftIcon className="size-5" />
       </button>
       <button
         type="button"
@@ -2937,7 +2937,7 @@ function FileSystemRangeCalendar({
         }
         className="absolute top-0 right-0 flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <ChevronRightIcon className="size-4" />
+        <ChevronRightIcon className="size-5" />
       </button>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {months.map((month, monthIndex) => {
@@ -3057,7 +3057,7 @@ function FileSystemDateRangeDialog({
     <div className="flex flex-1 flex-col gap-1.5">
       <span className="text-xs font-medium">{label}</span>
       <div className="relative flex items-center">
-        <CalendarIcon className="pointer-events-none absolute left-2.5 size-3.5 text-muted-foreground" />
+        <CalendarIcon className="pointer-events-none absolute left-2.5 size-4 text-muted-foreground" />
         <Input
           type="text"
           value={value}
@@ -3685,9 +3685,9 @@ function FileSystemListColumnHeader({
       {label}
       {isActive ? (
         sort.direction === "asc" ? (
-          <ChevronUpIcon className="size-3 shrink-0" />
+          <ChevronUpIcon className="size-4 shrink-0" />
         ) : (
-          <ChevronDownIcon className="size-3 shrink-0" />
+          <ChevronDownIcon className="size-4 shrink-0" />
         )
       ) : null}
     </button>

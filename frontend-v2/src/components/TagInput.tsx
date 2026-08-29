@@ -57,7 +57,11 @@ export function TagInput({ selectedTags, onTagsChange, className }: TagInputProp
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && inputValue.trim()) {
       e.preventDefault();
-      available.length > 0 ? selectTag(available[0]) : createNew();
+      if (available.length > 0) {
+        selectTag(available[0]);
+      } else {
+        createNew();
+      }
     } else if (e.key === 'Escape') {
       setIsOpen(false);
       setInputValue('');
@@ -106,6 +110,7 @@ export function TagInput({ selectedTags, onTagsChange, className }: TagInputProp
           onChange={(e) => { setInputValue(e.target.value); setIsOpen(e.target.value.length > 0); }}
           onKeyDown={handleKeyDown}
           onFocus={() => { if (inputValue.length > 0) setIsOpen(true); }}
+          aria-label="Add a tag"
           placeholder="Add tags…"
         />
 

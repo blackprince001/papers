@@ -9,4 +9,5 @@ export const GlobeIcon = createIcon({
       <path d="M3 12h18" />
     </>
   ),
+  secondaryPath: <path d="M12 4.5a7.5 7.5 0 0 1 5.8 2.7H6.2A7.5 7.5 0 0 1 12 4.5z" />,
 });

@@ -1,12 +1,13 @@
 """AI Features API endpoints."""
 
-from datetime import datetime
-from typing import Optional, cast
+from datetime import datetime, timezone
+from typing import Any, Optional, cast
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.crud import get_visible_paper_or_404
+from app.core.logger import get_logger
 from app.dependencies import CurrentUser, get_db, scoped_user_id
 from app.schemas.ai_features import (
   AIActionRequest,
@@ -16,6 +17,18 @@ from app.schemas.ai_features import (
   SummaryResponse,
 )
 from app.schemas.annotation import Annotation as AnnotationSchema
+from app.services.annotation_explanations import (
+  annotation_for_explanation_row,
+  find_cached_annotation,
+  find_idempotent_explanation,
+  find_latest_annotation_for_regeneration,
+  record_explanation,
+)
+from app.services.annotation_grounding import (
+  build_semantic_anchor,
+  explanation_input_hash,
+  normalize_idempotency_key,
+)
 from app.tasks.ai_tasks import (
   extract_findings_task,
   generate_highlights_task,
@@ -24,6 +37,7 @@ from app.tasks.ai_tasks import (
 )
 
 router = APIRouter()
+logger = get_logger(__name__)
 
 AI_ACTION_PROMPTS = {
   "explain": (
@@ -50,6 +64,7 @@ async def run_ai_action(
   request: AIActionRequest,
   user: CurrentUser,
   session: AsyncSession = Depends(get_db),
+  idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ):
   """Run a selection AI action (explain/why/define).
 
@@ -60,10 +75,60 @@ async def run_ai_action(
   from app.services.ai.helpers import get_provider_for_user
   from app.services.ai.providers.base import GenerateConfig
 
-  uid = user.id
+  uid: int = cast(int, user.id)
   paper = await get_visible_paper_or_404(
     session, paper_id, user_id=scoped_user_id(user)
   )
+
+  try:
+    request_key = normalize_idempotency_key(idempotency_key)
+    anchor = build_semantic_anchor(
+      page=request.page,
+      quoted_text=request.selection_text,
+      rects=request.rects,
+      document_revision=(
+        paper.updated_at.isoformat() if paper.updated_at is not None else None
+      ),
+    )
+  except ValueError as e:
+    raise HTTPException(status_code=422, detail=str(e)) from e
+
+  input_hash = explanation_input_hash(
+    paper_id=paper_id,
+    action=request.action,
+    visibility=request.visibility,
+    anchor=anchor,
+  )
+
+  if request_key:
+    existing = await find_idempotent_explanation(
+      session, owner_user_id=uid, idempotency_key=request_key
+    )
+    if existing is not None:
+      if cast(str, existing.input_hash) != input_hash:
+        raise HTTPException(
+          status_code=409,
+          detail="Idempotency-Key was already used for a different selection",
+        )
+      if cast(datetime, existing.retention_until) <= datetime.now(timezone.utc):
+        raise HTTPException(
+          status_code=409,
+          detail="Idempotency-Key refers to an expired explanation",
+        )
+      annotation = await annotation_for_explanation_row(session, existing)
+      return AnnotationSchema.model_validate(annotation)
+
+  if not request.regenerate:
+    cached = await find_cached_annotation(
+      session,
+      paper_id=paper_id,
+      owner_user_id=uid,
+      action=request.action,
+      visibility=request.visibility,
+      input_hash=input_hash,
+    )
+    if cached is not None:
+      return AnnotationSchema.model_validate(cached)
 
   provider = await get_provider_for_user(session, uid)
   if not provider:
@@ -74,7 +139,7 @@ async def run_ai_action(
     f"Paper Context:\n{paper.title or 'Unknown'}\n\n"
     + (f"Paper Content:\n{content[:40000]}\n\n" if content else "")
     + f"{AI_ACTION_PROMPTS[request.action]}\n\n"
-    + f'Passage (page {request.page}):\n"""{request.selection_text}"""'
+    + f'Passage (page {anchor.page}):\n"""{anchor.quoted_text}"""'
   )
 
   config = GenerateConfig(
@@ -85,27 +150,75 @@ async def run_ai_action(
   try:
     answer = await provider.generate(prompt, config)
   except Exception as e:
-    raise HTTPException(status_code=502, detail=f"AI provider error: {e}") from e
+    logger.error("AI provider error in selection action", error_type=type(e).__name__)
+    raise HTTPException(
+      status_code=502, detail="The AI provider could not generate an explanation"
+    ) from e
 
   if not answer or not answer.strip():
     raise HTTPException(status_code=502, detail="AI provider returned no answer")
 
-  rects = [r.model_dump() for r in request.rects]
-  annotation = Annotation(
-    paper_id=paper_id,
-    content=answer.strip(),
-    highlighted_text=request.selection_text,
-    type="annotation",
-    auto_highlighted=False,
-    highlight_type=request.action,
-    selection_data={"rects": rects, "source": "ai_action"} if rects else None,
-    coordinate_data={
-      "page": request.page,
+  answer_text = answer.strip()
+  rects = [r.model_dump(mode="json") for r in request.rects]
+  annotation: Annotation | None = None
+  generation = 1
+  if request.regenerate:
+    annotation, generation = await find_latest_annotation_for_regeneration(
+      session,
+      paper_id=paper_id,
+      owner_user_id=uid,
+      action=request.action,
+      visibility=request.visibility,
+      input_hash=input_hash,
+    )
+
+  if annotation is None:
+    annotation = Annotation(
+      paper_id=paper_id,
+      user_id=uid,
+      content=answer_text,
+      highlighted_text=anchor.quoted_text,
+      type="annotation",
+      auto_highlighted=False,
+      highlight_type=request.action,
+      selection_data={"rects": rects, "source": "ai_action"} if rects else None,
+      coordinate_data={
+        "page": anchor.page,
+        "x": (rects[0]["left"] + rects[0]["width"] / 2) if rects else 0.5,
+        "y": rects[0]["top"] if rects else 0.0,
+      },
+    )
+    session.add(annotation)
+    await session.flush()
+  else:
+    # Regeneration keeps one visible mark while retaining prior answer
+    # generations in the cache table for the retention window.
+    editable_annotation = cast(Any, annotation)
+    editable_annotation.content = answer_text
+    editable_annotation.highlighted_text = anchor.quoted_text
+    editable_annotation.highlight_type = request.action
+    editable_annotation.selection_data = (
+      {"rects": rects, "source": "ai_action"} if rects else None
+    )
+    editable_annotation.coordinate_data = {
+      "page": anchor.page,
       "x": (rects[0]["left"] + rects[0]["width"] / 2) if rects else 0.5,
       "y": rects[0]["top"] if rects else 0.0,
-    },
+    }
+
+  await record_explanation(
+    session,
+    annotation=annotation,
+    owner_user_id=uid,
+    action=request.action,
+    visibility=request.visibility,
+    anchor=anchor,
+    answer=answer_text,
+    provider=getattr(provider, "name", None),
+    model=provider.config.model,
+    generation=generation,
+    idempotency_key=request_key,
   )
-  session.add(annotation)
   await session.commit()
   await session.refresh(annotation)
   return AnnotationSchema.model_validate(annotation)

@@ -9,4 +9,5 @@ export const MinimizeIcon = createIcon({
       <path d="M19.5 4.5L15 9M4.5 19.5L9 15" />
     </>
   ),
+  secondaryPath: <path d="M14.5 9h4.5V4.5l-2 2-3-3-1.5 1.5 3 3z" />,
 });

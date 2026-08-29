@@ -9,4 +9,5 @@ export const MonitorIcon = createIcon({
       <path d="M8.5 19.5h7" />
     </>
   ),
+  secondaryPath: <rect x="5" y="7" width="14" height="7.5" rx="1" />,
 });

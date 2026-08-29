@@ -8,4 +8,5 @@ export const TagIcon = createIcon({
       <circle cx="8.2" cy="8.2" r="1.2" fill="currentColor" stroke="none" />
     </>
   ),
+  secondaryPath: <path d="M5.2 5.5H11l7 7-5.3 5.3-7.5-7.5z" />,
 });

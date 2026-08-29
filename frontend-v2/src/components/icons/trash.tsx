@@ -11,4 +11,5 @@ export const TrashIcon = createIcon({
       <path d="M14 11v5" />
     </>
   ),
+  secondaryPath: <path d="M7.5 8.5h9l-.7 9.5a1.4 1.4 0 0 1-1.4 1.3h-4.4a1.4 1.4 0 0 1-1.4-1.3z" />,
 });

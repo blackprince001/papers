@@ -9,4 +9,5 @@ export const LinkIcon = createIcon({
       <path d="M9.95 14.05l4.1-4.1" />
     </>
   ),
+  secondaryPath: <path d="M13 8.5 15 6.5a2 2 0 0 1 2.8 2.8l-2 2z" />,
 });

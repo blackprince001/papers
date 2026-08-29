@@ -9,4 +9,5 @@ export const MaximizeIcon = createIcon({
       <path d="M19.5 4.5l-5.1 5.1M4.5 19.5l5.1-5.1" />
     </>
   ),
+  secondaryPath: <path d="M14.5 4.5h5V9l-2-2-3 3-1.5-1.5 3-3z" />,
 });

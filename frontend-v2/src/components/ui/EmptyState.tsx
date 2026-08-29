@@ -17,7 +17,7 @@ interface EmptyStateProps {
   className?: string;
 }
 
-const iconPx: Record<EmptyStateSize, number> = { page: 48, panel: 32, row: 0 };
+const iconPx: Record<EmptyStateSize, number> = { page: 56, panel: 40, row: 0 };
 
 export function EmptyState({
   icon: Icon,

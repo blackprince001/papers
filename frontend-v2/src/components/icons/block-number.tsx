@@ -10,4 +10,10 @@ export const BlockNumberIcon = createIcon({
       <path d="M9.5 16h11" />
     </>
   ),
+  secondaryPath: (
+    <>
+      <rect x="9.5" y="5.5" width="10.5" height="2" rx="1" />
+      <rect x="9.5" y="15" width="10.5" height="2" rx="1" />
+    </>
+  ),
 });

@@ -9,4 +9,5 @@ export const HelpIcon = createIcon({
       <circle cx="12" cy="16.4" r="1.1" fill="currentColor" stroke="none" />
     </>
   ),
+  secondaryPath: <circle cx="12" cy="12" r="7.25" />,
 });

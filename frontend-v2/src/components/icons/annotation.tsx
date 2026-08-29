@@ -8,6 +8,7 @@ export const AnnotationIcon = createIcon({
       <path d="M8.5 10.5h7" />
     </>
   ),
+  secondaryPath: <path d="M7 7h10v6H7z" />,
   filledPath: (
     <path
       fillRule="evenodd"

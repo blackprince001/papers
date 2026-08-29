@@ -10,4 +10,5 @@ export const PaletteIcon = createIcon({
       <circle cx="7.7" cy="15" r="1.2" fill="currentColor" stroke="none" />
     </>
   ),
+  secondaryPath: <path d="M12 5a7 7 0 1 0 0 14h1.5a1.5 1.5 0 0 0 0-3h-.8a1.5 1.5 0 0 1 0-3h3.8A3.5 3.5 0 0 0 19 9.5 7 7 0 0 0 12 5z" />,
 });

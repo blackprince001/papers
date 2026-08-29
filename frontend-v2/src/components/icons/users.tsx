@@ -10,4 +10,5 @@ export const UsersIcon = createIcon({
       <path d="M20.5 19.65v-1.7a3.4 3.4 0 0 0-2.55-3.29" />
     </>
   ),
+  secondaryPath: <circle cx="9.45" cy="7.75" r="2.3" />,
 });

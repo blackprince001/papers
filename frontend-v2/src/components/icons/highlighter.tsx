@@ -9,4 +9,5 @@ export const HighlighterIcon = createIcon({
       <path d="M4 18.75h7" />
     </>
   ),
+  secondaryPath: <path d="m10.8 11.2 5.8-5.8 2 2-5.8 5.8z" />,
 });

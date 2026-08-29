@@ -9,4 +9,5 @@ export const CalendarIcon = createIcon({
       <circle cx="12" cy="13.5" r="1.4" fill="currentColor" stroke="none" />
     </>
   ),
+  secondaryPath: <rect x="5" y="6.5" width="14" height="3" rx="1" />,
 });

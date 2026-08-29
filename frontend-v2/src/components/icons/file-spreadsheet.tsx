@@ -10,4 +10,5 @@ export const FileSpreadsheetIcon = createIcon({
       <path d="M12 12v5" />
     </>
   ),
+  secondaryPath: <path d="M7 5.5h6v3h3.5v10H7z" />,
 });

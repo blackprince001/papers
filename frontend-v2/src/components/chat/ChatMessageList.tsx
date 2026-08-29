@@ -104,20 +104,17 @@ export function ChatMessageList({
   const {
     status,
     content,
+    activities,
+    sources,
+    warning,
+    retryInfo: streamRetry,
     displayedContent,
-    toolCalls,
-    toolResults,
-    thoughts,
-    currentTool,
     error,
-    messageId,
-    sessionId: responseSessionId,
     referenceManifest,
     retry,
     reset,
     isActive,
     pendingUserMessage,
-    autoRetryAt,
   } = stream;
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -202,7 +199,7 @@ export function ChatMessageList({
         <div ref={messagesTopRef} />
         {messages.length === 0 && !isActive && !pendingUserMessage && (
           <div className="flex flex-col items-center justify-center h-full text-center text-(--muted-foreground) opacity-50">
-            <SparklesIcon size={32} className="mb-3" />
+            <SparklesIcon size={40} className="mb-3" />
             <p className="text-code">Start a conversation about this paper</p>
           </div>
         )}
@@ -281,7 +278,7 @@ export function ChatMessageList({
             </div>
           ))}
 
-          {(pendingUserMessage || isActive) && (
+          {(pendingUserMessage || isActive || error) && (
             <div>
               {pendingUserMessage && (
                 <StickyQuery>
@@ -294,22 +291,17 @@ export function ChatMessageList({
                 </StickyQuery>
               )}
 
-              {isActive && (
+              {(isActive || error) && (
                 <StreamingMessage
-                  state={{
-                    status,
-                    content,
-                    displayedContent,
-                    toolCalls,
-                    toolResults,
-                    thoughts,
-                    currentTool,
-                    error,
-                    messageId,
-                    sessionId: responseSessionId,
-                    referenceManifest,
-                    autoRetryAt,
-                  }}
+                  status={status}
+                  content={content}
+                  activities={activities}
+                  sources={sources}
+                  warning={warning}
+                  retry={streamRetry}
+                  displayedContent={displayedContent}
+                  error={error}
+                  referenceManifest={referenceManifest}
                   isStreaming={isActive}
                   onRetry={retry}
                   onDismiss={reset}

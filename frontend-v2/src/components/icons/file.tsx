@@ -8,4 +8,5 @@ export const FileIcon = createIcon({
       <path d="M13.5 3.5V7a2 2 0 0 0 2 2H19" />
     </>
   ),
+  secondaryPath: <path d="M7 5h6v3h4v10H7z" />,
 });

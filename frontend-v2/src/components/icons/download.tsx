@@ -9,4 +9,5 @@ export const DownloadIcon = createIcon({
       <path d="M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16" />
     </>
   ),
+  secondaryPath: <path d="m8 10 4 4 4-4v2l-4 4-4-4z" />,
 });

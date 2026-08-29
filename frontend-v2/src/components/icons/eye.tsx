@@ -8,4 +8,5 @@ export const EyeIcon = createIcon({
       <circle cx="12" cy="12" r="2.75" />
     </>
   ),
+  secondaryPath: <ellipse cx="12" cy="12" rx="4.25" ry="3.2" />,
 });

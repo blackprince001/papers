@@ -197,7 +197,7 @@ export function KeyFindings({ paperId }: KeyFindingsProps) {
         </>
       ) : (
         <div className="flex flex-col items-center justify-center py-12 px-6 text-center bg-(--muted)/20 rounded-2xl border border-dashed border-(--border)">
-          <InsightIcon size={32} className="mb-4 text-(--muted-foreground) opacity-40" />
+          <InsightIcon size={40} className="mb-4 text-(--muted-foreground) opacity-40" />
           <h3 className="text-btn font-semibold text-(--foreground) mb-2">Findings Not Extracted</h3>
           <p className="text-code text-(--muted-foreground) mb-6 max-w-60">
             Use AI to identify key contributions, methodology details, and limitations from this paper.

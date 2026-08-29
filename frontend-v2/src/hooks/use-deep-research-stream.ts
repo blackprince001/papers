@@ -1,6 +1,17 @@
 import { useCallback, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { chatStreamClient, StreamingHttpError, type StreamEvent } from '@/lib/ai/chatStream';
+import {
+  chatStreamClient,
+  normalizedStream,
+  StreamingHttpError,
+} from '@/lib/ai/chatStream';
+import { createNormalizationContext } from '@/lib/ai/normalize';
+import type { AIActivity, AIError } from '@/lib/ai/events';
+import {
+  INITIAL_AI_STREAM_STATE,
+  reduceAIStream,
+  type AIStreamState,
+} from '@/lib/ai/streamState';
 import {
   deepResearchApi,
   type CitedSource,
@@ -8,19 +19,13 @@ import {
   type DeepResearchStatus,
 } from '@/lib/api/deepResearch';
 import { logger } from '@/lib/logger';
-import {
-  summarizeArgs,
-  type Activity,
-  type ActivityThought,
-  type ActivityTool,
-} from '@/lib/ai/reasoning';
 
 export interface DeepResearchStreamState {
   sessionId: number | null;
   question: string;
   status: DeepResearchStatus | 'idle';
-  /** Ordered feed of reasoning + tool steps, exactly as they streamed. */
-  activity: Activity[];
+  /** Ordered, normalized activity feed; raw reasoning never reaches the page. */
+  activity: AIActivity[];
   report: string;
   sources: CitedSource[];
   /** Wall-clock ms spent reasoning before the answer began (null until known). */
@@ -43,95 +48,47 @@ const INITIAL: DeepResearchStreamState = {
   reconnecting: false,
 };
 
-const TERMINAL_EVENTS = new Set(['done', 'end', 'paused', 'error', 'cancelled']);
-const TOOL_ERROR = /^error\b/i;
+const INCOMPLETE_STREAM_ERROR: AIError = {
+  code: 'network',
+  message: 'The research connection ended before the result was complete.',
+  recoverable: true,
+};
 
-let counter = 0;
+const SAFE_HTTP_ERRORS: Record<number, { status: DeepResearchStatus; message: string; code: string }> = {
+  403: { status: 'failed', message: 'Research access is unavailable.', code: 'http_403' },
+  404: { status: 'failed', message: 'This research run was not found.', code: 'http_404' },
+  409: { status: 'paused', message: 'This research run needs attention before it can continue.', code: 'http_409' },
+};
 
-function reduce(evt: StreamEvent, prev: DeepResearchStreamState): DeepResearchStreamState {
-  switch (evt.type) {
-    case 'retrying':
-      return { ...prev, status: 'running', reconnecting: true, error: (evt.error as string) ?? null, errorCode: (evt.error_code as string) ?? 'retrying' };
+function statusForLive(
+  live: AIStreamState,
+  fallback: DeepResearchStatus | 'idle',
+): DeepResearchStatus | 'idle' {
+  if (live.status === 'completed') return 'completed';
+  if (live.status === 'failed') return 'failed';
+  if (live.status === 'paused') return 'paused';
+  if (live.status === 'cancelled') return 'cancelled';
+  return fallback === 'idle' ? 'running' : fallback;
+}
 
-    case 'chunk':
-      return { ...prev, report: prev.report + (evt.content ?? '') };
-
-    case 'thought': {
-      const delta = (evt.content as string) ?? '';
-      if (!delta) return prev;
-      const last = prev.activity[prev.activity.length - 1];
-      if (last && last.kind === 'thought') {
-        const updated: ActivityThought = { ...last, content: last.content + delta };
-        return { ...prev, activity: [...prev.activity.slice(0, -1), updated] };
-      }
-      const block: ActivityThought = {
-        id: ++counter, kind: 'thought', content: delta, timestamp: Date.now(),
-      };
-      return { ...prev, activity: [...prev.activity, block] };
-    }
-
-    case 'tool_call': {
-      const step: ActivityTool = {
-        id: ++counter,
-        kind: 'tool',
-        tool: (evt.tool as string) ?? 'tool',
-        argSummary: summarizeArgs(evt.arguments as Record<string, unknown> | undefined),
-        status: 'running',
-        timestamp: Date.now(),
-      };
-      return { ...prev, activity: [...prev.activity, step] };
-    }
-
-    case 'tool_result': {
-      const tool = (evt.tool as string) ?? '';
-      const result = (evt.result as string) ?? '';
-      // Complete the most recent still-running call for this tool.
-      const idx = [...prev.activity]
-        .map((a, i) => [a, i] as const)
-        .reverse()
-        .find(([a]) => a.kind === 'tool' && a.tool === tool && a.status === 'running')?.[1];
-      if (idx === undefined) return prev;
-      const item = prev.activity[idx] as ActivityTool;
-      const updated: ActivityTool = {
-        ...item,
-        result,
-        status: TOOL_ERROR.test(result.trim()) ? 'error' : 'complete',
-      };
-      const activity = [...prev.activity];
-      activity[idx] = updated;
-      return { ...prev, activity };
-    }
-
-    case 'paused':
-      return {
-        ...prev,
-        status: 'paused',
-        error: (evt.error as string) ?? null,
-        errorCode: (evt.error_code as string) ?? null,
-      };
-    case 'error':
-      return {
-        ...prev,
-        status: 'failed',
-        error: (evt.error as string) ?? 'Run failed',
-        errorCode: (evt.error_code as string) ?? null,
-      };
-    case 'done':
-      return { ...prev, status: 'completed', report: (evt.content as string) || prev.report };
-    case 'cancelled':
-      return { ...prev, status: 'cancelled', error: (evt.error as string) ?? null };
-    case 'end':
-      return { ...prev, status: (evt.status as DeepResearchStatus) ?? prev.status };
+function errorForCode(code: string | null | undefined): string | null {
+  switch (code) {
+    case 'auth':
+      return 'Your AI connection needs attention. Check AI settings.';
+    case 'no_provider':
+      return 'Add an AI provider in Settings to continue.';
+    case 'rate_limit':
+      return 'The AI service is busy. Resume in a moment.';
+    case 'timeout':
+      return 'The research run timed out. Resume to continue.';
+    case 'max_turns':
+      return 'The research run took too many steps. Resume to continue.';
     default:
-      return prev;
+      return null;
   }
 }
 
-/**
- * Drives a deep-research run's SSE stream. Fetches the authoritative snapshot
- * first, follows the live stream (reconnecting on drops while the run is still
- * active), then reconciles with the persisted result when it ends.
- */
+/** Drives a deep-research stream, reconnecting and reconciling to its snapshot. */
 export function useDeepResearchStream() {
   const [state, setState] = useState<DeepResearchStreamState>(INITIAL);
   const abortRef = useRef<AbortController | null>(null);
@@ -144,115 +101,163 @@ export function useDeepResearchStream() {
     const controller = new AbortController();
     abortRef.current = controller;
     sessionIdRef.current = sessionId;
-    counter = 0;
     setState({ ...INITIAL, sessionId, status: 'running' });
 
-    // Authoritative snapshot first (also short-circuits terminal runs).
     let detail: DeepResearchSessionDetail | null = null;
     try {
       detail = await deepResearchApi.get(sessionId);
-    } catch (e) {
-      logger.warn('deep research: failed to load detail', e);
+    } catch (error) {
+      logger.warn('deep research: failed to load detail', error);
     }
     if (genRef.current !== myGen) return;
+
+    let baseStatus: DeepResearchStatus | 'idle' = 'running';
     if (detail) {
-      setState((prev) => ({
-        ...prev,
+      baseStatus = detail.status;
+      setState((previous) => ({
+        ...previous,
         question: detail!.question,
         status: detail!.status,
         report: detail!.report ?? '',
         sources: detail!.cited_sources ?? [],
+        error: detail!.last_error_code ? errorForCode(detail!.last_error_code) : null,
         errorCode: detail!.last_error_code ?? null,
       }));
       if (detail.status === 'completed' || detail.status === 'failed') return;
     }
 
-    // Live: resume from the last durable cursor after a dropped connection.
-    let terminal = false;
-    let cursor: string | undefined;
+    let live: AIStreamState = { ...INITIAL_AI_STREAM_STATE, status: 'connecting' };
+    const normalizationContext = createNormalizationContext();
     const seenCursors = new Set<string>();
+    let cursor: string | undefined;
+    let terminal = false;
     let reconnectAttempt = 0;
     const maxReconnects = 6;
-    setState((prev) => ({ ...prev, activity: [], report: '', reconnecting: false }));
+
+    setState((previous) => ({
+      ...previous,
+      status: baseStatus,
+      activity: [],
+      report: '',
+      sources: [],
+      error: null,
+      errorCode: null,
+      reconnecting: false,
+    }));
+
+    const publish = (next: AIStreamState, reconnecting = false) => {
+      setState((previous) => ({
+        ...previous,
+        status: statusForLive(next, baseStatus),
+        activity: next.activities,
+        report: next.content,
+        error: next.error?.message ?? null,
+        errorCode: next.error?.code ?? null,
+        reconnecting,
+      }));
+    };
 
     while (!controller.signal.aborted && genRef.current === myGen && !terminal) {
       const startedAt = Date.now();
       let answerMarked = false;
+
       try {
-        for await (const evt of chatStreamClient.streamDeepResearch(sessionId, {
-          signal: controller.signal,
-          timeoutMs: 45_000,
-          cursor,
-        })) {
-          if (evt.id) {
-            if (seenCursors.has(evt.id)) continue;
+        for await (const event of normalizedStream(
+          chatStreamClient.streamDeepResearch(sessionId, {
+            signal: controller.signal,
+            timeoutMs: 45_000,
+            cursor,
+          }),
+          normalizationContext,
+        )) {
+          if (event.cursor) {
+            if (seenCursors.has(event.cursor)) continue;
             if (seenCursors.size >= 2048) seenCursors.clear();
-            seenCursors.add(evt.id);
-            cursor = evt.id;
+            seenCursors.add(event.cursor);
+            cursor = event.cursor;
           }
-          if (evt.type === 'keepalive') continue;
-          flushSync(() => setState((prev) => reduce(evt, prev)));
-          if (evt.type === 'chunk' && !answerMarked) {
+          if (event.type === 'keepalive') continue;
+
+          live = reduceAIStream(live, event);
+          flushSync(() => publish(live, live.status === 'retrying'));
+
+          if (event.type === 'content_delta' && !answerMarked) {
             answerMarked = true;
-            const ms = Date.now() - startedAt;
-            setState((prev) => ({ ...prev, thinkingMs: prev.thinkingMs ?? ms }));
+            const thinkingMs = Date.now() - startedAt;
+            setState((previous) => ({
+              ...previous,
+              thinkingMs: previous.thinkingMs ?? thinkingMs,
+            }));
           }
-          if (TERMINAL_EVENTS.has(evt.type)) terminal = true;
+          if (
+            event.type === 'complete' ||
+            event.type === 'error' ||
+            event.type === 'paused' ||
+            event.type === 'cancelled' ||
+            event.type === 'stream_end'
+          ) {
+            terminal = true;
+            break;
+          }
         }
-        if (!terminal) throw new Error('Research stream ended before a terminal event');
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        if (err instanceof StreamingHttpError && (err.status === 403 || err.status === 404 || err.status === 409)) {
-          setState((prev) => ({
-            ...prev,
-            status: err.status === 409 ? 'paused' : 'failed',
-            error: err.message,
-            errorCode: `http_${err.status}`,
+        if (!terminal) throw new Error('research stream ended before a terminal event');
+      } catch (error) {
+        if (controller.signal.aborted || genRef.current !== myGen) return;
+
+        if (error instanceof StreamingHttpError && SAFE_HTTP_ERRORS[error.status]) {
+          const safe = SAFE_HTTP_ERRORS[error.status];
+          setState((previous) => ({
+            ...previous,
+            status: safe.status,
+            error: safe.message,
+            errorCode: safe.code,
             reconnecting: false,
           }));
           return;
         }
+
         reconnectAttempt += 1;
         if (reconnectAttempt > maxReconnects) {
-          setState((prev) => ({
-            ...prev,
-            status: 'failed',
-            error: 'Research stream could not reconnect',
-            errorCode: 'network',
-            reconnecting: false,
-          }));
+          live = reduceAIStream(live, { type: 'error', error: INCOMPLETE_STREAM_ERROR });
+          publish(live);
           return;
         }
+
         const delay = Math.min(30_000, 500 * 2 ** (reconnectAttempt - 1));
-        setState((prev) => ({ ...prev, reconnecting: true, errorCode: 'network' }));
+        live = reduceAIStream(live, {
+          type: 'retrying',
+          retry: { attempt: reconnectAttempt, maxAttempts: maxReconnects, retryAfterMs: delay },
+        });
+        publish(live, true);
         await new Promise((resolve) => setTimeout(resolve, delay));
         if (controller.signal.aborted || genRef.current !== myGen) return;
       }
     }
-    // Reconcile with the persisted result.
-    if (genRef.current === myGen && !controller.signal.aborted) {
-      try {
-        const d = await deepResearchApi.get(sessionId);
-        setState((prev) => ({
-          ...prev,
-          status: d.status,
-          report: d.report ?? prev.report,
-          sources: d.cited_sources ?? prev.sources,
-          errorCode: d.last_error_code ?? prev.errorCode,
-          reconnecting: false,
-        }));
-      } catch (e) {
-        logger.warn('deep research: failed to finalize', e);
-      }
+
+    if (genRef.current !== myGen || controller.signal.aborted) return;
+
+    try {
+      const finalDetail = await deepResearchApi.get(sessionId);
+      setState((previous) => ({
+        ...previous,
+        status: finalDetail.status,
+        report: finalDetail.report ?? previous.report,
+        sources: finalDetail.cited_sources ?? previous.sources,
+        error: finalDetail.status === 'failed'
+          ? previous.error ?? errorForCode(finalDetail.last_error_code)
+          : null,
+        errorCode: finalDetail.last_error_code ?? previous.errorCode,
+        reconnecting: false,
+      }));
+    } catch (error) {
+      logger.warn('deep research: failed to finalize', error);
+      setState((previous) => ({ ...previous, reconnecting: false }));
     }
   }, []);
 
-  const attach = useCallback(
-    (sessionId: number) => {
-      void drive(sessionId);
-    },
-    [drive],
-  );
+  const attach = useCallback((sessionId: number) => {
+    void drive(sessionId);
+  }, [drive]);
 
   const resume = useCallback(async () => {
     const id = sessionIdRef.current;
@@ -262,13 +267,13 @@ export function useDeepResearchStream() {
   }, [drive]);
 
   const detach = useCallback(() => {
-    genRef.current++;
+    genRef.current += 1;
     abortRef.current?.abort();
     abortRef.current = null;
   }, []);
 
   const reset = useCallback(() => {
-    genRef.current++;
+    genRef.current += 1;
     abortRef.current?.abort();
     abortRef.current = null;
     sessionIdRef.current = null;

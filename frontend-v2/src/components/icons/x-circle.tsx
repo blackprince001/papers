@@ -8,6 +8,7 @@ export const XCircleIcon = createIcon({
       <path d="M8.8 8.8l6.4 6.4M15.2 8.8l-6.4 6.4" />
     </>
   ),
+  secondaryPath: <circle cx="12" cy="12" r="7.25" />,
   filledPath: (
     <path
       fillRule="evenodd"

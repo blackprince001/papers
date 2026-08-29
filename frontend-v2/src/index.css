@@ -28,46 +28,53 @@
   --font-mono:
     ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 
-  --text-micro: 0.6875rem;
-  --text-micro--line-height: 1.4;
+  /* The default Tailwind sizes are also used by imported viewer controls.
+   * Keep those defaults in step with the semantic Lumen scale. */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.35;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.4;
+
+  --text-micro: 0.75rem;
+  --text-micro--line-height: 1.35;
   --text-micro--font-weight: 500;
-  --text-caption: 0.75rem;
+  --text-caption: 0.8125rem;
   --text-caption--line-height: 1.4;
   --text-caption--font-weight: 400;
-  --text-code: 0.8125rem;
-  --text-code--line-height: 1.4;
+  --text-code: 0.875rem;
+  --text-code--line-height: 1.45;
   --text-code--font-weight: 400;
-  --text-body: 0.875rem;
-  --text-body--line-height: 1.4;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.45;
   --text-body--font-weight: 500;
-  --text-btn-sm: 0.875rem;
+  --text-btn-sm: 0.9375rem;
   --text-btn-sm--line-height: 1.4;
   --text-btn-sm--font-weight: 500;
-  --text-btn: 0.9375rem;
-  --text-btn--line-height: 1.75;
+  --text-btn: 1rem;
+  --text-btn--line-height: 1.5;
   --text-btn--font-weight: 500;
-  --text-body-lg: 1rem;
-  --text-body-lg--line-height: normal;
+  --text-body-lg: 1.0625rem;
+  --text-body-lg--line-height: 1.4;
   --text-body-lg--font-weight: 400;
-  --text-subheading: 1.1875rem;
+  --text-subheading: 1.25rem;
   --text-subheading--line-height: 1.4;
   --text-subheading--font-weight: 600;
-  --text-subsection: 1.25rem;
+  --text-subsection: 1.3125rem;
   --text-subsection--line-height: 1.4;
   --text-subsection--font-weight: 500;
-  --text-btn-lg: 1.3125rem;
+  --text-btn-lg: 1.375rem;
   --text-btn-lg--line-height: 1.4;
   --text-btn-lg--font-weight: 500;
-  --text-page-title: 1.5625rem;
+  --text-page-title: 1.6875rem;
   --text-page-title--line-height: 1.4;
   --text-page-title--font-weight: 700;
-  --text-stat: 1.8125rem;
+  --text-stat: 1.9375rem;
   --text-stat--line-height: 1.2;
   --text-stat--font-weight: 700;
-  --text-section-title: 1.9375rem;
+  --text-section-title: 2.0625rem;
   --text-section-title--line-height: 1.3;
   --text-section-title--font-weight: 700;
-  --text-display: 2.4375rem;
+  --text-display: 2.5625rem;
   --text-display--line-height: 1.3;
   --text-display--font-weight: 700;
 
@@ -367,6 +374,7 @@ html {
     --surface-shadow: var(--shadow-subtle);
     --overlay-shadow: var(--shadow-elevated);
     --disabled-opacity: 0.4;
+    --icon-secondary-opacity: 0.34;
 
     /* ===== PAPER THEMES (Default/Light) ===== */
     --theme-olive-bg: #f4f1e0;
@@ -551,7 +559,7 @@ html {
 
   body {
     font-family: var(--font-sans);
-    font-size: 0.875rem;
+    font-size: 0.9375rem;
     font-weight: 500;
     line-height: 1.4;
     color: var(--foreground);

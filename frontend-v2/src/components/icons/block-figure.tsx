@@ -9,4 +9,5 @@ export const BlockFigureIcon = createIcon({
       <circle cx="16.5" cy="9" r="1.2" fill="currentColor" stroke="none" />
     </>
   ),
+  secondaryPath: <rect x="5" y="6.5" width="14" height="4.5" rx="1" />,
 });

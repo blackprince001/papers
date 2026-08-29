@@ -2,6 +2,8 @@ import { getAuthHeaders } from '@/lib/api/client';
 import { parseSSE } from '@/lib/ai/parseSSE';
 import type { SSEEvent } from '@/lib/ai/parseSSE';
 import type { ChatReferences } from '@/lib/api/chat';
+import { normalizeStreamEvents, type NormalizationContext } from '@/lib/ai/normalize';
+import type { AIStreamEvent } from '@/lib/ai/events';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
@@ -26,6 +28,20 @@ export interface StreamEvent extends SSEEvent {
   reason?: string;
   /** Opaque SSE resume cursor for reconnectable streams. */
   id?: string;
+}
+
+/**
+ * Legacy wire event. New consumers should pass a stream through
+ * `normalizeStreamEvents` before updating UI state.
+ */
+export type WireStreamEvent = StreamEvent;
+
+/** Normalize any parsed AI stream without changing the legacy client methods. */
+export async function* normalizedStream(
+  source: AsyncIterable<SSEEvent | unknown> | Iterable<SSEEvent | unknown>,
+  context?: NormalizationContext,
+): AsyncGenerator<AIStreamEvent, void, unknown> {
+  yield* normalizeStreamEvents(source, context);
 }
 
 export interface ChatStreamOptions {

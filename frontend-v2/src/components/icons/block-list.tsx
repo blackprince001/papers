@@ -12,4 +12,11 @@ export const BlockListIcon = createIcon({
       <path d="M9.5 17.5h10.5" />
     </>
   ),
+  secondaryPath: (
+    <>
+      <rect x="9.5" y="5.5" width="9.5" height="2" rx="1" />
+      <rect x="9.5" y="11" width="9.5" height="2" rx="1" />
+      <rect x="9.5" y="16.5" width="9.5" height="2" rx="1" />
+    </>
+  ),
 });

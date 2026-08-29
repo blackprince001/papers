@@ -24,7 +24,10 @@ import { BookmarksTab } from '@/components/BookmarksTab';
 import { AnnotationsPanel } from '@/components/reader/AnnotationsPanel';
 import { useReader } from '@/contexts/ReaderContext';
 import { papersApi } from '@/lib/api/papers';
-import { annotationsApi } from '@/lib/api/annotations';
+import { annotationsApi, type Annotation } from '@/lib/api/annotations';
+import { aiFeaturesApi } from '@/lib/api/aiFeatures';
+import { annotationPage, annotationRects } from '@/components/reader/annotation-geometry';
+import { toastError, toastSuccess } from '@/lib/utils/toast';
 
 interface ChatPanelProps {
   isOpen: boolean;
@@ -37,6 +40,7 @@ export default function ChatPanel({ isOpen, onToggle, activeTab, setActiveTab }:
   const { id } = useParams<{ id: string }>();
   const paperId = id ? parseInt(id) : undefined;
   const [aiTab, setAiTab] = useState('summary');
+  const [regeneratingAnnotationId, setRegeneratingAnnotationId] = useState<number | null>(null);
   const queryClient = useQueryClient();
   const { tabs, activeTabId } = useTabs();
   const currentPage = tabs.find((t) => t.id === activeTabId)?.currentPage ?? 1;
@@ -54,10 +58,51 @@ export default function ChatPanel({ isOpen, onToggle, activeTab, setActiveTab }:
     enabled: !!paperId,
   });
 
+  const { data: savedExplanations = [] } = useQuery({
+    queryKey: ['annotation-explanations', paperId],
+    queryFn: () => annotationsApi.listPaperExplanations(paperId!),
+    enabled: !!paperId,
+    staleTime: 30_000,
+  });
+
   const deleteAnnotationMutation = useMutation({
     mutationFn: (annotationId: number) => annotationsApi.delete(annotationId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['annotations', paperId] }),
   });
+
+  const regenerateExplanation = async (annotation: Annotation) => {
+    const action = annotation.highlight_type;
+    const page = annotationPage(annotation);
+    const quotedText = annotation.highlighted_text?.trim();
+    if (
+      (action !== 'explain' && action !== 'why' && action !== 'define') ||
+      page === null ||
+      !quotedText ||
+      !paperId
+    ) {
+      toastError('This explanation cannot be regenerated.');
+      return;
+    }
+
+    setRegeneratingAnnotationId(annotation.id);
+    try {
+      await aiFeaturesApi.aiAction(paperId, {
+        action,
+        selection_text: quotedText,
+        page,
+        rects: annotationRects(annotation),
+        visibility: 'private',
+        regenerate: true,
+      }, { idempotencyKey: crypto.randomUUID() });
+      await queryClient.invalidateQueries({ queryKey: ['annotations', paperId] });
+      await queryClient.invalidateQueries({ queryKey: ['annotation-explanations', paperId] });
+      toastSuccess('Explanation regenerated');
+    } catch {
+      toastError('Could not regenerate explanation. Try again.');
+    } finally {
+      setRegeneratingAnnotationId(null);
+    }
+  };
 
   // Split into highlights/annotations vs freeform notes
   const annotationItems = annotations.filter((a) => a.type !== 'note');
@@ -84,7 +129,7 @@ export default function ChatPanel({ isOpen, onToggle, activeTab, setActiveTab }:
     <div className="w-full h-full rounded-(--panel-radius) border border-(--panel-border) bg-(--panel-surface) shadow-(--shadow-panel) backdrop-blur-sm flex flex-col overflow-hidden">
       {!paperId || !paper ? (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-(--muted-foreground) opacity-50">
-          <FileTextIcon size={32} className="mb-3" />
+          <FileTextIcon size={40} className="mb-3" />
           <p className="text-code">Open a paper to see details</p>
         </div>
       ) : (
@@ -184,7 +229,17 @@ export default function ChatPanel({ isOpen, onToggle, activeTab, setActiveTab }:
                   reader.scrollCallbacks?.scrollToAnnotation(ann);
                 }}
                 onDelete={(ann) => deleteAnnotationMutation.mutate(ann.id)}
+                onRegenerate={regenerateExplanation}
+                regeneratingAnnotationId={regeneratingAnnotationId}
               />
+              {savedExplanations.length > 0 && (
+                <p
+                  role="status"
+                  className="px-3 pb-3 text-center text-micro text-(--muted-foreground)"
+                >
+                  {savedExplanations.length} saved AI {savedExplanations.length === 1 ? 'explanation' : 'explanations'}
+                </p>
+              )}
             </TabsContent>
 
             <TabsContent value="related" className="h-full overflow-y-auto scrollbar-none p-6">

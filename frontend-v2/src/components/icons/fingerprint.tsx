@@ -9,4 +9,5 @@ export const FingerprintIcon = createIcon({
       <path d="M10.5 13a1.5 1.5 0 0 1 3 0v5.25" />
     </>
   ),
+  secondaryPath: <path d="M9.5 13a2.5 2.5 0 0 1 5 0v4h-2v-4a.5.5 0 0 0-1 0v2h-2z" />,
 });

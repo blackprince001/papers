@@ -9,4 +9,5 @@ export const HomeIcon = createIcon({
       <path d="M10 20v-4.25a2 2 0 0 1 4 0V20" />
     </>
   ),
+  secondaryPath: <path d="m6 10.8 6-4.9 6 4.9v6.5H6z" />,
 });

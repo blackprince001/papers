@@ -415,7 +415,7 @@ export function ExpandedInput({
                 <div key={group.label} className="w-full">
                   <div className="flex items-center gap-1.5 mb-2 px-1">
                     <GroupIcon
-                      size={13}
+                      size="xs"
                       className="text-(--muted-foreground) shrink-0"
                     />
                     <span className="text-caption font-medium text-(--muted-foreground) uppercase tracking-wider">
@@ -434,7 +434,7 @@ export function ExpandedInput({
                           className="group flex items-center gap-2 rounded-full border border-(--border) px-3 py-1.5 text-sm text-(--foreground) transition-all duration-200 ease-out hover:bg-(--muted)/30 hover:shadow-(--shadow-subtle) active:translate-y-px active:bg-(--muted)/50 h-auto bg-transparent disabled:opacity-40"
                         >
                           <IconComponent
-                            size={14}
+                            size="sm"
                             className="text-(--muted-foreground) transition-colors group-hover:text-(--foreground) shrink-0"
                           />
                           <span>{suggestion.text}</span>
@@ -609,7 +609,7 @@ export function ExpandedInput({
                             <div key={group.label}>
                               <div className="flex items-center gap-1.5 mb-2">
                                 <GroupIcon
-                                  size={13}
+                                  size="xs"
                                   className="text-(--muted-foreground) shrink-0"
                                 />
                                 <span className="text-caption font-medium text-(--muted-foreground) uppercase tracking-wider">
@@ -630,7 +630,7 @@ export function ExpandedInput({
                                       className="group flex items-center gap-1.5 rounded-full border border-(--border) px-2.5 py-1 text-sm text-(--foreground) transition-all duration-200 ease-out hover:bg-(--muted)/30 hover:shadow-(--shadow-subtle) active:translate-y-px active:bg-(--muted)/50 bg-transparent disabled:opacity-40"
                                     >
                                       <IconComponent
-                                        size={12}
+                                        size="xs"
                                         className="text-(--muted-foreground) shrink-0"
                                       />
                                       <span>{suggestion.text}</span>
@@ -656,7 +656,7 @@ export function ExpandedInput({
                                 className="group flex items-center gap-1.5 rounded-full border border-(--border) px-2.5 py-1 text-sm text-(--foreground) transition-colors duration-200 ease-out hover:bg-(--muted)/30 bg-transparent disabled:opacity-40"
                               >
                                 <IconComponent
-                                  size={12}
+                                  size="xs"
                                   className="text-(--muted-foreground) shrink-0"
                                 />
                                 <span className="whitespace-nowrap">

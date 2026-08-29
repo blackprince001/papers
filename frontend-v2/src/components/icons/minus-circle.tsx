@@ -8,6 +8,7 @@ export const MinusCircleIcon = createIcon({
       <path d="M8.5 12h7" />
     </>
   ),
+  secondaryPath: <circle cx="12" cy="12" r="7.25" />,
   filledPath: (
     <path
       fillRule="evenodd"

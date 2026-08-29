@@ -8,4 +8,5 @@ export const ArrowDownLeftIcon = createIcon({
       <path d="M15 18H6V9" />
     </>
   ),
+  secondaryPath: <path d="M5.5 17.5h5v-5z" />,
 });

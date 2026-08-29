@@ -9,4 +9,5 @@ export const BlockCaptionIcon = createIcon({
       <path d="M9.5 19.5h5" />
     </>
   ),
+  secondaryPath: <rect x="7.5" y="6" width="9" height="5" rx="1" />,
 });

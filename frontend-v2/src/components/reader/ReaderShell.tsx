@@ -103,6 +103,8 @@ export function ReaderShell({
   } = useReader();
   const [selection, setSelection] = useState<SelectionState | null>(null);
   const [pendingAction, setPendingAction] = useState<AIActionKind | null>(null);
+  const aiActionAbortRef = useRef<AbortController | null>(null);
+  const [regeneratingAnnotationId, setRegeneratingAnnotationId] = useState<number | null>(null);
   // Card currently hovered/focused in the margin; its highlight rects link.
   const [hoveredAnnotationId, setHoveredAnnotationId] = useState<number | null>(
     null,
@@ -114,6 +116,10 @@ export function ReaderShell({
   const [highlighterColor, setHighlighterColor] = useState<ThemeName>(
     "yellow" as ThemeName,
   );
+
+  useEffect(() => () => {
+    aiActionAbortRef.current?.abort();
+  }, []);
 
   const [zen, setZen] = useState(false);
   const ZEN_ZOOM = 1.5;
@@ -200,7 +206,7 @@ export function ReaderShell({
         : { top: 0 },
       { behavior: "smooth" },
     );
-  }, []);
+  }, [setActiveAnnotationId]);
 
   useEffect(() => {
     registerScrollCallbacks({ scrollToAnnotation });
@@ -249,10 +255,10 @@ export function ReaderShell({
     return () => timers.forEach((t) => clearTimeout(t));
   }, [pdfProxy, initialPage, focusRef, annotations, setActiveAnnotationId]);
 
-  const invalidateAnnotations = () => {
+  const invalidateAnnotations = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ["annotations", paper.id] });
     onAnnotationSuccess();
-  };
+  }, [onAnnotationSuccess, paper.id, queryClient]);
 
   const { drafts, draftsByPage, addDraft, setDraftStatus, removeDraft } =
     useHighlightDrafts();
@@ -297,6 +303,9 @@ export function ReaderShell({
 
   const handleAIAction = async (kind: AIActionKind) => {
     if (!selection) return;
+    aiActionAbortRef.current?.abort();
+    const controller = new AbortController();
+    aiActionAbortRef.current = controller;
     setPendingAction(kind);
     try {
       const annotation = await aiFeaturesApi.aiAction(paper.id, {
@@ -304,15 +313,67 @@ export function ReaderShell({
         selection_text: selection.text,
         page: selection.page,
         rects: selection.rects,
+        visibility: "private",
+        regenerate: false,
+      }, {
+        idempotencyKey: crypto.randomUUID(),
+        signal: controller.signal,
       });
       invalidateAnnotations();
       setSelection(null);
       setActiveAnnotationId(annotation.id);
       toastSuccess("Saved as annotation");
     } catch (error) {
-      toastError(`AI action failed: ${(error as Error).message}`);
+      if ((error as Error).name !== "AbortError") {
+        toastError("AI action failed. Try again.");
+      }
     } finally {
-      setPendingAction(null);
+      if (aiActionAbortRef.current === controller) {
+        aiActionAbortRef.current = null;
+        setPendingAction(null);
+      }
+    }
+  };
+
+  const cancelAIAction = useCallback(() => {
+    aiActionAbortRef.current?.abort();
+    aiActionAbortRef.current = null;
+    setPendingAction(null);
+  }, []);
+
+  const handleRegenerate = async (annotation: Annotation) => {
+    const action = annotation.highlight_type;
+    const page = annotationPage(annotation);
+    const quotedText = annotation.highlighted_text?.trim();
+    const rects = annotationRects(annotation);
+    if (
+      (action !== "explain" && action !== "why" && action !== "define") ||
+      page === null ||
+      !quotedText
+    ) {
+      toastError("This explanation cannot be regenerated.");
+      return;
+    }
+
+    setRegeneratingAnnotationId(annotation.id);
+    try {
+      const updated = await aiFeaturesApi.aiAction(paper.id, {
+        action,
+        selection_text: quotedText,
+        page,
+        rects,
+        visibility: "private",
+        regenerate: true,
+      }, {
+        idempotencyKey: crypto.randomUUID(),
+      });
+      invalidateAnnotations();
+      setActiveAnnotationId(updated.id);
+      toastSuccess("Explanation regenerated");
+    } catch {
+      toastError("Could not regenerate explanation. Try again.");
+    } finally {
+      setRegeneratingAnnotationId(null);
     }
   };
 
@@ -353,7 +414,7 @@ export function ReaderShell({
         );
       }
     },
-    [paper.id, invalidateAnnotations, setDraftStatus, removeDraft],
+    [paper.id, invalidateAnnotations, setActiveAnnotationId, setDraftStatus, removeDraft],
   );
 
   /** Create a color-only highlight annotation from a selection via a draft. */
@@ -552,6 +613,8 @@ export function ReaderShell({
                   : undefined
               }
               onRecolor={canAnnotate(paper) ? handleRecolor : undefined}
+              onRegenerate={canAnnotate(paper) ? handleRegenerate : undefined}
+              regeneratingAnnotationId={regeneratingAnnotationId}
             />
           ) : (
             /* Inline anchored note markers (popover on hover / click to pin) */
@@ -583,6 +646,8 @@ export function ReaderShell({
                       ? (color) => handleRecolor(ann, color)
                       : undefined
                   }
+                  onRegenerate={canAnnotate(paper) ? () => void handleRegenerate(ann) : undefined}
+                  regenerating={regeneratingAnnotationId === ann.id}
                 />
               );
             })
@@ -711,6 +776,7 @@ export function ReaderShell({
           selection={selection}
           pendingAction={pendingAction}
           onAIAction={(kind) => void handleAIAction(kind)}
+          onCancelAction={cancelAIAction}
           onHighlight={handleHighlight}
           onComment={(text) => void handleComment(text)}
           onClose={() => {

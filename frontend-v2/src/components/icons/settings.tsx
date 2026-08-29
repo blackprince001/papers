@@ -8,4 +8,5 @@ export const SettingsIcon = createIcon({
       <circle cx="12" cy="12" r="2.9" />
     </>
   ),
+  secondaryPath: <circle cx="12" cy="12" r="5.5" />,
 });

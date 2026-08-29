@@ -1,4 +1,4 @@
-from app.models.annotation import Annotation
+from app.models.annotation import Annotation, AnnotationExplanation
 from app.models.bookmark import Bookmark
 from app.models.chat import ChatMessage, ChatSession
 from app.models.citation_map import (
@@ -31,6 +31,7 @@ from app.models.user_ai_settings import UserAISettings
 
 __all__ = [
   "Annotation",
+  "AnnotationExplanation",
   "Bookmark",
   "ChatMessage",
   "ChatSession",

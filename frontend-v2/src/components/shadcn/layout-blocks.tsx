@@ -404,7 +404,7 @@ const OcrBlockButton = React.memo(function OcrBlockButton({
                 style.badge
               )}
             >
-              <BlockIcon className="size-3.5" />
+              <BlockIcon className="size-4" />
               {style.label}
             </div>
             <div className="truncate text-xs text-muted-foreground">

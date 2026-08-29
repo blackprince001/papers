@@ -10,4 +10,10 @@ export const LibraryIcon = createIcon({
       <path d="M4 20.25h16.5" />
     </>
   ),
+  secondaryPath: (
+    <>
+      <rect x="5.2" y="6" width="2" height="9" rx="0.6" />
+      <rect x="10.9" y="6" width="2" height="9" rx="0.6" />
+    </>
+  ),
 });

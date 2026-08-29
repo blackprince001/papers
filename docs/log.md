@@ -1,5 +1,27 @@
 # Bundle Update Log
 
+## 2026-08-29
+
+* **Update**: Phase 6 icon implementation is complete. The shared icon scale is now
+  `14 / 16 / 20 / 24 / 28px`, compact text tokens grew with it, and the remaining
+  hard-coded reader, file-viewer, menu, select, empty-state, and error-state sizes
+  were brought into the same hierarchy. Frontend tests, the standards audit, and the
+  production build pass. Phase 7 is now open at EMPTY-01 for the illustration
+  contract and art-direction sheet.
+* **Update**: Phase 5 shared AI presentation is complete after the manual visual
+  verification pass. The reader load and restore flow is healthy; the remaining
+  console notices are non-blocking browser, environment, or PDF.js messages.
+  Phase 6 is now open at ICON-01, which resolves the duotone icon source and
+  redistribution terms before any asset migration.
+* **Update**: Started the source-independent ICON-02 slice. The icon factory now
+  supports optional secondary geometry and color, with focused coverage and
+  metadata enforcement; no production glyph assets were migrated.
+* **Decision**: Phase 6 uses project-owned geometry because no ReUI license or
+  registry configuration is recorded. All 106 eligible glyphs now have secondary
+  layers; `grip-vertical`, `more-horizontal`, and `spinner` remain single-layer
+  exceptions. Compact consumers now use shared icon-size presets, with numeric
+  sizing reserved for hero art.
+
 ## 2026-08-21
 
 * **Update**: Checkpoint D closed — the pdf.js reader passes the full

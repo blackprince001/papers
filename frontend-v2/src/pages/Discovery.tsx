@@ -362,7 +362,7 @@ export default function Discovery() {
       {/* Empty State */}
       {!hasSearched && (
         <div className="text-center py-16">
-          <SparklesIcon size={48} className="text-(--muted-foreground) mx-auto mb-4 opacity-50" />
+          <SparklesIcon size={56} className="text-(--muted-foreground) mx-auto mb-4 opacity-50" />
           <p className="text-body text-(--muted-foreground) max-w-md mx-auto">
             Enter a search query above to discover research papers with AI-powered insights
           </p>

@@ -10,4 +10,5 @@ export const RefreshIcon = createIcon({
       <path d="M4 19.8v-4.5h4.5" />
     </>
   ),
+  secondaryPath: <path d="M16.5 4.5 20 8l-3.5 3.5V9.5H13v-2h3.5z" />,
 });

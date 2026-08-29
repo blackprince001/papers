@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+from app.schemas.annotation import ExplanationVisibility, GroundingRect
 
 
 class SummaryRequest(BaseModel):
@@ -30,13 +32,8 @@ class HighlightRequest(BaseModel):
   pass
 
 
-class SelectionRect(BaseModel):
+class SelectionRect(GroundingRect):
   """One highlight rect, normalized 0-1 against the page dimensions."""
-
-  left: float
-  top: float
-  width: float
-  height: float
 
 
 class AIActionRequest(BaseModel):
@@ -45,5 +42,13 @@ class AIActionRequest(BaseModel):
   action: Literal["explain", "why", "define"]
   selection_text: str = Field(min_length=1, max_length=4000)
   page: int = Field(ge=1)
-  rects: List[SelectionRect] = []
+  rects: List[SelectionRect] = Field(default_factory=list, max_length=128)
+  visibility: ExplanationVisibility = "private"
+  regenerate: bool = False
   context: Optional[Dict[str, Any]] = None
+
+  @model_validator(mode="after")
+  def has_non_blank_selection(self) -> "AIActionRequest":
+    if not self.selection_text.strip():
+      raise ValueError("selection_text must not be blank")
+    return self

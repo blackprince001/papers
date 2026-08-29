@@ -12,4 +12,5 @@ export const BuildingIcon = createIcon({
       <circle cx="14.25" cy="13.25" r="1.4" fill="currentColor" stroke="none" />
     </>
   ),
+  secondaryPath: <rect x="7.5" y="6" width="9" height="3" rx="1" />,
 });

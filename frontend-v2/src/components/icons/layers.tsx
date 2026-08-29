@@ -9,4 +9,5 @@ export const LayersIcon = createIcon({
       <path d="M4.5 15.75l7.5 4 7.5-4" />
     </>
   ),
+  secondaryPath: <path d="m6.5 9 5.5 2.9L17.5 9 12 6.1z" />,
 });

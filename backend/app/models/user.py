@@ -43,6 +43,9 @@ class User(Base):
   groups = relationship("Group", back_populates="user")
   tags = relationship("Tag", back_populates="user")
   annotations = relationship("Annotation", back_populates="user")
+  annotation_explanations = relationship(
+    "AnnotationExplanation", back_populates="owner", cascade="all, delete-orphan"
+  )
   bookmarks = relationship("Bookmark", back_populates="user")
   paper_states = relationship("UserPaperState", back_populates="user")
   paper_shares = relationship(

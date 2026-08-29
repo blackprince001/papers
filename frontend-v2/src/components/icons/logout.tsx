@@ -9,4 +9,5 @@ export const LogoutIcon = createIcon({
       <path d="M15.5 7.5L20 12l-4.5 4.5" />
     </>
   ),
+  secondaryPath: <path d="M12 10h7l-3-3v2.2h-4z" />,
 });

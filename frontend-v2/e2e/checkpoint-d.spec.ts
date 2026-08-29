@@ -88,7 +88,7 @@ function installStatefulAnnotations(
 async function waitUsable(page: Page) {
   await expect(
     page
-      .locator('[data-pdf-viewer-page="1"] .react-pdf__Page__textContent')
+      .locator('[data-pdf-viewer-page="1"] .react-pdf__Page__textContent span')
       .first(),
   ).toBeVisible({ timeout: 20_000 });
 }

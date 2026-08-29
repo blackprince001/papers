@@ -298,7 +298,7 @@ function PDFViewerLoadingSkeleton({
         <DocumentViewerSidebarSkeleton inline={sidebarInline} />
       ) : null}
       <div className="grid min-w-0 flex-1 place-items-center">
-        <Spinner className="size-4" />
+        <Spinner className="size-5" />
       </div>
     </div>
   )
@@ -696,7 +696,7 @@ function PDFViewerPage({
             }
             loading={
               <div className="grid place-items-center" style={pageStyle}>
-                <Spinner className="size-4" />
+                <Spinner className="size-5" />
               </div>
             }
             onRenderSuccess={() =>
@@ -812,6 +812,7 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
     const thumbnailClickScrollYRef = React.useRef<number | null>(null)
     const pendingPageMetricsRef = React.useRef<Set<number>>(new Set())
     const pageMetricsGenerationRef = React.useRef(0)
+    const firstSettledPageRef = React.useRef(false)
     const scrollTrackerRef = React.useRef({
       scrollTop: 0,
       timestamp: 0,
@@ -826,6 +827,7 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
       setPdfDocument(null)
       pendingPageMetricsRef.current.clear()
       pageMetricsGenerationRef.current += 1
+      firstSettledPageRef.current = false
       setNumPages(0)
       setActivePage(1)
       setPageMetrics(new Map())
@@ -1304,18 +1306,17 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
         nextVisiblePageNumbers.add(closestPage)
       }
 
-      setActivePage((currentPage) => {
-        if (currentPage === closestPage) return currentPage
+      if (activePage !== closestPage) {
+        setActivePage(closestPage)
         onActivePageChange?.(closestPage)
-        return closestPage
-      })
+      }
 
       setVisiblePageNumbers((currentPageNumbers) =>
         areNumberSetsEqual(currentPageNumbers, nextVisiblePageNumbers)
           ? currentPageNumbers
           : nextVisiblePageNumbers
       )
-    }, [onActivePageChange, renderedPageNumbers])
+    }, [activePage, onActivePageChange, renderedPageNumbers])
 
     React.useEffect(() => {
       const frameId = window.requestAnimationFrame(updateActivePageFromViewport)
@@ -1546,6 +1547,7 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
       setPdfDocument(null)
       pendingPageMetricsRef.current.clear()
       pageMetricsGenerationRef.current += 1
+      firstSettledPageRef.current = false
       setNumPages(0)
       setActivePage(1)
       setPageMetrics(new Map())
@@ -1653,17 +1655,21 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
           return nextPageNumbers
         })
 
-        if (pageNumber === firstRenderedPage) {
+        // A restored/deep-linked page can settle before page 1. Release the
+        // global loading veil as soon as any visible page has completed.
+        if (!firstSettledPageRef.current) {
+          firstSettledPageRef.current = true
           setIsFirstPageRendering(false)
         }
       },
-      [firstRenderedPage]
+      []
     )
 
     React.useEffect(() => {
       setSettledPageNumbers(new Set())
       setLowResolutionPageNumbers(new Set())
       setVisiblePageNumbers(new Set([1]))
+      firstSettledPageRef.current = false
       setIsFirstPageRendering(Boolean(pdfFile))
     }, [pdfFile])
 
@@ -1747,9 +1753,9 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
                     onClick={() => setSidebarOpen((open) => !open)}
                   >
                     {sidebarOpen ? (
-                      <PanelLeftCloseIcon className="size-4" />
+                      <PanelLeftCloseIcon className="size-5" />
                     ) : (
-                      <PanelLeftOpenIcon className="size-4" />
+                      <PanelLeftOpenIcon className="size-5" />
                     )}
                   </Button>
                 </ToolbarTooltip>
@@ -1775,7 +1781,7 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
                           disabled={controlsDisabled}
                           onClick={() => rotateActivePage(-90)}
                         >
-                          <RotateIcon className="size-4 -scale-x-100" />
+                          <RotateIcon className="size-5 -scale-x-100" />
                         </Button>
                       </ToolbarTooltip>
                       <ToolbarTooltip label="Rotate page clockwise">
@@ -1787,7 +1793,7 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
                           disabled={controlsDisabled}
                           onClick={() => rotateActivePage(90)}
                         >
-                          <RotateIcon className="size-4" />
+                          <RotateIcon className="size-5" />
                         </Button>
                       </ToolbarTooltip>
                     </div>
@@ -1812,7 +1818,7 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
                         )
                       }}
                     >
-                      <ZoomOutIcon className="size-4" />
+                      <ZoomOutIcon className="size-5" />
                     </Button>
                   </ToolbarTooltip>
                   <Select
@@ -1821,7 +1827,11 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
                     disabled={controlsDisabled}
                     modal={false}
                   >
-                    <SelectTrigger size="sm" className="w-[5.25rem] min-w-[5.25rem]">
+                    <SelectTrigger
+                      size="sm"
+                      className="w-[5.25rem] min-w-[5.25rem]"
+                      aria-label="Zoom level"
+                    >
                       <SelectValue placeholder="Zoom">
                         {Math.round(zoom * 100)}%
                       </SelectValue>
@@ -1853,7 +1863,7 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
                         )
                       }}
                     >
-                      <ZoomInIcon className="size-4" />
+                      <ZoomInIcon className="size-5" />
                     </Button>
                   </ToolbarTooltip>
                 </div>
@@ -1871,7 +1881,7 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
                         aria-label="Search text"
                         disabled={controlsDisabled}
                       >
-                        <SearchIcon className="size-4" />
+                        <SearchIcon className="size-5" />
                       </Button>
                     </PopoverTrigger>
                   </ToolbarTooltip>
@@ -1903,9 +1913,9 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
                         onClick={handleDownload}
                       >
                         {isPreparingDownload ? (
-                          <Spinner className="size-4" />
+                          <Spinner className="size-5" />
                         ) : (
-                          <DownloadIcon className="size-4" />
+                          <DownloadIcon className="size-5" />
                         )}
                       </Button>
                     </ToolbarTooltip>
@@ -1938,7 +1948,7 @@ export const PDFViewer = React.forwardRef<PDFViewerHandle, PDFViewerProps>(
                                 }
                               }}
                             />
-                            <UploadIcon className="size-4" />
+                            <UploadIcon className="size-5" />
                           </label>
                         }
                       />

@@ -68,7 +68,7 @@ export default function DeepResearchArchive() {
         </div>
       ) : !sessions || sessions.length === 0 ? (
         <div className="text-center py-16">
-          <ArchiveIcon size={40} className="text-(--muted-foreground) mx-auto mb-3 opacity-40" />
+          <ArchiveIcon size={48} className="text-(--muted-foreground) mx-auto mb-3 opacity-40" />
           <p className="text-body text-(--muted-foreground)">No research runs yet.</p>
           <p className="text-code text-(--muted-foreground) mt-1">
             Start a run from the Deep Research page.
@@ -97,7 +97,7 @@ export default function DeepResearchArchive() {
                       {status.label}
                     </span>
                     <span className="flex items-center gap-1 text-caption text-(--muted-foreground)">
-                      <ClockIcon size={11} />
+                      <ClockIcon size="xs" />
                       {formatDate(session.updated_at)}
                     </span>
                   </div>
@@ -132,9 +132,9 @@ export default function DeepResearchArchive() {
                     }}
                   >
                     {deleteMutation.isPending && deleteMutation.variables === session.id ? (
-                      <SpinnerIcon size={15} className="animate-spin" />
+                      <SpinnerIcon size="sm" duotone={false} className="animate-spin" />
                     ) : (
-                      <TrashIcon size={15} />
+                      <TrashIcon size="sm" />
                     )}
                   </Button>
                 </div>

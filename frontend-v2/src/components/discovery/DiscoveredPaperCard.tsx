@@ -50,7 +50,7 @@ export function DiscoveredPaperCard({
                   : 'bg-transparent border-(--mid-gray)',
               )}>
                 {isSelected && (
-                  <CheckIcon size="xs" strokeWidth={3} className="w-2.5 h-2.5 text-(--background)" />
+                  <CheckIcon size="xs" strokeWidth={3} className="text-(--background)" />
                 )}
               </div>
             )}

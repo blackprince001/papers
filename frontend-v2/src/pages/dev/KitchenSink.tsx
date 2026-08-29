@@ -26,7 +26,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/Ta
 import { ArchiveIcon, PlusIcon, SearchIcon, TrashIcon } from '../../components/icons';
 import { MarkdownMessage } from '../../components/MarkdownMessage';
 import { StreamingMessage } from '../../components/ai/StreamingMessage';
-import type { ChatStreamState } from '../../hooks/use-chat-stream';
+import { AgentStatus } from '../../components/ai/AgentStatus';
+import { ThinkingOrb } from '../../components/ai/ThinkingOrb';
 
 /* Dev-only QA surface for the HeroUI theme bridge + Lumen facades.
  * Everything here must look native to Lumen in BOTH themes. */
@@ -240,20 +241,25 @@ export default function KitchenSink() {
           </div>
           <div className="rounded-2xl border border-(--border) bg-(--card) p-5 space-y-3">
             <h2 className="text-subheading font-semibold">AI activity fixture</h2>
+            <div className="flex items-center gap-2">
+              <ThinkingOrb status="streaming" size="sm" decorative />
+              <AgentStatus status="streaming" label="Generating an answer" />
+            </div>
             <StreamingMessage
-              state={{
-                status: 'using_tool',
-                content: '',
-                displayedContent: '',
-                thoughts: [],
-                toolCalls: [{ tool: 'search_papers', arguments: { query: 'attention' }, timestamp: 0 }],
-                toolResults: [],
-                currentTool: 'search_papers',
-                error: null,
-                messageId: null,
-                sessionId: null,
-                referenceManifest: null,
-              } satisfies ChatStreamState & { displayedContent: string; autoRetryAt?: number | null }}
+              status="using_tool"
+              content=""
+              displayedContent=""
+              activities={[{
+                id: 'activity-1',
+                kind: 'tool',
+                state: 'running',
+                label: 'Searching your papers',
+                detail: 'attention',
+              }]}
+              sources={[]}
+              warning={null}
+              retry={null}
+              error={null}
               isStreaming
             />
             <MarkdownMessage content="The answer will appear here with **grounded citations** when the search completes." />

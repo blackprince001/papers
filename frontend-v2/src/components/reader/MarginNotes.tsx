@@ -31,6 +31,8 @@ export function MarginNotes({
   onDelete,
   onUpdateContent,
   onRecolor,
+  onRegenerate,
+  regeneratingAnnotationId,
 }: {
   annotations: Annotation[]
   /** Effective rotation of this page (degrees). */
@@ -46,6 +48,8 @@ export function MarginNotes({
   onDelete?: (annotation: Annotation) => void
   onUpdateContent?: (annotation: Annotation, content: string) => void
   onRecolor?: (annotation: Annotation, color: ThemeName) => void
+  onRegenerate?: (annotation: Annotation) => void
+  regeneratingAnnotationId?: number | null
 }) {
   const wrappers = useRef(new Map<number, HTMLDivElement>());
   const [heights, setHeights] = useState<Map<number, number>>(new Map());
@@ -181,6 +185,8 @@ export function MarginNotes({
                   : undefined
               }
               onRecolor={onRecolor ? (color) => onRecolor(ann, color) : undefined}
+              onRegenerate={onRegenerate ? () => onRegenerate(ann) : undefined}
+              regenerating={regeneratingAnnotationId === ann.id}
             />
           </div>
         );

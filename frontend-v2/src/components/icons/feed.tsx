@@ -9,4 +9,5 @@ export const FeedIcon = createIcon({
       <path d="M7.5 13.75h9M7.5 16.75h5.5" />
     </>
   ),
+  secondaryPath: <rect x="7" y="7" width="10" height="2.3" rx="1" />,
 });

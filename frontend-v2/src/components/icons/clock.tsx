@@ -8,4 +8,5 @@ export const ClockIcon = createIcon({
       <path d="M12 7.5V12l3 2" />
     </>
   ),
+  secondaryPath: <circle cx="12" cy="12" r="7.25" />,
 });

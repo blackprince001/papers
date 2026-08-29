@@ -10,4 +10,5 @@ export const MicroscopeIcon = createIcon({
       <path d="M4.75 19.5H15.5" />
     </>
   ),
+  secondaryPath: <circle cx="15.5" cy="12.5" r="2.5" />,
 });

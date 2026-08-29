@@ -18,6 +18,8 @@ export function AnnotationMarker({
   onDelete,
   onUpdateContent,
   onRecolor,
+  onRegenerate,
+  regenerating = false,
   deleting = false,
 }: {
   annotation: Annotation;
@@ -28,6 +30,8 @@ export function AnnotationMarker({
   onDelete?: () => void;
   onUpdateContent?: (content: string) => void;
   onRecolor?: (color: ThemeName) => void;
+  onRegenerate?: () => void;
+  regenerating?: boolean;
   deleting?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -97,6 +101,8 @@ export function AnnotationMarker({
               onDelete={onDelete}
               onUpdateContent={onUpdateContent}
               onRecolor={onRecolor}
+              onRegenerate={onRegenerate}
+              regenerating={regenerating}
               deleting={deleting}
             />
             <button

@@ -199,6 +199,7 @@ export async function fetchApi<T>(
     return response.json() as Promise<T>;
   } catch (error) {
     if (error instanceof ApiError) throw error;
+    if ((error as Error)?.name === 'AbortError') throw error;
     logger.error('Network error:', error);
     throw new ApiError(0, 'Network error: Could not reach server');
   }

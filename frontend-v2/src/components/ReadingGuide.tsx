@@ -181,7 +181,7 @@ export function ReadingGuide({ paperId }: ReadingGuideProps) {
         </>
       ) : (
         <div className="flex flex-col items-center justify-center py-12 px-6 text-center bg-(--muted)/20 rounded-2xl border border-dashed border-(--border)">
-          <BookOpenIcon size={32} className="mb-4 text-(--muted-foreground) opacity-40" />
+          <BookOpenIcon size={40} className="mb-4 text-(--muted-foreground) opacity-40" />
           <h3 className="text-btn font-semibold text-(--foreground) mb-2">No Reading Guide</h3>
           <p className="text-code text-(--muted-foreground) mb-6 max-w-60">
             Generate questions to help you stay focused and extract the most value from this paper.

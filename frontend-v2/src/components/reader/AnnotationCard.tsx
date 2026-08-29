@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { CloseIcon, CheckIcon, EditIcon, TrashIcon } from "@/components/icons";
+import { CloseIcon, CheckIcon, EditIcon, RefreshIcon, TrashIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import type { ThemeName } from "@/lib/paper-themes";
 import { THEME_NAMES, highlightLabel, highlightTheme } from "./highlight-colors";
@@ -13,6 +13,8 @@ export function AnnotationCard({
   onDelete,
   onUpdateContent,
   onRecolor,
+  onRegenerate,
+  regenerating = false,
   deleting = false,
 }: {
   annotation: Annotation;
@@ -24,6 +26,9 @@ export function AnnotationCard({
   onUpdateContent?: (content: string) => void;
   /** Present → the card offers a recolor swatch row (highlights only). */
   onRecolor?: (color: ThemeName) => void;
+  /** Present → the card offers an explicit regeneration action for AI answers. */
+  onRegenerate?: () => void;
+  regenerating?: boolean;
   /** Delete is pending behind an undo window; fade without removing. */
   deleting?: boolean;
 }) {
@@ -54,6 +59,11 @@ export function AnnotationCard({
     annotation.highlighted_text &&
     annotation.highlighted_text !== annotation.content;
   const canRecolor = Boolean(onRecolor) && active && annotation.type !== "note";
+  const isAIExplanation =
+    annotation.selection_data?.source === "ai_action" &&
+    (annotation.highlight_type === "explain" ||
+      annotation.highlight_type === "why" ||
+      annotation.highlight_type === "define");
 
   const saveEdit = () => {
     const text = draft.trim();
@@ -110,9 +120,25 @@ export function AnnotationCard({
           }}
         >
           {label}
-          {annotation.auto_highlighted ? " · AI" : ""}
+          {annotation.auto_highlighted || isAIExplanation ? " · AI" : ""}
         </span>
         <div className="flex items-center gap-0.5">
+          {onRegenerate && isAIExplanation && (
+            <button
+              type="button"
+              disabled={regenerating}
+              aria-label="Regenerate explanation"
+              aria-busy={regenerating || undefined}
+              onClick={(event) => {
+                event.stopPropagation();
+                onRegenerate();
+              }}
+              className="rounded p-0.5 opacity-0 transition-opacity group-hover/card:opacity-60 group-focus-within/card:opacity-60! hover:opacity-100! disabled:cursor-wait disabled:opacity-60"
+              style={{ color: `var(--theme-${theme}-text)` }}
+            >
+              <RefreshIcon size="xs" className={regenerating ? "animate-pulse" : undefined} />
+            </button>
+          )}
           {onUpdateContent && !editing && (
             <button
               type="button"

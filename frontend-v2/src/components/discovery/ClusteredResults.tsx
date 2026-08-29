@@ -79,7 +79,7 @@ export function ClusteredResults({ clustering, papers, relevanceExplanations = [
                 )}
               >
                 <span className="flex min-w-0 items-center gap-2 md:items-start">
-                  <TagIcon className="w-3.5 h-3.5 shrink-0 md:mt-0.5" />
+                  <TagIcon className="w-4 h-4 shrink-0 md:mt-0.5" />
                   <span className="truncate md:overflow-visible md:whitespace-normal md:text-clip md:break-words">
                     {section.name}
                   </span>
@@ -125,7 +125,7 @@ export function ClusteredResults({ clustering, papers, relevanceExplanations = [
               <DiscoveredPaperCard paper={paper} />
               {relevance && (
                 <div className="flex items-start gap-2 rounded-lg border border-(--border) bg-(--muted) px-3 py-2">
-                  <SparklesIcon className="w-3.5 h-3.5 shrink-0 text-(--muted-foreground) mt-0.5" />
+                  <SparklesIcon className="w-4 h-4 shrink-0 text-(--muted-foreground) mt-0.5" />
                   <div className="space-y-0.5 text-caption text-(--muted-foreground)">
                     <p><span className="font-medium text-(--foreground)">Why relevant: </span>{relevance.relevance}</p>
                     {relevance.key_contribution && (

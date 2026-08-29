@@ -62,7 +62,10 @@ export function ErrorState({
           size === 'page' ? 'p-3' : 'p-2.5',
         )}
       >
-        <WarningIcon size={size === 'page' ? 28 : 20} className="text-(--danger)" />
+        <WarningIcon
+          size="xl"
+          className={cn('text-(--danger)', size === 'page' ? 'size-8' : 'size-6')}
+        />
       </span>
       <p className={cn('font-semibold text-(--foreground)', size === 'page' ? 'mt-4 text-body-lg' : 'mt-3 text-body')}>
         {title}

@@ -52,7 +52,9 @@ const iconFiles = (await readdir(iconsDir))
 for (const name of iconFiles) {
   const file = await read(join(iconsDir, `${name}.tsx`));
   const definition = file.match(/createIcon\(\{([\s\S]*?)\}\);/);
-  const iconName = definition?.[1].match(/name:\s*['"]([^'"]+)['"]/)?.[1];
+  const definitionBody = definition?.[1] ?? '';
+  const iconName = definitionBody.match(/name:\s*['"]([^'"]+)['"]/)?.[1];
+  const hasSecondaryPath = /\bsecondaryPath\s*:/.test(definitionBody);
   if (!definition || iconName !== name) {
     fail(`${name}.tsx must define createIcon({ name: '${name}', ... })`);
   }
@@ -61,6 +63,9 @@ for (const name of iconFiles) {
   }
   const metadataEntry = new RegExp(`['"]${name}['"]\\s*:\\s*\\{\\s*duotone:\\s*(true|false)`).exec(metadata);
   if (!metadataEntry) fail(`${name} is missing explicit duotone metadata`);
+  if (metadataEntry && hasSecondaryPath !== (metadataEntry[1] === 'true')) {
+    fail(`${name} duotone metadata must match its secondaryPath definition`);
+  }
 }
 
 const sourceFiles = await walk(src);
@@ -78,7 +83,21 @@ for (const file of sourceFiles) {
   const content = await read(file);
   const directImports = content.matchAll(/from\s+['"]([^'"]*components\/icons\/[^'"]+)['"]/g);
   for (const match of directImports) {
+    // The factory's unit tests exercise the factory seam directly; product
+    // consumers still have to import concrete glyphs from the barrel.
+    if (file.includes('/src/test/') && match[1].endsWith('/components/icons/create-icon')) continue;
     fail(`${relative(root, file)} imports ${match[1]}; import icons from the barrel`);
+  }
+
+  const smallNumericIcons = content.matchAll(
+    /<[A-Z][A-Za-z0-9]*Icon\b[^>]*\bsize=\{(\d+(?:\.\d+)?)\}/g,
+  );
+  for (const match of smallNumericIcons) {
+    if (Number(match[1]) < 32) {
+      fail(
+        `${relative(root, file)} uses numeric icon size ${match[1]}; use an ICON_SIZES preset for compact contexts`,
+      );
+    }
   }
 }
 

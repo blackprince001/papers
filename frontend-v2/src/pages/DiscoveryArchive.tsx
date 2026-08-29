@@ -79,7 +79,7 @@ export default function DiscoveryArchive() {
         </div>
       ) : !sessions || sessions.length === 0 ? (
         <div className="text-center py-16">
-          <ArchiveIcon size={40} className="text-(--muted-foreground) mx-auto mb-3 opacity-40" />
+          <ArchiveIcon size={48} className="text-(--muted-foreground) mx-auto mb-3 opacity-40" />
           <p className="text-body text-(--muted-foreground)">No saved discoveries yet.</p>
           <p className="text-code text-(--muted-foreground) mt-1">Search for papers and save your sessions from the Discovery page.</p>
         </div>

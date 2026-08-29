@@ -32,6 +32,9 @@ const heroSize = { sm: 'sm', md: 'md', lg: 'lg', xl: 'lg' } as const;
 export function Dialog({ open, onClose, title, description, children, className, size = 'md' }: DialogProps) {
   return (
     <ModalRoot isOpen={open} onOpenChange={(o) => !o && onClose()}>
+      {/* ModalRoot is built on DialogTrigger. Keep its trigger contract satisfied
+          without exposing a second control for this controlled dialog facade. */}
+      <Button aria-hidden tabIndex={-1} className="hidden" />
       <ModalBackdrop>
         <ModalContainer placement="center" size={heroSize[size]}>
           <ModalDialog className={cn('relative', size === 'xl' && 'max-w-2xl', className)}>

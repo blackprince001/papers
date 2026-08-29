@@ -9,6 +9,7 @@ export const WarningIcon = createIcon({
       <circle cx="12" cy="16.2" r="1.1" fill="currentColor" stroke="none" />
     </>
   ),
+  secondaryPath: <path d="M12 7 18 18H6z" />,
   filledPath: (
     <path
       fillRule="evenodd"

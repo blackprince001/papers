@@ -10,4 +10,5 @@ export const FileCodeIcon = createIcon({
       <path d="M13.5 12.5l2 2.25-2 2.25" />
     </>
   ),
+  secondaryPath: <path d="M7 5.5h6v3h3.5v10H7z" />,
 });

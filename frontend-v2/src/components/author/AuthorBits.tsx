@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import type { IconProps } from '@/components/icons';
 import { cn } from '@/lib/utils';
 
 /** Theme tints that have CSS variables defined in index.css (light + dark). */
@@ -42,14 +43,14 @@ export function StatCard({
   label,
   value,
 }: {
-  icon: ComponentType<{ size?: number; className?: string }>;
+  icon: ComponentType<IconProps>;
   label: string;
   value?: number | null;
 }) {
   return (
     <div className="rounded-card border border-(--border) bg-(--card) px-4 py-3 transition-colors hover:border-(--foreground)/20">
       <div className="mb-1 flex items-center gap-1.5 text-(--muted-foreground)">
-        <Icon size={13} />
+        <Icon size="xs" />
         <span className="text-micro uppercase tracking-wider">{label}</span>
       </div>
       <p className="text-stat leading-none tabular-nums text-(--foreground)">

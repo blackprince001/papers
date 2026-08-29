@@ -9,4 +9,5 @@ export const BlockTableIcon = createIcon({
       <path d="M12 10v9" />
     </>
   ),
+  secondaryPath: <rect x="5" y="6.5" width="14" height="2.5" rx="1" />,
 });

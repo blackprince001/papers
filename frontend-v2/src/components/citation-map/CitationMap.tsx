@@ -126,7 +126,7 @@ function CitationMapInner({ data, isLoading, selectedKey, onSelectNode }: Citati
 
       {isEmpty && (
         <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center gap-2">
-          <CitationGraphIcon size={36} className="text-(--border)" />
+          <CitationGraphIcon size={44} className="text-(--border)" />
           <p className="text-code text-(--foreground)">Add a paper to chart what it built on</p>
           <p className="text-caption text-(--muted-foreground)">
             Its references are pulled from Semantic Scholar

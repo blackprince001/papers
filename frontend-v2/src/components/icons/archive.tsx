@@ -9,4 +9,5 @@ export const ArchiveIcon = createIcon({
       <path d="M10 13.5h4" />
     </>
   ),
+  secondaryPath: <rect x="4.5" y="5.75" width="15" height="2" rx="1" />,
 });

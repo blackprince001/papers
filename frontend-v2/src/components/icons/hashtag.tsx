@@ -10,4 +10,10 @@ export const HashtagIcon = createIcon({
       <path d="M4.5 15H19" />
     </>
   ),
+  secondaryPath: (
+    <>
+      <path d="M8.5 9h2l-.5 6h-2z" />
+      <path d="M14 9h2l-.5 6h-2z" />
+    </>
+  ),
 });

@@ -8,4 +8,5 @@ export const AwardIcon = createIcon({
       <path d="M9.35 13.87 8.25 20 12 17.9 15.75 20l-1.1-6.13" />
     </>
   ),
+  secondaryPath: <circle cx="12" cy="9.5" r="3.75" />,
 });

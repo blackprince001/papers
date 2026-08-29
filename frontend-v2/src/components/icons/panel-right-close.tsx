@@ -9,4 +9,5 @@ export const PanelRightCloseIcon = createIcon({
       <path d="M8 9.5l2.5 2.5L8 14.5" />
     </>
   ),
+  secondaryPath: <rect x="5" y="6.5" width="13" height="11" rx="1.5" />,
 });

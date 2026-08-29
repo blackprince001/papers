@@ -15,7 +15,7 @@ function StepIcon({ status }: { status: StepState['status'] }) {
     case 'completed':
       return <CheckCircleIcon size="sm" filled className="text-(--sky-blue)" />;
     case 'running':
-      return <Spinner size={14} className="text-(--sky-blue)" />;
+      return <Spinner size="sm" className="text-(--sky-blue)" />;
     case 'skipped':
       return <MinusCircleIcon size="sm" className="text-(--muted-foreground) opacity-60" />;
     case 'failed':

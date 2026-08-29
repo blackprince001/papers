@@ -61,8 +61,17 @@ export const aiFeaturesApi = {
     api.post(`/papers/${paperId}/generate-highlights`),
 
   /** Selection AI action — the answer is saved (and returned) as an annotation. */
-  aiAction: (paperId: number, payload: AIActionPayload): Promise<Annotation> =>
-    api.post<Annotation>(`/papers/${paperId}/ai-actions`, payload),
+  aiAction: (
+    paperId: number,
+    payload: AIActionPayload,
+    options: { idempotencyKey?: string; signal?: AbortSignal } = {},
+  ): Promise<Annotation> =>
+    api.post<Annotation>(`/papers/${paperId}/ai-actions`, payload, {
+      headers: options.idempotencyKey
+        ? { 'Idempotency-Key': options.idempotencyKey }
+        : undefined,
+      signal: options.signal,
+    }),
 };
 
 export type AIActionKind = 'explain' | 'why' | 'define';
@@ -72,4 +81,7 @@ export interface AIActionPayload {
   selection_text: string;
   page: number;
   rects: Array<{ left: number; top: number; width: number; height: number }>;
+  visibility?: 'private' | 'paper';
+  regenerate?: boolean;
+  context?: Record<string, unknown>;
 }

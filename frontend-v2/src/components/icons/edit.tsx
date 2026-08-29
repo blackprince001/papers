@@ -8,4 +8,5 @@ export const EditIcon = createIcon({
       <path d="M15.25 5.93l2.82 2.82" />
     </>
   ),
+  secondaryPath: <path d="m5.8 16.5 10.7-10.7 1.7 1.7L7.5 18z" />,
 });

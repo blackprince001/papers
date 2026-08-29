@@ -68,7 +68,7 @@ export function ResearchComposer({
               : 'bg-(--muted) text-(--muted-foreground) cursor-not-allowed',
           )}
         >
-          <ArrowUpIcon size={16} />
+          <ArrowUpIcon size="md" />
         </button>
       </div>
     </div>

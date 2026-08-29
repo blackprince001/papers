@@ -8,4 +8,5 @@ export const FolderPlusIcon = createIcon({
       <path d="M12 11.25v4.5M9.75 13.5h4.5" />
     </>
   ),
+  secondaryPath: <path d="M5 9h14v8.5H5z" />,
 });

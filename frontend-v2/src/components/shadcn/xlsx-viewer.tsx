@@ -479,7 +479,7 @@ function ViewerLoadingSurface({
 }) {
   return (
     <div className="grid h-full min-h-52 w-full min-w-full place-items-center bg-transparent">
-      {showSpinner ? <Spinner className="size-4" /> : null}
+      {showSpinner ? <Spinner className="size-5" /> : null}
     </div>
   )
 }
@@ -521,7 +521,7 @@ export function WorkbookTableHeaderMenu({
           {triggerIcon ? (
             triggerIcon
           ) : (
-            <MoreHorizontalIcon className="size-3.5" />
+            <MoreHorizontalIcon className="size-4" />
           )}
         </Button>
       </DropdownMenuTrigger>
@@ -684,7 +684,7 @@ function WorkbookSearchPopover({
             aria-label="Search workbook"
             disabled={controlsDisabled}
           >
-            <SearchIcon className="size-4" />
+            <SearchIcon className="size-5" />
           </Button>
         </PopoverTrigger>
       </ToolbarTooltip>
@@ -734,7 +734,7 @@ function WorkbookSearchPopover({
                 disabled={isSearching || searchResults.length === 0}
                 onClick={() => goToRelativeResult(-1)}
               >
-                <ChevronLeftIcon className="size-4" />
+                <ChevronLeftIcon className="size-5" />
               </Button>
               <Button
                 type="button"
@@ -744,7 +744,7 @@ function WorkbookSearchPopover({
                 disabled={isSearching || searchResults.length === 0}
                 onClick={() => goToRelativeResult(1)}
               >
-                <ChevronRightIcon className="size-4" />
+                <ChevronRightIcon className="size-5" />
               </Button>
             </div>
           </div>
@@ -819,9 +819,9 @@ function WorkbookToolbar({
                 onClick={() => onIsDarkChange(!isDark)}
               >
                 {isDark ? (
-                  <SunIcon className="size-4" />
+                  <SunIcon className="size-5" />
                 ) : (
-                  <MoonIcon className="size-4" />
+                  <MoonIcon className="size-5" />
                 )}
               </Button>
             </ToolbarTooltip>
@@ -842,7 +842,7 @@ function WorkbookToolbar({
                 aria-label="Zoom out"
                 onClick={zoomOut}
               >
-                <ZoomOutIcon className="size-4" />
+                <ZoomOutIcon className="size-5" />
               </Button>
             </ToolbarTooltip>
             <Select
@@ -878,7 +878,7 @@ function WorkbookToolbar({
                 aria-label="Zoom in"
                 onClick={zoomIn}
               >
-                <ZoomInIcon className="size-4" />
+                <ZoomInIcon className="size-5" />
               </Button>
             </ToolbarTooltip>
           </div>
@@ -901,7 +901,7 @@ function WorkbookToolbar({
                   aria-label="Download XLSX"
                   onClick={onDownload}
                 >
-                  <DownloadIcon className="size-4" />
+                  <DownloadIcon className="size-5" />
                 </Button>
               </ToolbarTooltip>
             </>
@@ -920,7 +920,7 @@ function WorkbookToolbar({
                   aria-label="Upload XLSX"
                   onClick={onUploadClick}
                 >
-                  <UploadIcon className="size-4" />
+                  <UploadIcon className="size-5" />
                 </Button>
               </ToolbarTooltip>
             </>
@@ -962,7 +962,7 @@ function WorkbookStandaloneToolbar({
                 aria-label="Upload XLSX"
                 onClick={onUploadClick}
               >
-                <UploadIcon className="size-4" />
+                <UploadIcon className="size-5" />
               </Button>
             </ToolbarTooltip>
           ) : null}
@@ -1573,7 +1573,7 @@ function XlsxViewerContent({
               className="mt-4"
               onClick={() => fileInputRef.current?.click()}
             >
-              <UploadIcon className="size-4" />
+              <UploadIcon className="size-5" />
               Upload XLSX
             </Button>
           </div>
@@ -1613,7 +1613,7 @@ function XlsxViewerContent({
               className="mt-4"
               onClick={() => fileInputRef.current?.click()}
             >
-              <UploadIcon className="size-4" />
+              <UploadIcon className="size-5" />
               Upload XLSX
             </Button>
           </div>

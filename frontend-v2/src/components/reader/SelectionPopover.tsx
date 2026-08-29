@@ -29,6 +29,7 @@ export function SelectionPopover({
   selection,
   pendingAction,
   onAIAction,
+  onCancelAction,
   onHighlight,
   onComment,
   onClose,
@@ -36,6 +37,7 @@ export function SelectionPopover({
   selection: SelectionState;
   pendingAction: AIActionKind | null;
   onAIAction: (kind: AIActionKind) => void;
+  onCancelAction?: () => void;
   onHighlight: (color: ThemeName) => void;
   onComment: (text: string) => void;
   onClose: () => void;
@@ -98,6 +100,16 @@ export function SelectionPopover({
           </button>
         ))}
       </div>
+
+      {pendingAction && onCancelAction && (
+        <button
+          type="button"
+          onClick={onCancelAction}
+          className="mb-2 w-full rounded-lg border border-(--border) px-2 py-1.5 text-caption text-(--muted-foreground) transition-colors hover:bg-(--secondary) hover:text-(--foreground)"
+        >
+          Cancel AI action
+        </button>
+      )}
 
       {/* Color swatch row for one-off highlights */}
       <div className="mb-2 flex items-center gap-1.5 px-0.5">

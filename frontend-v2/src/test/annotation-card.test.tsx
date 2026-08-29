@@ -93,6 +93,25 @@ describe('AnnotationCard at-mark actions', () => {
     const card = screen.getByLabelText('Delete annotation').closest('.group\\/card');
     expect(card).toHaveClass('opacity-40', 'pointer-events-none');
   });
+
+  it('offers explicit regeneration for a saved AI explanation', async () => {
+    const onRegenerate = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <AnnotationCard
+        annotation={{
+          ...annotation,
+          content: 'AI explanation',
+          highlight_type: 'explain',
+          selection_data: { ...annotation.selection_data, source: 'ai_action' },
+        } as never}
+        onRegenerate={onRegenerate}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Regenerate explanation' }));
+    expect(onRegenerate).toHaveBeenCalledOnce();
+  });
 });
 
 describe('UndoNotice', () => {

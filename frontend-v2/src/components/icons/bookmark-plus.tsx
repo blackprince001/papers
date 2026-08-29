@@ -9,4 +9,5 @@ export const BookmarkPlusIcon = createIcon({
       <path d="M10 10h4" />
     </>
   ),
+  secondaryPath: <path d="M8 5.5h6.5v9l-3.25-1.9L8 14.5z" />,
 });

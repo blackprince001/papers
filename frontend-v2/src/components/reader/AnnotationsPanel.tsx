@@ -12,11 +12,15 @@ export function AnnotationsPanel({
   activeId,
   onSelect,
   onDelete,
+  onRegenerate,
+  regeneratingAnnotationId,
 }: {
   annotations: Annotation[];
   activeId: number | null;
   onSelect: (annotation: Annotation) => void;
   onDelete: (annotation: Annotation) => void;
+  onRegenerate?: (annotation: Annotation) => void;
+  regeneratingAnnotationId?: number | null;
 }) {
   const cardRefs = useRef(new Map<number, HTMLDivElement>());
 
@@ -71,6 +75,8 @@ export function AnnotationsPanel({
               compact
               onClick={() => onSelect(annotation)}
               onDelete={() => onDelete(annotation)}
+              onRegenerate={onRegenerate ? () => onRegenerate(annotation) : undefined}
+              regenerating={regeneratingAnnotationId === annotation.id}
             />
           </div>
         );

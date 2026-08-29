@@ -8,4 +8,5 @@ export const NoteIcon = createIcon({
       <path d="M14.5 19.5v-3a2 2 0 0 1 2-2h3" />
     </>
   ),
+  secondaryPath: <path d="M6 6h11v8l-4 4H6z" />,
 });

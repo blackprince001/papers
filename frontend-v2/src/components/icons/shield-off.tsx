@@ -8,4 +8,5 @@ export const ShieldOffIcon = createIcon({
       <path d="M4.75 4.75l14.5 14.5" />
     </>
   ),
+  secondaryPath: <path d="M12 5.5c1.7 1.1 3.4 1.7 5.5 2v4.7c0 3-1.6 5-5.5 6.8-3.9-1.8-5.5-3.8-5.5-6.8V7.5c2.1-.3 3.8-.9 5.5-2z" />,
 });

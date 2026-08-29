@@ -9,4 +9,5 @@ export const UserPlusIcon = createIcon({
       <path d="M18.25 14.5v4M16.25 16.5h4" />
     </>
   ),
+  secondaryPath: <circle cx="9" cy="7.5" r="2.2" />,
 });

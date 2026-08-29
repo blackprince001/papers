@@ -11,6 +11,7 @@ import {
 } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { MessageAuthor } from '@/components/ai/MessageAuthor';
+import { AgentStatus } from '@/components/ai/AgentStatus';
 import { ReasoningTrace } from '@/components/ai/ReasoningTrace';
 import { MarkdownMessage } from '@/components/MarkdownMessage';
 import { CitationsPanel } from '@/components/deep-research/CitationsPanel';
@@ -217,13 +218,13 @@ export default function DeepResearch() {
                       className="group flex items-center justify-between gap-3 text-left rounded-lg px-3 py-2 hover:bg-(--muted)/50 transition-colors"
                     >
                       <span className="flex items-center gap-2.5 min-w-0">
-                        <ClockIcon size={14} className="text-(--muted-foreground) shrink-0" />
+                        <ClockIcon size="sm" className="text-(--muted-foreground) shrink-0" />
                         <span className="text-code text-(--foreground) truncate">
                           {r.title || r.question}
                         </span>
                       </span>
                       <ArrowUpRightIcon
-                        size={14}
+                        size="sm"
                         className="text-(--muted-foreground) shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                       />
                     </button>
@@ -251,6 +252,12 @@ export default function DeepResearch() {
         <div>
           <MessageAuthor role="assistant" />
           <div className="space-y-5">
+            {isRunning && (
+              <AgentStatus
+                status={dr.reconnecting ? 'retrying' : 'running'}
+                label={dr.reconnecting ? 'Reconnecting to research' : 'Working through sources'}
+              />
+            )}
             <ReasoningTrace
               activity={dr.activity}
               running={isRunning}
@@ -394,11 +401,11 @@ function FollowUps({
             className="group w-full flex items-center justify-between gap-3 py-3 border-b border-(--border) text-left hover:opacity-80 transition-opacity"
           >
             <span className="flex items-center gap-2.5 min-w-0">
-              <SearchIcon size={15} className="text-(--muted-foreground) shrink-0" />
+                        <SearchIcon size="sm" className="text-(--muted-foreground) shrink-0" />
               <span className="text-code text-(--foreground) truncate">{q}</span>
             </span>
             <ArrowUpRightIcon
-              size={15}
+                        size="sm"
               className="text-(--muted-foreground) shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
             />
           </button>

@@ -1,6 +1,11 @@
 import { useMemo, useState, type ComponentType } from 'react';
 import * as icons from '../../components/icons';
-import { ICON_SIZES, type IconProps, type IconSize } from '../../components/icons';
+import {
+  ICON_METADATA,
+  ICON_SIZES,
+  type IconProps,
+  type IconSize,
+} from '../../components/icons';
 
 /* Dev-only review surface for the icon set. Renders through the real
  * createIcon pipeline (stroke correction, presets, filled variants) inside
@@ -16,6 +21,12 @@ export default function IconSheet() {
   const [query, setQuery] = useState('');
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
   const [filled, setFilled] = useState(false);
+  const [duotone, setDuotone] = useState(true);
+  const [secondaryTone, setSecondaryTone] = useState<'inherit' | 'muted'>('inherit');
+  const duotoneCount = Object.values(ICON_METADATA).filter(
+    ({ duotone: supported }) => supported,
+  ).length;
+  const secondaryColor = secondaryTone === 'muted' ? 'var(--muted-foreground)' : undefined;
 
   const entries = useMemo(
     () =>
@@ -39,7 +50,8 @@ export default function IconSheet() {
           <div>
             <h1>Lumen Icons</h1>
             <p className="text-code text-(--muted-foreground)">
-              {entries.length} glyphs · rounded outline · 1.5u stroke · 24 grid
+              {entries.length} glyphs · rounded outline · 1.5u stroke · 24 grid · {duotoneCount}{' '}
+              duotone-ready
             </p>
           </div>
           <div className="ml-auto flex items-center gap-2">
@@ -56,6 +68,20 @@ export default function IconSheet() {
               {filled ? 'Filled' : 'Outline'}
             </button>
             <button
+              onClick={() => setDuotone((value) => !value)}
+              className="h-9 rounded-lg border border-(--border) px-3 text-btn-sm hover:bg-(--muted)"
+              aria-pressed={duotone}
+            >
+              {duotone ? 'Duotone on' : 'Duotone off'}
+            </button>
+            <button
+              onClick={() => setSecondaryTone((value) => (value === 'inherit' ? 'muted' : 'inherit'))}
+              className="h-9 rounded-lg border border-(--border) px-3 text-btn-sm hover:bg-(--muted)"
+              aria-pressed={secondaryTone === 'muted'}
+            >
+              {secondaryTone === 'muted' ? 'Secondary: muted' : 'Secondary: inherit'}
+            </button>
+            <button
               onClick={toggleDark}
               className="h-9 rounded-lg border border-(--border) px-3 text-btn-sm hover:bg-(--muted)"
             >
@@ -70,11 +96,22 @@ export default function IconSheet() {
               key={name}
               className="rounded-2xl border border-(--border) bg-(--card) p-4 flex flex-col items-center gap-3"
             >
-              <Glyph size={96 as number} filled={filled} strokeWidth={1.5} />
+              <Glyph
+                size={96 as number}
+                filled={filled}
+                duotone={duotone}
+                secondaryColor={secondaryColor}
+                strokeWidth={1.5}
+              />
               <div className="flex items-end gap-2">
                 {PRESETS.map((p) => (
                   <span key={p} title={`${p} · ${ICON_SIZES[p]}px`} className="inline-flex">
-                    <Glyph size={p} filled={filled} />
+                    <Glyph
+                      size={p}
+                      filled={filled}
+                      duotone={duotone}
+                      secondaryColor={secondaryColor}
+                    />
                   </span>
                 ))}
               </div>

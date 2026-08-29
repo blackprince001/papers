@@ -249,7 +249,7 @@ function ViewerLoadingSurface({
 }) {
   return (
     <div className="grid h-full min-h-52 place-items-center bg-transparent">
-      {showSpinner ? <Spinner className="size-4" /> : null}
+      {showSpinner ? <Spinner className="size-5" /> : null}
     </div>
   )
 }
@@ -393,7 +393,7 @@ function DocxToolbar({
               disabled={controlsDisabled}
               onClick={onToggleSidebar}
             >
-              <PanelLeftCloseIcon className="size-4" />
+              <PanelLeftCloseIcon className="size-5" />
             </Button>
           </ToolbarTooltip>
           <DocxPageNumberControl
@@ -417,9 +417,9 @@ function DocxToolbar({
                 onClick={() => onIsDarkChange(!isDark)}
               >
                 {isDark ? (
-                  <SunIcon className="size-4" />
+                  <SunIcon className="size-5" />
                 ) : (
-                  <MoonIcon className="size-4" />
+                  <MoonIcon className="size-5" />
                 )}
               </Button>
             </ToolbarTooltip>
@@ -439,7 +439,7 @@ function DocxToolbar({
                   )
                 }
               >
-                <ZoomOutIcon className="size-4" />
+                <ZoomOutIcon className="size-5" />
               </Button>
             </ToolbarTooltip>
             <Select
@@ -476,7 +476,7 @@ function DocxToolbar({
                   )
                 }
               >
-                <ZoomInIcon className="size-4" />
+                <ZoomInIcon className="size-5" />
               </Button>
             </ToolbarTooltip>
           </div>
@@ -496,9 +496,9 @@ function DocxToolbar({
                   onClick={onDownload}
                 >
                   {isPreparingDownload ? (
-                    <Spinner className="size-4" />
+                    <Spinner className="size-5" />
                   ) : (
-                    <DownloadIcon className="size-4" />
+                    <DownloadIcon className="size-5" />
                   )}
                 </Button>
               </ToolbarTooltip>
@@ -518,7 +518,7 @@ function DocxToolbar({
                   aria-label="Upload DOCX"
                   onClick={onUploadClick}
                 >
-                  <UploadIcon className="size-4" />
+                  <UploadIcon className="size-5" />
                 </Button>
               </ToolbarTooltip>
             </>
@@ -1037,7 +1037,7 @@ function DocxViewerContent({
                   className="mt-4"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <UploadIcon className="size-4" />
+                  <UploadIcon className="size-5" />
                   Upload DOCX
                 </Button>
               </div>

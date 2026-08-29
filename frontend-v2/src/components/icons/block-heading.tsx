@@ -9,4 +9,5 @@ export const BlockHeadingIcon = createIcon({
       <path d="M6.5 12h11" />
     </>
   ),
+  secondaryPath: <rect x="6.5" y="8.5" width="11" height="3" rx="1" />,
 });

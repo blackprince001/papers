@@ -41,7 +41,7 @@ export function ProcessingStatusBadge({ status, paperId, className }: Processing
   if (!progress.isActive) {
     return (
       <Badge className={cn('bg-[rgba(60,145,230,0.12)] text-(--sky-blue)', className)}>
-        <Spinner size={10} className="mr-1" aria-hidden />
+        <Spinner size="xs" className="mr-1" aria-hidden />
         Processing
       </Badge>
     );

@@ -1,9 +1,16 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { chatStreamClient } from '@/lib/ai/chatStream';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { chatStreamClient, normalizedStream } from '@/lib/ai/chatStream';
 import type { ChatReferences } from '@/lib/api/chat';
 import type { ReferenceManifestEntry } from '@/lib/api/references';
 import { logger } from '@/lib/logger';
 import { useTypewriter } from '@/hooks/use-typewriter';
+import {
+  INITIAL_AI_STREAM_STATE,
+  isAIStreamActive,
+  reduceAIStream,
+  type AIStreamState,
+} from '@/lib/ai/streamState';
+import type { AIActivity, AIRetry, AISource, AIWarning } from '@/lib/ai/events';
 
 export type ChatStreamStatus =
   | 'idle'
@@ -40,6 +47,11 @@ export interface ChatStreamError {
 export interface ChatStreamState {
   status: ChatStreamStatus;
   content: string;
+  /** Safe, normalized activity; raw thoughts are intentionally absent. */
+  activities: AIActivity[];
+  sources: AISource[];
+  warning: AIWarning | null;
+  retryInfo: AIRetry | null;
   thoughts: ThoughtEvent[];
   toolCalls: ToolCallEvent[];
   toolResults: ToolResultEvent[];
@@ -49,19 +61,6 @@ export interface ChatStreamState {
   sessionId: number | null;
   referenceManifest: ReferenceManifestEntry[] | null;
 }
-
-const INITIAL_STATE: ChatStreamState = {
-  status: 'idle',
-  content: '',
-  thoughts: [],
-  toolCalls: [],
-  toolResults: [],
-  currentTool: null,
-  error: null,
-  messageId: null,
-  sessionId: null,
-  referenceManifest: null,
-};
 
 export interface UseChatStreamReturn extends ChatStreamState {
   /** Smoothly-revealed view of `content` for typewriter rendering. */
@@ -84,18 +83,65 @@ export interface UseChatStreamReturn extends ChatStreamState {
   isActive: boolean;
   /** The user message that was sent (preserved for retry). */
   pendingUserMessage: string | null;
-  /** Epoch ms of the scheduled automatic retry after a rate-limit error, or null. */
+  /** Compatibility field; chat retries remain explicit, so this is always null. */
   autoRetryAt: number | null;
 }
 
-// Transient rate limits are retried automatically with backoff before asking
-// the user to click Retry.
-const RATE_LIMIT_AUTO_RETRIES = 2;
-const RATE_LIMIT_BACKOFF_MS = [5_000, 15_000];
+const INCOMPLETE_STREAM_ERROR = {
+  code: 'network' as const,
+  message: 'The connection ended before the response was complete. Try again.',
+  recoverable: true,
+};
+
+function chatStatusFor(state: AIStreamState): ChatStreamStatus {
+  switch (state.status) {
+    case 'completed':
+      return 'done';
+    case 'failed':
+    case 'paused':
+      return 'error';
+    case 'cancelled':
+      return 'idle';
+    case 'connecting':
+    case 'retrying':
+    case 'reconciling':
+      return 'connecting';
+    case 'streaming':
+      return 'streaming';
+    case 'idle':
+      return 'idle';
+  }
+}
+
+function chatStateFor(state: AIStreamState): ChatStreamState {
+  const currentTool = [...state.activities]
+    .reverse()
+    .find((activity) => activity.kind === 'tool' && activity.state === 'running')?.label ?? null;
+
+  return {
+    status: chatStatusFor(state),
+    content: state.content,
+    activities: state.activities,
+    sources: state.sources,
+    warning: state.warning,
+    retryInfo: state.retry,
+    // Kept for the legacy prop shape while paper chat migrates. No renderer
+    // should read these fields after the shared activity migration.
+    thoughts: [],
+    toolCalls: [],
+    toolResults: [],
+    currentTool,
+    error: state.error,
+    messageId: state.messageId,
+    sessionId: state.sessionId,
+    referenceManifest: state.referenceManifest,
+  };
+}
 
 export function useChatStream(): UseChatStreamReturn {
-  const [state, setState] = useState<ChatStreamState>(INITIAL_STATE);
+  const [streamState, setStreamState] = useState<AIStreamState>(INITIAL_AI_STREAM_STATE);
   const abortRef = useRef<AbortController | null>(null);
+  const generationRef = useRef(0);
   const lastSendRef = useRef<{
     paperId: number;
     message: string;
@@ -103,16 +149,9 @@ export function useChatStream(): UseChatStreamReturn {
     sessionId?: number;
     providerId?: number;
   } | null>(null);
-  const pendingUserMessageRef = useRef<string | null>(null);
-  const [autoRetryAt, setAutoRetryAt] = useState<number | null>(null);
-  const autoRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const rateLimitAttemptsRef = useRef(0);
+  const [pendingUserMessage, setPendingUserMessage] = useState<string | null>(null);
 
-  const clearAutoRetry = useCallback(() => {
-    if (autoRetryTimerRef.current) clearTimeout(autoRetryTimerRef.current);
-    autoRetryTimerRef.current = null;
-    setAutoRetryAt(null);
-  }, []);
+  const state = useMemo(() => chatStateFor(streamState), [streamState]);
 
   const streamSettled = state.status === 'done' || state.status === 'error';
   const displayedContent = useTypewriter(state.content, streamSettled);
@@ -124,187 +163,74 @@ export function useChatStream(): UseChatStreamReturn {
       references?: ChatReferences,
       sessionId?: number,
       providerId?: number,
-      isAutoRetry = false,
     ) => {
+      const generation = ++generationRef.current;
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
 
-      clearAutoRetry();
-      if (!isAutoRetry) rateLimitAttemptsRef.current = 0;
-
       lastSendRef.current = { paperId, message, references, sessionId, providerId };
-      pendingUserMessageRef.current = message;
+      setPendingUserMessage(message);
 
-      setState({
-        ...INITIAL_STATE,
+      setStreamState({
+        ...INITIAL_AI_STREAM_STATE,
         status: 'connecting',
-        content: '',
       });
 
-      // Object wrapper so TS doesn't narrow the closure-assigned value to never.
-      const streamErrorRef: { current: { code: string; recoverable: boolean } | null } = {
-        current: null,
-      };
-
       try {
-        const gen = chatStreamClient.streamMessage(
-          paperId,
-          message,
-          references,
-          sessionId,
-          { signal: controller.signal, timeoutMs: 60_000, maxRetries: 2, providerId },
+        const gen = normalizedStream(
+          chatStreamClient.streamMessage(
+            paperId,
+            message,
+            references,
+            sessionId,
+            { signal: controller.signal, timeoutMs: 60_000, maxRetries: 0, providerId },
+          ),
         );
+        let sawTerminalEvent = false;
 
         for await (const event of gen) {
           if (controller.signal.aborted) break;
-
-          setState((prev) => {
-            const next = { ...prev };
-
-            switch (event.type) {
-              case 'chunk': {
-                const text = event.content || '';
-                next.content = prev.content + text;
-                next.status = 'streaming';
-                break;
-              }
-
-              case 'tool_call':
-                next.toolCalls = [
-                  ...prev.toolCalls,
-                  {
-                    tool: event.tool || 'unknown',
-                    arguments: (event.arguments as Record<string, unknown>) || {},
-                    timestamp: Date.now(),
-                  },
-                ];
-                next.currentTool = event.tool || 'unknown';
-                next.status = 'using_tool';
-                break;
-
-              case 'tool_result':
-                next.toolResults = [
-                  ...prev.toolResults,
-                  {
-                    tool: event.tool || 'unknown',
-                    result: event.result || '',
-                    timestamp: Date.now(),
-                  },
-                ];
-                next.currentTool = null;
-                if (prev.toolCalls.length > prev.toolResults.length) {
-                } else {
-                  next.status = 'streaming';
-                }
-                break;
-
-              case 'thought': {
-                const delta = event.content || '';
-                const last = prev.thoughts[prev.thoughts.length - 1];
-                if (last) {
-                  next.thoughts = [
-                    ...prev.thoughts.slice(0, -1),
-                    { content: last.content + delta, timestamp: last.timestamp },
-                  ];
-                } else {
-                  next.thoughts = [{ content: delta, timestamp: Date.now() }];
-                }
-                next.status = 'thinking';
-                break;
-              }
-
-              case 'error':
-                next.status = 'error';
-                next.error = {
-                  message: event.error || 'An error occurred',
-                  code: (event.error_code as string) || 'internal',
-                  recoverable: event.recoverable !== false,
-                };
-                streamErrorRef.current = {
-                  code: next.error.code,
-                  recoverable: next.error.recoverable,
-                };
-                break;
-
-              case 'keepalive':
-                break;
-
-              case 'done':
-                next.messageId = (event.message_id as number) ?? null;
-                next.sessionId = (event.session_id as number) ?? null;
-                next.referenceManifest = (event.reference_manifest as ReferenceManifestEntry[]) ?? null;
-                next.status = 'done';
-                break;
-            }
-
-            return next;
-          });
+          if (generation !== generationRef.current) return;
+          setStreamState((previous) => reduceAIStream(previous, event));
+          if (
+            event.type === 'complete' ||
+            event.type === 'error' ||
+            event.type === 'paused' ||
+            event.type === 'cancelled'
+          ) {
+            sawTerminalEvent = true;
+          }
         }
 
-        setState((prev) => {
-          if (prev.status !== 'done' && prev.status !== 'error') {
-            return { ...prev, status: 'done' };
-          }
-          return prev;
-        });
-
-        // Rate limits are transient — retry automatically with backoff before
-        // falling back to the manual Retry button.
-        const streamError = streamErrorRef.current;
         if (
-          streamError?.code === 'rate_limit' &&
-          streamError.recoverable &&
+          generation === generationRef.current &&
           !controller.signal.aborted &&
-          rateLimitAttemptsRef.current < RATE_LIMIT_AUTO_RETRIES
+          !sawTerminalEvent
         ) {
-          const attempt = rateLimitAttemptsRef.current;
-          rateLimitAttemptsRef.current = attempt + 1;
-          const delay =
-            RATE_LIMIT_BACKOFF_MS[Math.min(attempt, RATE_LIMIT_BACKOFF_MS.length - 1)];
-          setAutoRetryAt(Date.now() + delay);
-          autoRetryTimerRef.current = setTimeout(() => {
-            const last = lastSendRef.current;
-            if (!last) return;
-            void runStream(
-              last.paperId,
-              last.message,
-              last.references,
-              last.sessionId,
-              last.providerId,
-              true,
-            );
-          }, delay);
-        } else if (streamError == null) {
-          rateLimitAttemptsRef.current = 0;
+          setStreamState((previous) => reduceAIStream(previous, {
+            type: 'error',
+            error: INCOMPLETE_STREAM_ERROR,
+          }));
         }
       } catch (err) {
-        if ((err as Error).name === 'AbortError') {
-          setState((prev) => ({
-            ...prev,
-            status: 'idle',
-            error: null,
-          }));
+        if ((err as Error).name === 'AbortError' || controller.signal.aborted) {
+          if (generation === generationRef.current) setStreamState(INITIAL_AI_STREAM_STATE);
           return;
         }
 
-        const message = (err as Error).message || 'Failed to send message';
         logger.error('Chat stream error:', err);
-
-        setState((prev) => ({
-          ...prev,
-          status: 'error',
-          error: {
-            message,
-            code: 'internal',
-            recoverable: true,
-          },
-        }));
+        if (generation === generationRef.current) {
+          setStreamState((previous) => reduceAIStream(previous, {
+            type: 'error',
+            error: INCOMPLETE_STREAM_ERROR,
+          }));
+        }
       } finally {
-        pendingUserMessageRef.current = null;
+        if (generation === generationRef.current) setPendingUserMessage(null);
       }
     },
-    [clearAutoRetry],
+    [],
   );
 
   const send = useCallback(
@@ -321,17 +247,12 @@ export function useChatStream(): UseChatStreamReturn {
   );
 
   const cancel = useCallback(() => {
+    generationRef.current += 1;
     abortRef.current?.abort();
     abortRef.current = null;
-    clearAutoRetry();
-    rateLimitAttemptsRef.current = 0;
-    setState((prev) => ({
-      ...prev,
-      status: 'idle',
-      error: null,
-    }));
-    pendingUserMessageRef.current = null;
-  }, [clearAutoRetry]);
+    setStreamState(INITIAL_AI_STREAM_STATE);
+    setPendingUserMessage(null);
+  }, []);
 
   const retry = useCallback(() => {
     const last = lastSendRef.current;
@@ -346,19 +267,18 @@ export function useChatStream(): UseChatStreamReturn {
   }, [runStream]);
 
   const reset = useCallback(() => {
+    generationRef.current += 1;
     abortRef.current?.abort();
     abortRef.current = null;
-    clearAutoRetry();
-    rateLimitAttemptsRef.current = 0;
-    setState(INITIAL_STATE);
-    pendingUserMessageRef.current = null;
+    setStreamState(INITIAL_AI_STREAM_STATE);
+    setPendingUserMessage(null);
     lastSendRef.current = null;
-  }, [clearAutoRetry]);
+  }, []);
 
   useEffect(() => {
     return () => {
+      generationRef.current += 1;
       abortRef.current?.abort();
-      if (autoRetryTimerRef.current) clearTimeout(autoRetryTimerRef.current);
     };
   }, []);
 
@@ -369,13 +289,9 @@ export function useChatStream(): UseChatStreamReturn {
     cancel,
     retry,
     reset,
-    isActive:
-      state.status === 'connecting' ||
-      state.status === 'streaming' ||
-      state.status === 'thinking' ||
-      state.status === 'using_tool',
-    pendingUserMessage: pendingUserMessageRef.current,
-    autoRetryAt,
+    isActive: isAIStreamActive(streamState.status),
+    pendingUserMessage,
+    autoRetryAt: null,
   };
 }
 

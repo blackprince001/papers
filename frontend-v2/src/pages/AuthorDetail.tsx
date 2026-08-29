@@ -62,7 +62,7 @@ export default function AuthorDetail() {
 
       {!isLoading && !works.length && !displayName && (
         <div className="flex flex-col items-center gap-3 py-24 text-center text-(--muted-foreground)">
-          <SearchIcon size={32} className="opacity-30" />
+          <SearchIcon size={40} className="opacity-30" />
           <p className="text-body">
             No author found for ID <code className="text-code">{id}</code>
           </p>

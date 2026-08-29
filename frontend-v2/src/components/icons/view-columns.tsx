@@ -9,4 +9,5 @@ export const ViewColumnsIcon = createIcon({
       <path d="M14.83 5v14" />
     </>
   ),
+  secondaryPath: <rect x="5" y="6.5" width="13" height="3" rx="1" />,
 });

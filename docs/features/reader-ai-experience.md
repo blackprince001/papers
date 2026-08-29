@@ -3,13 +3,15 @@ type: Feature Plan
 title: Reader and AI Experience Reformation
 description: A gated, file-level implementation blueprint for the PDF reader, AI chat presentation, thinking states, duotone iconography, illustrated empty states, and a secure conversational deep-research rewrite.
 tags: [feature-plan, reader, pdf, chat, deep-research, icons, empty-states, ai, accessibility]
-timestamp: 2026-08-16T00:00:00Z
-status: proposed
+timestamp: 2026-08-29T00:00:00Z
+status: in-progress
 ---
 
 # Status
 
-**In progress.** Deep-research safety work is underway; reader and visual work remains gated.
+**In progress.** Deep-research safety work is underway; Phase 5 shared AI
+presentation and Phase 6 icon implementation are complete. Phase 7 illustrated
+empty states is now open at EMPTY-01.
 
 This is the working contract for the next Lumen experience pass. It turns the
 requested direction into staged changes that can remain buildable and reviewable
@@ -832,13 +834,49 @@ Deliverable: comparison table for selection correctness, first render, scroll FP
 memory, JS/worker/WASM bytes, PWA behavior, old-annotation replay, keyboard/focus,
 outline, rotation, dark mode, and mobile/narrow behavior.
 
+#### RD-06 implementation checkpoint — 2026-08-29
+
+The isolated EmbedPDF adapter was evaluated behind a temporary development-only
+route. It exercised the neutral reader handle, overlays, page navigation, zoom,
+rotation, selection, search, outline, thumbnails, and same-origin PDFium loading
+without changing the production reader. Its temporary fixture and generated
+assets were removed after the RD-07A decision; the comparison record below is the
+retained evidence.
+
+#### RD-06 comparison record — 2026-08-29
+
+The comparison used the same generated multi-page PDF in local headless Chromium.
+The first visible page arrived in about 1.54 s through pdf.js and 1.44 s through
+the isolated EmbedPDF path. A short scroll sample recorded 56 animation frames at
+about 14.6 ms per frame for pdf.js and 97 at about 8.3 ms for EmbedPDF. These are
+directional development measurements, not release benchmarks; the two isolated
+layouts expose different viewport heights and the browser's memory API was not
+available.
+
+| Gate | pdf.js control | EmbedPDF spike | Result |
+| --- | --- | --- | --- |
+| Selection | Checkpoint D passes pointer and keyboard flow | Basic pointer selection and copy smoke test pass | Both prove the narrow fixture only |
+| First render / scroll | 1.54 s / 14.6 ms sample | 1.44 s / 8.3 ms sample | Candidate is promising, not decisive |
+| JS, worker, and WASM | Existing self-hosted worker and CMaps | About 434 KB viewer JS, 709 KB worker JS, and 4.63 MB PDFium WASM | Candidate adds material payload |
+| PWA / offline | Existing worker policy is in production | WASM is same-origin and precached once | Both pass their asset checks |
+| Old annotations / full reader flow | Existing replay, rotation, dark, zen, narrow, and 200% coverage | Not integrated with `ReaderShell` | Control wins coverage |
+| Memory, multilingual fallback, mixed rotation, mobile parity | Existing behavior is the reference | Not measured to parity | Evidence gate remains open |
+
+The memory row is intentionally marked unavailable: a headless browser cannot
+provide a reliable cross-engine memory comparison here. The candidate's font
+fallback is also disabled for the spike, so a multilingual result would not be a
+fair production comparison.
+
 ### RD-07A: Keep pdf.js or RD-07B: cut over to EmbedPDF — decision ticket
 
-If pdf.js wins, delete the spike and retain only portable geometry improvements. If
-EmbedPDF wins, migrate `ReaderShell`, self-host WASM/worker assets, update PWA policy,
-migrate and verify the `GroupsFinder`/`file-system` preview paths, remove
-`react-pdf`/`pdfjs-dist` only after no consumer remains, clean generated
-`public/pdfjs/` assets, and supersede the reader-engine ADR. Never leave two production engines indefinitely.
+**Decision: RD-07A — keep pdf.js for production.** The candidate's basic render and
+scroll sample are useful, but it does not clear the parity gate for annotation
+replay, authenticated `ReaderShell` behavior, multilingual fallback, memory, or
+narrow layouts. The existing engine already passes Checkpoint D and carries the
+reader's complete behavior. The spike is therefore disposable; the portable
+geometry contract remains the replacement seam if a later benchmark justifies a
+new engine. No production cutover is made, and two production engines are not
+maintained.
 
 ### RD-08A: Design semantic anchors and cached explanations — M, separate gate
 
@@ -860,13 +898,134 @@ Do not add a nullable passage foreign key until Lumen has a durable passage/chun
 model and a privacy rule for shared papers. Cached answers need explicit ownership,
 retention, regeneration, and collaborator visibility semantics.
 
+#### RD-08A implementation checkpoint — 2026-08-29
+
+The backend contract now has an `annotation_explanations` table with a required
+owner, annotation cascade, versioned generations, bounded status/action/visibility
+values, a 30-day retention deadline, and owner-scoped idempotency. An explanation is
+private by default; `paper` visibility is an explicit opt-in for readers who can
+already see the paper. Expired cache rows can be purged without deleting the user's
+annotation.
+
+`SemanticAnchor` v1 stores the page, quoted text, normalized rectangles, optional
+prefix/suffix, and a document revision token. The cache key includes the paper,
+anchor, action, visibility, and prompt version. The existing selection action now
+records the requesting user, accepts `Idempotency-Key`, reuses an unexpired exact
+answer, preserves one visible mark across regeneration, and rejects key reuse for a
+different selection. Authenticated readers can fetch visible records through the
+paper-level or annotation-level explanation endpoints. The Phase 5 reader
+integration uses the existing annotation rail, keeps the answer attached to its
+quote, and exposes explicit regeneration without introducing a competing floating
+answer panel.
+
+#### Phase 4 completion verification — 2026-08-29
+
+The local Postgres migration is applied through `annotation_explanations_001`. The
+backend suite passes with 177 tests and 3 skips, and Ruff passes on the changed
+backend surface. The frontend suite passes with 52 tests, TypeScript build checking,
+the standards audit, and the production build all green. Repeated Checkpoint D is
+9/9 in Chromium. An 800×900 accessibility-tree scan found and fixed unlabeled tag
+and PDF zoom controls; the rerun reports no unnamed interactive controls. The local
+API, workers, Postgres, Redis, and Vite stack remain healthy for the next phase.
+
 ## Phase 5 — shared AI presentation
+
+### Phase 5 planning checkpoint — 2026-08-29
+
+#### Current problem
+
+The frontend has one SSE parser but separate stream state machines for paper chat,
+threads, group chat, and deep research. They disagree on what completion, retry,
+cancellation, and failure mean. The public event type is also open-ended, and the
+client still carries a `thought` path even though the backend deliberately drops
+raw reasoning deltas.
+
+The goal of this phase is a single Lumen-owned presentation seam. Existing agent
+and provider code stays in place; the phase adds a deterministic wire-event
+normalizer, shared stream state, and shared response/activity/status primitives.
+There is no new AI framework in scope.
+
+#### Contract decisions
+
+The migration uses an expand-migrate-contract sequence: accept the current wire
+events while each consumer moves to a typed, app-owned event vocabulary. The
+normalized contract covers:
+
+| Event | User-facing meaning |
+| --- | --- |
+| `content_delta` | Append plain model text; Markdown remains sanitized at render time. |
+| `activity` | Show a safe phase or bounded tool summary with a stable id and status. |
+| `source` | Show a validated library reference or research citation, resolved through the existing reference surfaces. |
+| `warning` | Show a non-terminal, safe notice without provider internals. |
+| `retrying` | Show an explicit attempt/backoff or reconnect state. |
+| `complete` | Commit the authoritative ids, content, and reference manifest. |
+| `error` | Expose a stable error code, safe message, recoverability, and action. |
+| `keepalive` | Maintain the connection without changing visible content. |
+
+`thought` is not part of the normalized contract. Legacy reasoning payloads,
+raw tool arguments/results, provider exception text, unknown event types, and
+malformed payloads must not reach the UI. They are dropped, bounded, or mapped to
+a safe warning with diagnostic telemetry as appropriate.
+
+The state boundary is also explicit:
+
+- Server state owns persisted messages, reports, sources, and reference manifests.
+- The stream reducer owns connection state, deltas, safe activity, cancellation,
+  retry, terminal status, and late-event handling.
+- Components own presentation preferences such as expanded activity and scroll
+  position; they do not invent stream lifecycle state.
+
+A stream is successful only after an explicit `complete` event or an authoritative
+server snapshot. An ended response body is not inferred to be successful. Cancel
+is a distinct user action. Automatic replay of a chat `POST` is not allowed until
+the request has a turn identity or idempotency contract; otherwise retry remains
+explicit so a network failure cannot silently duplicate a user message or model
+call.
+
+Markdown stays HTML-free and sanitized, references continue through the existing
+manifest/API resolver, and every event field gets an explicit size bound. The
+existing 1,200-character tool-detail cap is the baseline for the new contract;
+activity count, source count, and buffered content ceilings will be fixed in the
+AIUI-01 fixtures. Text remains the primary status signal, with reduced motion and
+keyboard access required for every visual enhancement.
+
+#### Implementation order and gates
+
+| Order | Work | Depends on | Size | Exit evidence |
+| --- | --- | --- | --- | --- |
+| 1 | AIUI-01 contract, normalizer, fixtures, and reducer transition rules | None | M | Current chat/thread/group/research events normalize safely; malformed, unknown, legacy `thought`, cancellation, retry, and terminal cases have contract tests. |
+| 2 | AIUI-02A/02B shared message, activity, source, status, and error primitives | AIUI-01 | M | One accessible composition renders the fixture states with bounded content, sanitized Markdown, keyboard behavior, and reduced-motion behavior. |
+| 3 | Phase 5A contract checkpoint | 1–2 | — | The same fixture is readable in the dev surface and the right rail without raw reasoning or provider detail. |
+| 4 | RD-08B grounded explanation integration | RD-08A and AIUI-02 | M | Cached explanation, evidence, interruption, retry, and regeneration use the shared primitives in the existing right rail. |
+| 5 | AIUI-03 paper side/full chat tracer bullet | AIUI-01/02 | M | One reducer drives both paper chat layouts, with explicit completion, cancel, retry, references, and no duplicate optimistic messages. |
+| 6 | AIUI-04 thread/group migration and legacy renderer removal | AIUI-03 | M | Thread and group flows use the same contract and reducer; duplicate typewriter/error paths and raw-reasoning renderers are gone. |
+| 7 | AIUI-05 Thinking Orb wrapper | AIUI-02 and the migrated chat surfaces | S | The visual status layer is optional, labeled, reduced-motion safe, hidden-tab safe, and never the only status signal. |
+| 8 | Checkpoint E | 4, 6, 7 | — | All chat modes pass the shared fixtures and disconnect/provider/rate-limit/cancel recovery checks. |
+
+RD-08B can run in parallel with AIUI-03 after the Phase 5A checkpoint. AIUI-03
+remains the tracer bullet for the stream controller; AIUI-04 follows it so the
+duplicate thread/group logic is removed against a proven path.
+
+#### Verification plan
+
+- Contract: frontend fixture tests plus backend stream-adapter coverage for safe
+  event mapping, including a regression that raw reasoning never appears.
+- State: reducer tests for connect, delta, activity, retry, cancel, complete,
+  error, reconnect, late events, and duplicate terminal events.
+- UI: component and accessibility-tree checks for live status, focus, labels,
+  source navigation, 200% zoom, narrow layout, and reduced motion.
+- Integration: deterministic SSE fixtures through paper, thread, group, and deep
+  research surfaces, including disconnect, rate-limit, provider fallback, and
+  cancellation.
+- Safety/performance: no raw HTML path, bounded activity/detail retention, no
+  per-token unbounded DOM growth, and no automatic side-effecting POST replay.
 
 ### AIUI-01: Define the presentation/event contract — M
 
 Expected files:
 
 - new types under `frontend-v2/src/lib/ai/`
+- `frontend-v2/src/lib/ai/events.ts` and `frontend-v2/src/lib/ai/normalize.ts`
 - `frontend-v2/src/lib/ai/reasoning.ts`
 - `frontend-v2/src/lib/ai/chatStream.ts`
 - `frontend-v2/src/lib/ai/parseSSE.ts`
@@ -874,7 +1033,23 @@ Expected files:
 - fixture and contract tests
 
 Acceptance: safe typed blocks/events cover content, phase, bounded tool summary,
-source/evidence, warning, retry, completion, and error; unknown events degrade safely.
+source/evidence, warning, retry, completion, and error; unknown events degrade
+safely; raw reasoning and provider/internal detail cannot reach a renderer.
+
+#### AIUI-01 implementation checkpoint — 2026-08-29
+
+The first contract slice adds `events.ts`, `normalize.ts`, and `streamState.ts`.
+Current chat, thread, group, and research wire events can now be normalized into
+bounded content, activity, source, warning, retry, completion, error, pause,
+cancellation, and reconciliation events. Raw `thought` events are discarded;
+provider switches and error payloads become safe user-facing messages; manifest
+targets reject unsafe schemes; and the reducer ignores late events after an
+explicit terminal state.
+
+The contract and reducer initially landed with 12 focused tests. The full
+frontend suite passed with 64 tests, TypeScript checking, the changed-surface
+lint, and the production build. The remaining thread, group, and research
+consumers were then moved onto the shared reducer.
 
 ### AIUI-02: Build Lumen-owned rich AI primitives — L
 
@@ -894,6 +1069,15 @@ Beautiful UI patterns are copied only after inspecting the exact source and lice
 Remove `iconoir-react` and local atom dependencies. No `rehype-raw` output bypasses
 sanitization; model output remains untrusted.
 
+#### AIUI-02 implementation checkpoint — 2026-08-29
+
+The shared AI response composition now owns status text, normalized activity,
+sanitized Markdown, validated sources, warnings, and recoverable errors. The
+activity trace no longer renders raw thoughts, tool names, arguments, or provider
+results. Its keyboard disclosures expose their state, and detail text is bounded
+before rendering. `AgentStatus` is the primary status signal; `ThinkingOrb` is an
+optional visual companion with reduced-motion and hidden-tab guards.
+
 ### RD-08B: Integrate cached grounded explanations into the right rail — M
 
 **Depends on:** RD-08A and AIUI-02.
@@ -910,6 +1094,15 @@ Acceptance: explanation and answer-note requests show durable evidence, cached s
 interruption/retry, and explicit regeneration in the existing right rail; no competing
 floating answer panel is introduced.
 
+#### RD-08B implementation checkpoint — 2026-08-29
+
+The reader sends private-by-default grounded actions with an idempotency key and
+safe retry copy. The returned AI answer remains a durable annotation with its
+quoted passage and page geometry, so the existing highlight, margin-note, and
+annotation-rail surfaces provide the evidence. The rail reads the paper-scoped
+explanation cache and offers explicit regeneration; regeneration keeps one visible
+annotation while the backend retains versioned generations.
+
 ### AIUI-03: Migrate paper side/full chat — M
 
 Expected files:
@@ -922,6 +1115,27 @@ Expected files:
 - `frontend-v2/src/hooks/use-chat-controller.ts`
 - `frontend-v2/src/hooks/use-chat-stream.ts`
 - tests
+
+Acceptance: side and full-page chat share the normalized reducer and response
+primitives; completion, cancellation, retry, and reference manifests remain
+explicit and do not duplicate persisted messages.
+
+#### AIUI-03 implementation checkpoint — 2026-08-29
+
+Paper side chat and full-page `PaperChat` now share the normalized stream hook
+through `ChatMessageList`. The hook reduces bounded content and activity events,
+requires an explicit `complete` event, keeps reference manifests validated, and
+renders safe inline errors for cancellation, provider failures, and incomplete
+connections. Manual retry remains explicit; a closed chat `POST` is never replayed
+automatically.
+
+The legacy thought/tool arrays remain as empty compatibility fields for callers,
+but no renderer reads them. The existing optimistic cache handoff still
+adds the persisted user/assistant turn only after completion, while the pending
+user row is cleared through React state so fast or failed streams cannot leave a
+duplicate-looking turn behind. The focused frontend coverage now passes 68 tests
+and exercises normalized activities, explicit completion, incomplete-stream
+recovery, manual retry, and sensitive-field rejection.
 
 ### AIUI-04: Migrate threads and group chat; delete legacy renderers — M
 
@@ -937,6 +1151,16 @@ Expected files:
 Acceptance: thread/group paths use the shared reducer and response/activity
 components; duplicate typewriter and error logic is removed.
 
+#### AIUI-04 implementation checkpoint — 2026-08-29
+
+Thread and group chat now consume `normalizedStream` and `reduceAIStream`, require
+an explicit terminal event, keep manual retry explicit, and render the same
+`StreamingMessage` composition as paper chat. Deep research uses the same
+normalizer and reducer internally while preserving authoritative snapshot
+reconciliation across reconnects. The unused raw `AgentThoughtPanel` and
+`ToolCallIndicator` renderers were removed; the remaining compatibility fields
+contain no wire payloads.
+
 ### AIUI-05: Add the Thinking Orb wrapper — S
 
 Expected files:
@@ -949,16 +1173,64 @@ Expected files:
 The wrapper owns status-to-visual mapping, labels, sizing, theme, reduced motion,
 hidden-tab behavior, and fallback. Text remains the primary status signal.
 
+#### AIUI-05 implementation checkpoint — 2026-08-29
+
+`AgentStatus` and `ThinkingOrb` are available to all AI surfaces and are covered
+by the dev fixture and component tests. The orb is decorative when paired with
+text, stops its animation when the tab is hidden, and never replaces the live
+status announcement.
+
 **Checkpoint E:** all chat modes render the same fixtures and recover from disconnect,
 provider, rate-limit, and cancellation scenarios; orb-free reduced-motion mode passes.
+
+#### Phase 5 engineering checkpoint — 2026-08-29
+
+The non-visual Phase 5 gates pass: 75 frontend tests, TypeScript checking, the
+standards audit, targeted ESLint, backend tests (177 passed, 3 skipped), and
+changed-surface Ruff. Browser and visual verification were deferred to the manual
+review pass documented below.
+
+#### Phase 5 visual verification checkpoint — 2026-08-29
+
+Manual visual verification is complete. The paper reader loads and restores its
+reading position, and the previously reported app-owned console warnings are no
+longer present. The remaining avatar/network, browser scroll, font, and PDF.js
+notices are non-blocking environment or renderer messages.
+
+Phase 5 is complete. Phase 6 starts at ICON-01; no duotone asset migration begins
+until its source and redistribution terms are recorded.
 
 ## Phase 6 — duotone icon system
 
 ### ICON-01: Resolve ReUI license or approve project-owned geometry — decision ticket
 
+**Decision — 2026-08-29: project-owned geometry.** No ReUI license record or
+approved registry configuration is present in the repository. This phase therefore
+uses new Lumen-owned secondary geometry and introduces no ReUI asset payload or
+registry credential. Revisit this decision only with an explicit license, seat
+owner, redistribution terms, retrieval method, update policy, and offboarding plan.
+
 Record asset source, license owner/seats, retrieval method, allowed redistribution,
 update policy, and offboarding. Do not run an authenticated remote registry CLI until
 its payload and secret handling are reviewed.
+
+#### Phase 6 planning checkpoint — 2026-08-29
+
+The decision above keeps the implementation source-independent: no registry fetch is
+needed, and all secondary geometry remains owned by this project.
+
+#### ICON-02 implementation checkpoint — 2026-08-29
+
+The Lumen factory now accepts optional secondary geometry. It renders that layer
+behind the outline with a factory-owned opacity token, preserves the existing size,
+stroke, filled, title, class, `currentColor`, `data-icon`, and `aria-hidden`
+contracts, and allows an optional secondary color. The icon sheet exposes the
+duotone toggle, and the standards audit requires `secondaryPath` and duotone
+metadata to agree.
+
+All 106 glyphs with a useful secondary layer now provide project-owned geometry.
+`grip-vertical`, `more-horizontal`, and `spinner` remain deliberate single-layer
+exceptions because their dots or motion arc are already the legible form.
 
 ### ICON-02: Extend the factory without breaking callers — M
 
@@ -1015,7 +1287,34 @@ icon sheet and icon-system documentation, and prove no ReUI registry secret or
 unlicensed payload is committed.
 
 **Checkpoint F:** regenerated icon-consumer manifest reviewed in light/dark and all
-sizes; build/lint/audit/tests green; no licensed asset or secret violation.
+sizes; the phase surface's lint, build, audit, and tests are green; no licensed asset
+or secret violation. Repository-wide lint still reports the pre-existing 60-error,
+8-warning baseline outside this phase.
+
+#### Phase 6 implementation checkpoint — 2026-08-29
+
+The full 109-glyph set now uses the Lumen factory and barrel. Secondary geometry is
+present on 106 glyphs, with explicit metadata for all 109; the three exceptions stay
+outline-first. Compact AI, archive, citation, and author consumers now use the shared
+`xs`–`xl` presets, while numeric icon sizing remains reserved for hero art. The icon
+sheet covers preset and hero review sizes with duotone and secondary-tone toggles.
+
+The final readability pass increased the shared presets to `14 / 16 / 20 / 24 / 28px`,
+raised the semantic and default compact text tokens with them, and updated the
+reader, file-viewer, menu, select, empty-state, and error-state consumers that had
+hard-coded smaller sizes. Frontend tests, the standards audit, and the production
+build are green; the repository-wide lint baseline remains unchanged.
+
+**Checkpoint F implementation status:** complete. The human visual review of the
+larger scale can continue from the running local stack while Phase 7 begins.
+
+### Phase 7 planning checkpoint — 2026-08-29
+
+Phase 7 starts with EMPTY-01: define the illustration contract and approve a small
+art-direction sheet before migrating the standard page and panel empty states. The
+existing `EmptyState` primitive remains the layout and accessibility seam; the new
+illustration layer will provide static, theme-aware semantic artwork without adding
+motion or changing empty-state copy until the concepts are approved.
 
 ## Phase 7 — illustrated empty states
 
@@ -1379,6 +1678,7 @@ is wrong.
 
 - `frontend-v2/src/components/AISummary.tsx`
 - `frontend-v2/src/components/AnalysisSidebar.tsx`
+- `frontend-v2/src/components/author/AuthorBits.tsx`
 - `frontend-v2/src/components/BookmarksTab.tsx`
 - `frontend-v2/src/components/Breadcrumb.tsx`
 - `frontend-v2/src/components/ExpandedInput.tsx`
@@ -1405,7 +1705,6 @@ is wrong.
 - `frontend-v2/src/components/ai/ErrorBanner.tsx`
 - `frontend-v2/src/components/ai/MessageAuthor.tsx`
 - `frontend-v2/src/components/ai/ReasoningTrace.tsx`
-- `frontend-v2/src/components/ai/ToolCallIndicator.tsx`
 - `frontend-v2/src/components/chat/ChatComposer.tsx`
 - `frontend-v2/src/components/chat/ChatMessageList.tsx`
 - `frontend-v2/src/components/chat/SessionPills.tsx`

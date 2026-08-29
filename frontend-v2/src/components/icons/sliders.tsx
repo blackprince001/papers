@@ -10,4 +10,10 @@ export const SlidersIcon = createIcon({
       <path d="M3.5 16h8.9M18.6 16h1.9" />
     </>
   ),
+  secondaryPath: (
+    <>
+      <circle cx="8.5" cy="8" r="1.2" />
+      <circle cx="15.5" cy="16" r="1.2" />
+    </>
+  ),
 });

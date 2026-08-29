@@ -8,4 +8,5 @@ export const RotateIcon = createIcon({
       <path d="M19.1 4.1v4.5h-4.5" />
     </>
   ),
+  secondaryPath: <path d="m15.5 4.5 4 3.7-4 3.7V9.7h-3v-2h3z" />,
 });

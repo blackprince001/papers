@@ -9,4 +9,5 @@ export const PanelLeftOpenIcon = createIcon({
       <path d="M13.5 9.5l2.5 2.5-2.5 2.5" />
     </>
   ),
+  secondaryPath: <rect x="5" y="6.5" width="13" height="11" rx="1.5" />,
 });

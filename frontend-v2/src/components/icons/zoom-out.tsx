@@ -9,4 +9,5 @@ export const ZoomOutIcon = createIcon({
       <path d="M8.5 11h5" />
     </>
   ),
+  secondaryPath: <circle cx="11" cy="11" r="5" />,
 });

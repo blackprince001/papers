@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { multiChatApi } from '@/lib/api/multi-chat';
-import { chatStreamClient } from '@/lib/ai/chatStream';
-import type { StreamEvent } from '@/lib/ai/chatStream';
+import { chatStreamClient, normalizedStream } from '@/lib/ai/chatStream';
 import { CloseIcon, FileTextIcon, GlobeIcon, InsightIcon, SendIcon, SparklesIcon } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -11,9 +10,15 @@ import { StreamingMessage } from '@/components/ai/StreamingMessage';
 import { MessageAuthor } from '@/components/ai/MessageAuthor';
 import { ExpandedInput } from '@/components/ExpandedInput';
 import { ProviderPicker } from '@/components/ai/ProviderPicker';
-import type { ReferenceManifestEntry } from '@/lib/api/references';
 import { logger } from '@/lib/logger';
 import { useTypewriter } from '@/hooks/use-typewriter';
+import {
+  INITIAL_AI_STREAM_STATE,
+  isAIStreamActive,
+  reduceAIStream,
+  type AIStreamState,
+} from '@/lib/ai/streamState';
+import type { AIError } from '@/lib/ai/events';
 
 interface GroupChatPanelProps {
   groupId: number;
@@ -40,41 +45,24 @@ const GROUP_PROMPTS = [
   },
 ];
 
+const INCOMPLETE_STREAM_ERROR: AIError = {
+  code: 'network',
+  message: 'The connection ended before the response was complete. Try again.',
+  recoverable: true,
+};
+
 export function GroupChatPanel({ groupId, groupName, onClose }: GroupChatPanelProps) {
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
   const [activeProviderId, setActiveProviderId] = useState<number | null>(null);
   const [message, setMessage] = useState('');
   const [pendingUserMessage, setPendingUserMessage] = useState<string | null>(null);
-  const [streamState, setStreamState] = useState<{
-    status: 'idle' | 'connecting' | 'streaming' | 'thinking' | 'using_tool' | 'done' | 'error';
-    content: string;
-    displayedContent: string;
-    toolCalls: StreamEvent[];
-    toolResults: StreamEvent[];
-    thoughts: StreamEvent[];
-    currentTool: string | null;
-    error: { message: string; code: string; recoverable: boolean } | null;
-    messageId: number | null;
-    sessionId: number | null;
-    referenceManifest: ReferenceManifestEntry[] | null;
-  }>({
-    status: 'idle',
-    content: '',
-    displayedContent: '',
-    toolCalls: [],
-    toolResults: [],
-    thoughts: [],
-    currentTool: null,
-    error: null,
-    messageId: null,
-    sessionId: null,
-    referenceManifest: null,
-  });
-
+  const [streamState, setStreamState] = useState<AIStreamState>(INITIAL_AI_STREAM_STATE);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const generationRef = useRef(0);
+  const lastMessageRef = useRef<string | null>(null);
   const queryClient = useQueryClient();
-  const isStreaming = streamState.status !== 'idle' && streamState.status !== 'done' && streamState.status !== 'error';
+  const isStreaming = isAIStreamActive(streamState.status);
 
   const { data: latestSession } = useQuery({
     queryKey: ['multi-chat', 'latest', 'group', groupId],
@@ -83,9 +71,7 @@ export function GroupChatPanel({ groupId, groupName, onClose }: GroupChatPanelPr
   });
 
   useEffect(() => {
-    if (currentSessionId === null && latestSession) {
-      setCurrentSessionId(latestSession.id);
-    }
+    if (currentSessionId === null && latestSession) setCurrentSessionId(latestSession.id);
   }, [latestSession, currentSessionId]);
 
   const { data: currentSession, isLoading } = useQuery({
@@ -98,12 +84,11 @@ export function GroupChatPanel({ groupId, groupName, onClose }: GroupChatPanelPr
     mutationFn: () => multiChatApi.createGroupSession(groupId, 'New Session'),
     onSuccess: (session) => {
       setCurrentSessionId(session.id);
-      queryClient.invalidateQueries({ queryKey: ['multi-chat', 'latest', 'group', groupId] });
+      void queryClient.invalidateQueries({ queryKey: ['multi-chat', 'latest', 'group', groupId] });
     },
   });
 
-  // Smooth typewriter reveal of the streamed content (flushes on settle).
-  const streamSettled = streamState.status === 'done' || streamState.status === 'error';
+  const streamSettled = ['completed', 'failed', 'paused', 'cancelled'].includes(streamState.status);
   const displayedContent = useTypewriter(streamState.content, streamSettled);
 
   useEffect(() => {
@@ -111,190 +96,117 @@ export function GroupChatPanel({ groupId, groupName, onClose }: GroupChatPanelPr
   }, [currentSession?.messages, displayedContent, pendingUserMessage]);
 
   const handleCancel = useCallback(() => {
+    generationRef.current += 1;
     abortRef.current?.abort();
     abortRef.current = null;
-      setStreamState({
-        status: 'idle',
-        content: '',
-        displayedContent: '',
-        toolCalls: [],
-        toolResults: [],
-        thoughts: [],
-        currentTool: null,
-        error: null,
-        messageId: null,
-        sessionId: null,
-        referenceManifest: null,
-      });
-      setPendingUserMessage(null);
+    setStreamState(INITIAL_AI_STREAM_STATE);
+    setPendingUserMessage(null);
   }, []);
 
-  const handleRetry = useCallback(() => {
-    if (!pendingUserMessage) return;
-    const msg = pendingUserMessage;
-    setPendingUserMessage(null);
-    // Re-trigger send with the saved message
-    setStreamState({
-      status: 'idle',
-      content: '',
-      displayedContent: '',
-      toolCalls: [],
-      toolResults: [],
-      thoughts: [],
-      currentTool: null,
-      error: null,
-      messageId: null,
-      sessionId: null,
-      referenceManifest: null,
-    });
-    // Kick off send in next tick
-    setTimeout(() => handleSendWithText(msg), 0);
-  }, [pendingUserMessage]);
-
   const handleSendWithText = useCallback(async (userMessage: string) => {
+    const generation = ++generationRef.current;
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-
+    lastMessageRef.current = userMessage;
     setPendingUserMessage(userMessage);
-    setStreamState({
-      status: 'connecting',
-      content: '',
-      displayedContent: '',
-      toolCalls: [],
-      toolResults: [],
-      thoughts: [],
-      currentTool: null,
-      error: null,
-      messageId: null,
-      sessionId: null,
-      referenceManifest: null,
-    });
+    setStreamState({ ...INITIAL_AI_STREAM_STATE, status: 'connecting' });
 
     try {
       let sessionId = currentSessionId;
       if (!sessionId) {
         const session = await createSessionMutation.mutateAsync();
         sessionId = session.id;
+        setCurrentSessionId(sessionId);
       }
+      if (controller.signal.aborted || generation !== generationRef.current) return;
 
-      const gen = chatStreamClient.streamGroupMessage(
-        groupId,
-        userMessage,
-        undefined,
-        sessionId,
-        {
-          signal: controller.signal,
-          timeoutMs: 60_000,
-          maxRetries: 2,
-          providerId: activeProviderId ?? undefined,
-        },
+      setStreamState((previous) => ({ ...previous, sessionId }));
+      const stream = normalizedStream(
+        chatStreamClient.streamGroupMessage(
+          groupId,
+          userMessage,
+          undefined,
+          sessionId,
+          {
+            signal: controller.signal,
+            timeoutMs: 60_000,
+            maxRetries: 0,
+            providerId: activeProviderId ?? undefined,
+          },
+        ),
       );
+      let sawTerminalEvent = false;
+      let completed = false;
 
-      for await (const event of gen) {
-        if (controller.signal.aborted) break;
-
-        setStreamState((prev) => {
-          const next = { ...prev };
-
-          switch (event.type) {
-            case 'chunk':
-              next.content = prev.content + (event.content || '');
-              next.status = 'streaming';
-              break;
-            case 'tool_call':
-              next.toolCalls = [...prev.toolCalls, event];
-              next.currentTool = (event.tool as string) || null;
-              next.status = 'using_tool';
-              break;
-            case 'tool_result':
-              next.toolResults = [...prev.toolResults, event];
-              next.currentTool = null;
-              next.status = 'streaming';
-              break;
-            case 'thought':
-              next.thoughts = [...prev.thoughts, event];
-              next.status = 'thinking';
-              break;
-            case 'error':
-              next.status = 'error';
-              next.error = {
-                message: (event.error as string) || 'An error occurred',
-                code: (event.error_code as string) || 'internal',
-                recoverable: event.recoverable !== false,
-              };
-              break;
-            case 'keepalive':
-              break;
-            case 'done':
-              next.messageId = (event.message_id as number) ?? null;
-              next.sessionId = (event.session_id as number) ?? null;
-              next.referenceManifest = (event.reference_manifest as ReferenceManifestEntry[]) ?? null;
-              next.status = 'done';
-              break;
-          }
-
-          return next;
-        });
-      }
-
-      // Stream ended without explicit 'done'
-      setStreamState((prev) => {
-        if (prev.status !== 'done' && prev.status !== 'error') {
-          return { ...prev, status: 'done' };
+      for await (const event of stream) {
+        if (controller.signal.aborted || generation !== generationRef.current) return;
+        setStreamState((previous) => reduceAIStream(previous, event));
+        if (event.type === 'complete') {
+          sawTerminalEvent = true;
+          completed = true;
+        } else if (
+          event.type === 'error' ||
+          event.type === 'paused' ||
+          event.type === 'cancelled'
+        ) {
+          sawTerminalEvent = true;
         }
-        return prev;
-      });
-
-      // Invalidate cache to refresh persisted messages
-      if (sessionId) {
-        queryClient.invalidateQueries({ queryKey: ['multi-chat', 'session', sessionId] });
       }
-    } catch (err) {
-      if ((err as Error).name === 'AbortError') {
-        setStreamState({
-          status: 'idle',
-          content: '',
-          displayedContent: '',
-          toolCalls: [],
-          toolResults: [],
-          thoughts: [],
-          currentTool: null,
-          error: null,
-          messageId: null,
-          sessionId: null,
-          referenceManifest: null,
-        });
+
+      if (
+        !sawTerminalEvent &&
+        !controller.signal.aborted &&
+        generation === generationRef.current
+      ) {
+        setStreamState((previous) => reduceAIStream(previous, {
+          type: 'error',
+          error: INCOMPLETE_STREAM_ERROR,
+        }));
+      } else if (completed && generation === generationRef.current) {
+        await queryClient.invalidateQueries({ queryKey: ['multi-chat', 'session', sessionId] });
+        await queryClient.invalidateQueries({ queryKey: ['multi-chat', 'latest', 'group', groupId] });
+      }
+    } catch (error) {
+      if (controller.signal.aborted || (error as Error).name === 'AbortError') {
+        if (generation === generationRef.current) setStreamState(INITIAL_AI_STREAM_STATE);
         return;
       }
-      logger.error('Group chat stream error:', err);
-      setStreamState((prev) => ({
-        ...prev,
-        status: 'error',
-        error: {
-          message: (err as Error).message || 'Failed to send message',
-          code: 'internal',
-          recoverable: true,
-        },
-      }));
+      logger.error('Group chat stream error:', error);
+      if (generation === generationRef.current) {
+        setStreamState((previous) => reduceAIStream(previous, {
+          type: 'error',
+          error: INCOMPLETE_STREAM_ERROR,
+        }));
+      }
     } finally {
-      setPendingUserMessage(null);
+      if (generation === generationRef.current) setPendingUserMessage(null);
     }
-  }, [currentSessionId, groupId, queryClient, createSessionMutation, activeProviderId]);
+  }, [activeProviderId, createSessionMutation, currentSessionId, groupId, queryClient]);
+
+  const handleRetry = useCallback(() => {
+    if (!lastMessageRef.current || isStreaming) return;
+    void handleSendWithText(lastMessageRef.current);
+  }, [handleSendWithText, isStreaming]);
 
   const handleSend = useCallback(() => {
-    if (!message.trim() || isStreaming) return;
-    const msg = message.trim();
+    const trimmed = message.trim();
+    if (!trimmed || isStreaming) return;
     setMessage('');
-    handleSendWithText(msg);
-  }, [message, isStreaming, handleSendWithText]);
+    void handleSendWithText(trimmed);
+  }, [handleSendWithText, isStreaming, message]);
+
+  useEffect(() => () => {
+    generationRef.current += 1;
+    abortRef.current?.abort();
+  }, []);
 
   const messages = currentSession?.messages || [];
+  const showStream = isStreaming || Boolean(streamState.error);
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-(--panel-border) bg-(--panel-surface)">
+    <div className="flex h-full flex-col">
+      <div className="flex shrink-0 items-center justify-between border-b border-(--panel-border) bg-(--panel-surface) px-4 py-3">
         <div>
           <h2 className="text-body font-medium">{groupName}</h2>
           <p className="text-caption text-(--muted-foreground)">
@@ -306,15 +218,14 @@ export function GroupChatPanel({ groupId, groupName, onClose }: GroupChatPanelPr
         </Button>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-0.5">
+      <div className="flex-1 space-y-0.5 overflow-y-auto p-4">
         {isLoading ? (
-          <div className="flex items-center justify-center h-full">
-            <Skeleton className="w-12 h-12 rounded-full" />
+          <div className="flex h-full items-center justify-center">
+            <Skeleton className="size-12 rounded-full" />
           </div>
-        ) : messages.length === 0 && !isStreaming && !pendingUserMessage ? (
-          <div className="flex flex-col items-center justify-center h-full text-center text-(--muted-foreground) opacity-50">
-            <SparklesIcon size={32} className="mb-3" />
+        ) : messages.length === 0 && !showStream && !pendingUserMessage ? (
+          <div className="flex h-full flex-col items-center justify-center text-center text-(--muted-foreground) opacity-50">
+            <SparklesIcon size={40} className="mb-3" />
             <p className="text-code">Ask about papers in this group</p>
           </div>
         ) : (
@@ -322,71 +233,46 @@ export function GroupChatPanel({ groupId, groupName, onClose }: GroupChatPanelPr
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className="group relative w-full px-3 py-2.5 text-code rounded-xl bg-transparent transition-colors hover:bg-(--muted)/40"
+                className="group relative w-full rounded-xl bg-transparent px-3 py-2.5 text-code transition-colors hover:bg-(--muted)/40"
               >
                 <MessageAuthor role={msg.role === 'user' ? 'user' : 'assistant'} />
                 {msg.role === 'user' ? (
-                  <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                  <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                 ) : (
-                  <MarkdownMessage content={msg.content} referenceManifest={(msg as any).reference_manifest} />
+                  <MarkdownMessage content={msg.content} referenceManifest={msg.reference_manifest} />
                 )}
               </div>
             ))}
 
-            {/* Pending user message */}
             {pendingUserMessage && (
-              <div className="relative w-full px-3 py-2.5 rounded-xl text-code bg-transparent">
+              <div className="relative w-full rounded-xl bg-transparent px-3 py-2.5 text-code">
                 <MessageAuthor role="user" />
-                <p className="leading-relaxed whitespace-pre-wrap">{pendingUserMessage}</p>
+                <p className="whitespace-pre-wrap leading-relaxed">{pendingUserMessage}</p>
               </div>
             )}
 
-            {/* Streaming response */}
-            {isStreaming && (
+            {showStream && (
               <StreamingMessage
-                state={{
-                  status: streamState.status as any,
-                  content: streamState.content,
-                  displayedContent: displayedContent,
-                  toolCalls: streamState.toolCalls.map(e => ({
-                    tool: e.tool as string,
-                    arguments: (e.arguments as Record<string, unknown>) || {},
-                    timestamp: Date.now(),
-                  })),
-                  toolResults: streamState.toolResults.map(e => ({
-                    tool: e.tool as string,
-                    result: e.result as string,
-                    timestamp: Date.now(),
-                  })),
-                  thoughts: streamState.thoughts.map(e => ({
-                    content: e.content as string,
-                    timestamp: Date.now(),
-                  })),
-                  currentTool: streamState.currentTool,
-                  error: streamState.error,
-                  messageId: streamState.messageId,
-                  sessionId: streamState.sessionId,
-                  referenceManifest: streamState.referenceManifest,
-                }}
+                status={streamState.status}
+                content={streamState.content}
+                displayedContent={displayedContent}
+                activities={streamState.activities}
+                sources={streamState.sources}
+                warning={streamState.warning}
+                retry={streamState.retry}
+                error={streamState.error}
+                referenceManifest={streamState.referenceManifest}
                 isStreaming={isStreaming}
                 onRetry={handleRetry}
                 onDismiss={handleCancel}
               />
-            )}
-
-            {/* Error state without active stream */}
-            {!isStreaming && streamState.error && (
-              <div className="mt-2">
-                {/* ErrorBanner is inside StreamingMessage on retry; just show inline error for now */}
-              </div>
             )}
           </>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="border-t border-(--panel-border) p-3 shrink-0 bg-(--panel-surface)">
+      <div className="shrink-0 border-t border-(--panel-border) bg-(--panel-surface) p-3">
         <div className="mb-2 flex justify-end">
           <ProviderPicker
             value={activeProviderId}

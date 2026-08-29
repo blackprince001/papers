@@ -8,4 +8,5 @@ export const TrendingUpIcon = createIcon({
       <path d="M15 7.5h4.5V12" />
     </>
   ),
+  secondaryPath: <path d="m4.5 16.5 4.5-4.5 3.5 3.5 6-6v3l-6 6-3.5-3.5-4.5 4.5z" />,
 });

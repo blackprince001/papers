@@ -9,4 +9,5 @@ export const ChipIcon = createIcon({
       <path d="M10 8V5.5M14 8V5.5M10 16v2.5M14 16v2.5M8 10H5.5M8 14H5.5M16 10h2.5M16 14h2.5" />
     </>
   ),
+  secondaryPath: <rect x="9.5" y="9.5" width="5" height="5" rx="1" />,
 });

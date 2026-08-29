@@ -9,4 +9,5 @@ export const ViewGalleryIcon = createIcon({
       <path d="M13 12h7.5" />
     </>
   ),
+  secondaryPath: <rect x="5" y="6.5" width="13" height="3" rx="1" />,
 });

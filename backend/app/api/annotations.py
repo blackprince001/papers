@@ -1,6 +1,6 @@
 """Annotations API endpoints."""
 
-from typing import List
+from typing import List, cast
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +19,14 @@ from app.schemas.annotation import (
 from app.schemas.annotation import (
   AnnotationCreate,
   AnnotationUpdate,
+)
+from app.schemas.annotation import (
+  AnnotationExplanation as AnnotationExplanationSchema,
+)
+from app.services.annotation_explanations import (
+  get_annotation_for_explanation,
+  list_visible_annotation_explanations,
+  list_visible_explanations_for_paper,
 )
 
 router = APIRouter()
@@ -105,3 +113,53 @@ async def delete_annotation_endpoint(
   """Delete an annotation."""
   await delete_annotation(session, annotation_id, user_id=scoped_user_id(user))
   return None
+
+
+@router.get(
+  "/annotations/{annotation_id}/explanations",
+  response_model=List[AnnotationExplanationSchema],
+)
+async def list_annotation_explanations_endpoint(
+  annotation_id: int,
+  user: CurrentUser,
+  session: AsyncSession = Depends(get_db),
+):
+  """List unexpired explanation generations visible to the current user."""
+
+  requester_id = cast(int, user.id)
+  is_admin = cast(bool, user.role == "admin")
+  await get_annotation_for_explanation(
+    session,
+    annotation_id,
+    requester_id=requester_id,
+    is_admin=is_admin,
+  )
+  explanations = await list_visible_annotation_explanations(
+    session,
+    annotation_id=annotation_id,
+    requester_id=requester_id,
+    is_admin=is_admin,
+  )
+  return [AnnotationExplanationSchema.model_validate(item) for item in explanations]
+
+
+@router.get(
+  "/papers/{paper_id}/explanations",
+  response_model=List[AnnotationExplanationSchema],
+)
+async def list_paper_explanations_endpoint(
+  paper_id: int,
+  user: CurrentUser,
+  session: AsyncSession = Depends(get_db),
+):
+  """List visible explanation records for a paper in one request."""
+
+  requester_id = cast(int, user.id)
+  is_admin = cast(bool, user.role == "admin")
+  explanations = await list_visible_explanations_for_paper(
+    session,
+    paper_id=paper_id,
+    requester_id=requester_id,
+    is_admin=is_admin,
+  )
+  return [AnnotationExplanationSchema.model_validate(item) for item in explanations]

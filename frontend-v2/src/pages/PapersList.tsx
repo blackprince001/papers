@@ -305,7 +305,7 @@ export default function PapersList() {
                         : 'border-current',
                     )}>
                       {selectedIds.length === papers.length && (
-                        <CheckIcon size="xs" strokeWidth={3} className="w-2 h-2 text-(--background)" />
+                        <CheckIcon size="xs" strokeWidth={3} className="text-(--background)" />
                       )}
                     </div>
                     {selectedIds.length > 0 ? `${selectedIds.length} selected` : 'Select all'}
@@ -372,7 +372,7 @@ export default function PapersList() {
                   disabled={regenMutation.isPending}
                   className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-(--border) text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--muted) transition-colors disabled:opacity-40"
                 >
-                  {regenMutation.isPending ? <Spinner size={14} /> : <RefreshIcon size="sm" />}
+                  {regenMutation.isPending ? <Spinner size="sm" /> : <RefreshIcon size="sm" />}
                 </button>
               </Tooltip>
 

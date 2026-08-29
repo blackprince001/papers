@@ -8,4 +8,5 @@ export const DiscoverIcon = createIcon({
       <path d="M15.82 8.18l-1.91 5.73-5.73 1.91 1.91-5.73z" />
     </>
   ),
+  secondaryPath: <path d="m15.5 8.5-1.8 5.2-5.2 1.8 1.8-5.2z" />,
 });

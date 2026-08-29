@@ -47,13 +47,13 @@ const sizeConfig: Record<
 };
 
 const spinnerPx: Record<ButtonSize, number> = {
-  sm: 12,
-  'icon-xs': 12,
-  'icon-sm': 12,
-  md: 16,
-  icon: 16,
-  lg: 20,
-  'icon-lg': 20,
+  sm: 14,
+  'icon-xs': 14,
+  'icon-sm': 14,
+  md: 18,
+  icon: 18,
+  lg: 22,
+  'icon-lg': 22,
 };
 
 /* Below sm, an icon+label button collapses to a square icon button. */

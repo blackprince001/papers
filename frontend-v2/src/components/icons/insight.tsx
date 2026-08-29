@@ -9,4 +9,5 @@ export const InsightIcon = createIcon({
       <path d="M10.5 19h3" />
     </>
   ),
+  secondaryPath: <path d="M8.8 12.5A4 4 0 0 1 12 6.2a4 4 0 0 1 3.2 6.3H8.8z" />,
 });

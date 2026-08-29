@@ -10,4 +10,5 @@ export const BlockParagraphIcon = createIcon({
       <path d="M4 18h9" />
     </>
   ),
+  secondaryPath: <rect x="4" y="5" width="16" height="2" rx="1" />,
 });

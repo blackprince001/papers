@@ -8,6 +8,7 @@ export const CheckCircleIcon = createIcon({
       <path d="M8 12.25l2.7 2.7 5.3-5.9" />
     </>
   ),
+  secondaryPath: <circle cx="12" cy="12" r="7.25" />,
   filledPath: (
     <path
       fillRule="evenodd"
