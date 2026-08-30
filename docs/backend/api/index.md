@@ -15,7 +15,7 @@ The routers are grouped below into 7 domain concept files by function:
 * [Chat](chat.md) - single-paper + multi-paper/group chat with SSE streaming and threaded messages. (2 routers)
 * [AI Features](ai.md) - summaries, findings, reading guides, highlights, per-user BYO AI providers/settings. (3 routers)
 * [Discovery](discovery.md) - academic source search, AI search stream, recommendations, HuggingFace Daily Papers. (2 routers)
-* [Deep Research](deep-research.md) - long-running, source-cited research sessions on the `research` queue with a resumable SSE stream. (1 router)
+* [Deep Research](deep-research.md) - long-running, source-cited research sessions on the `research` queue with durable generations, follow-ups, cancellation, archive search, and cursor-based SSE. (1 router)
 * [Infra & Stats](infra.md) - search, saved searches, statistics, Celery task status, dead-letter queue. (3 routers)
 
 # Conventions

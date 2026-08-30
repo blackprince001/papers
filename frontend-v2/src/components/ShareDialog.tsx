@@ -5,8 +5,9 @@ import { Button } from './ui/Button';
 import { Select } from './ui/Select';
 import { Skeleton } from './ui/Skeleton';
 import { EmptyState } from './ui/EmptyState';
+import { SetupIllustration } from '@/components/illustrations';
 import { paperSharingApi, groupSharingApi, type SharePermission, type ShareRecipient } from '@/lib/api/sharing';
-import { TrashIcon, UserPlusIcon, UsersIcon } from '@/components/icons';
+import { TrashIcon, UserPlusIcon } from '@/components/icons';
 
 interface ShareDialogProps {
   open: boolean;
@@ -130,7 +131,7 @@ export function ShareDialog({ open, onClose, resourceId, resourceType, resourceT
         ) : shares.length === 0 ? (
           <EmptyState
             size="panel"
-            icon={UsersIcon}
+            illustration={SetupIllustration}
             title="Not shared with anyone yet"
             description="People you share with will appear here."
           />

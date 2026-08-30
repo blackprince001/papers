@@ -8,11 +8,12 @@ import {
   HashtagIcon,
   AwardIcon,
   ExternalLinkIcon,
-  SearchIcon,
   GlobeIcon,
   CalendarIcon,
   ArrowRightIcon,
 } from '@/components/icons';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SearchIllustration } from '@/components/illustrations';
 import { discoveryApi, type AuthorProfile, type AuthorWork } from '@/lib/api/discovery';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { cn } from '@/lib/utils';
@@ -61,12 +62,11 @@ export default function AuthorDetail() {
       {isLoading && <AuthorDetailSkeleton />}
 
       {!isLoading && !works.length && !displayName && (
-        <div className="flex flex-col items-center gap-3 py-24 text-center text-(--muted-foreground)">
-          <SearchIcon size={40} className="opacity-30" />
-          <p className="text-body">
-            No author found for ID <code className="text-code">{id}</code>
-          </p>
-        </div>
+        <EmptyState
+          size="page"
+          illustration={SearchIllustration}
+          title={`No author found for ID ${id}`}
+        />
       )}
 
       {!isLoading && (works.length > 0 || displayName) && (

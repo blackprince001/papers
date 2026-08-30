@@ -54,9 +54,10 @@ docker compose -f docker-compose.dev.yml up -d postgres redis
   "Client sent AUTH, but no password is set".
 * Backend: `uv sync`, then `uv run alembic upgrade head` and
   `uv run fastapi dev app/main.py` (localhost:8000).
-* Deep-research mutation endpoints are frozen by default while the legacy lifecycle
-  is replaced. Keep `DEEP_RESEARCH_MUTATIONS_ENABLED=false` in the shell and
-  `VITE_DEEP_RESEARCH_MUTATIONS_ENABLED=false` in `frontend-v2/.env`.
+* Deep-research mutation endpoints are enabled by default. Set
+  `DEEP_RESEARCH_MUTATIONS_ENABLED=false` in the shell and
+  `VITE_DEEP_RESEARCH_MUTATIONS_ENABLED=false` in `frontend-v2/.env` only for an
+  incident or maintenance window.
 * Frontend: `bun install`, `.env` with
   `VITE_API_URL=http://localhost:8000/api/v1` + `VITE_GOOGLE_CLIENT_ID`,
   `bun run dev` (localhost:5173).
@@ -70,7 +71,7 @@ docker compose -f docker-compose.dev.yml up -d postgres redis
   # Terminal 2 — interactive worker; deliberately excludes research
   uv run celery -A app.celery_app worker -l info -Q ai,processing,discovery,dead_letter -c 2 --hostname=lumen-interactive@%h
 
-  # Terminal 3 — dedicated research worker; starts idle while mutations are frozen
+  # Terminal 3 — dedicated research worker
   uv run celery -A app.celery_app worker -l info -Q research -c 1 --hostname=lumen-research@%h
 
   # Terminal 4 — beat scheduler

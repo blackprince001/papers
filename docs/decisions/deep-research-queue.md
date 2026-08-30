@@ -1,9 +1,9 @@
 ---
 type: ADR
 title: Dedicated `research` queue and worker capacity
-description: Deep research runs on its own Celery `research` queue for isolation. Redis does not provide AMQP broker dead-lettering; worker capacity and application-level retry state provide the current safety boundary.
-tags: [adr, deep-research, celery, queue, config, feature-flag]
-timestamp: 2026-07-15T00:00:00Z
+description: Deep research runs on its own Celery `research` queue for isolation. Postgres outbox and generation leases provide delivery and recovery state; the mutation setting is an emergency kill switch.
+tags: [adr, deep-research, celery, queue, config]
+timestamp: 2026-08-29T00:00:00Z
 ---
 
 # Decision
@@ -19,9 +19,9 @@ Two related choices:
    AMQP dead-letter queue arguments, so retry and failure handling remain
    application-level.
 2. **No queue feature flag.** The router remains mounted at
-   `/api/v1/deep-research`, while unsafe start/resume mutations are currently
-   frozen by `DEEP_RESEARCH_MUTATIONS_ENABLED=false` until the lifecycle rewrite
-   passes its release gates. This is separate from worker queue routing.
+   `/api/v1/deep-research`. `DEEP_RESEARCH_MUTATIONS_ENABLED` is enabled by
+   default and exists only as an emergency stop for starts and resumes. It does
+   not change queue routing.
 
 # Why
 
@@ -40,9 +40,8 @@ Two related choices:
   research tasks.
 - − Operators must run the dedicated research worker, or research tasks queue up
   unconsumed (documented in [/infra/docker.md](/infra/docker.md)).
-- − Run admission is bounded by the active-run limit; deeper lifecycle and
-  retention controls are being replaced under the current safety freeze.
-- − The mutation freeze remains until the lifecycle replacement is released.
+- − Run admission is bounded by the active-run limit; operators still need to
+  watch queue age and worker capacity.
 
 # Alternatives considered
 
@@ -58,5 +57,6 @@ Two related choices:
 [1] `backend/app/celery_app.py` — `research_exchange`, `Queue("research", …)`, `task_routes`, and worker queue separation.
 [2] `backend/app/tasks/deep_research_tasks.py` — `queue="research"`; [/backend/tasks.md](/backend/tasks.md).
 [3] `docker-compose.dev.yml` / `docker-compose.prod.yml` — interactive/research worker queue assignments; [/infra/docker.md](/infra/docker.md).
-[4] `backend/app/core/config.py`, root `.env.example` — `ENABLE_DEEP_RESEARCH` removed; [/backend/config.md](/backend/config.md), [/infra/env-config.md](/infra/env-config.md).
+[4] `backend/app/core/config.py`, root `.env.example` — the emergency mutation
+switch and its default; [/backend/config.md](/backend/config.md), [/infra/env-config.md](/infra/env-config.md).
 [5] [/features/deep-research.md](/features/deep-research.md) — the feature overview.

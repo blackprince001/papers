@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { PlusIcon, ViewGridIcon, ViewListIcon, TrashIcon, RefreshIcon, LayersIcon, CheckSquareIcon, CheckIcon, CloseIcon, FolderPlusIcon, LibraryIcon, SearchIcon } from '@/components/icons';
+import { PlusIcon, ViewGridIcon, ViewListIcon, TrashIcon, RefreshIcon, LayersIcon, CheckSquareIcon, CheckIcon, CloseIcon, FolderPlusIcon } from '@/components/icons';
 import { Spinner } from '@/components/ui/Spinner';
 import { Link } from 'react-router-dom';
 
@@ -20,6 +20,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { PageContainer } from '@/components/layout/PageContainer';
+import { LibraryIllustration, SearchIllustration } from '@/components/illustrations';
 
 import { PaperCard, PaperCardSkeleton } from '@/components/PaperCard';
 import { PaperTable } from '@/components/PaperTable';
@@ -424,13 +425,13 @@ export default function PapersList() {
       {papers.length === 0 ? (
         searchQuery ? (
           <EmptyState
-            icon={SearchIcon}
+            illustration={SearchIllustration}
             title={`No papers matching "${searchQuery}"`}
             description="Try a different search term or clear your filters."
           />
         ) : (
           <EmptyState
-            icon={LibraryIcon}
+            illustration={LibraryIllustration}
             title="Your library is empty"
             description="Add your first paper to start building your collection."
             actions={

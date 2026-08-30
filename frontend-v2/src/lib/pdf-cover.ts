@@ -43,7 +43,10 @@ export async function renderPdfCover(
 
     return await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
   } finally {
-    void doc.destroy();
+    // PDF.js cancels outstanding worker/network work during teardown. Await
+    // and absorb that expected cancellation so a thumbnail cleanup cannot
+    // surface as an unhandled AbortError in the app.
+    await doc.destroy().catch(() => undefined);
   }
 }
 

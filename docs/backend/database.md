@@ -46,8 +46,11 @@ engines.
 # Migrations
 
 Alembic at `backend/migrations/` — **46 revisions**, head
-`deep_research_001` (`deep_research_001.py`, `down_revision = "add_last_opened_at"`,
-2026-07-15; it creates `deep_research_sessions` — see
+`deep_research_001` creates the original `deep_research_sessions` table.
+`deep_research_002` adds generation-scoped lifecycle tables and quarantines
+ownerless rows. `deep_research_003` adds provider pins and conversation modes.
+`deep_research_004` migrates legacy checkpoints to generations, fences active
+old runs, and removes the session checkpoint column — see
 [/features/deep-research.md](/features/deep-research.md)). `init-db.sql`
 (`CREATE EXTENSION IF NOT EXISTS vector`) is mounted in dev only; prod relies
 on the `pgvector/pgvector:pg16` image + migrations.

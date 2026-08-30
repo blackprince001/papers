@@ -23,6 +23,7 @@ system map.
 * [Infrastructure](infra/) - Docker Compose, Traefik, environment configuration.
 * [Decisions](decisions/) - architectural decision records (the "why").
 * [Features](features/) - feature design/plan concepts (currently: [deep-research](/features/deep-research.md), now implemented).
+* [Operations](ops/) - release and recovery runbooks.
 
 # How to use this bundle
 

@@ -7,9 +7,9 @@ import {
   LibraryIcon,
   QuoteIcon,
   SearchIcon,
-  UsersIcon,
   ArrowRightIcon,
 } from '@/components/icons';
+import { SearchIllustration, SetupIllustration } from '@/components/illustrations';
 import { discoveryApi, type AuthorProfile } from '@/lib/api/discovery';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -67,7 +67,7 @@ export default function AuthorSearch() {
       {!searchQuery.isLoading && nameParam && results.length === 0 && (
         <EmptyState
           size="page"
-          icon={SearchIcon}
+          illustration={SearchIllustration}
           title={`No authors found matching “${nameParam}”`}
         />
       )}
@@ -75,7 +75,7 @@ export default function AuthorSearch() {
       {!nameParam && (
         <EmptyState
           size="page"
-          icon={UsersIcon}
+          illustration={SetupIllustration}
           title="Enter a name above to search for authors"
         />
       )}

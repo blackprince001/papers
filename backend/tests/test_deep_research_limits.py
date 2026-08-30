@@ -8,7 +8,7 @@ import pytest
 from app.api.deep_research import _enforce_active_run_limit
 from app.core.config import settings
 from app.schemas.deep_research import DeepResearchSessionCreate
-from app.services.deep_research_service import _bounded_json_value, _relay
+from app.services.deep_research_service import _bounded_event, _bounded_json_value
 from fastapi import HTTPException
 
 
@@ -25,23 +25,14 @@ def test_checkpoints_are_bounded_without_unbounded_string_payloads():
   assert bounded == [{"role": "user", "content": "question"}]
 
 
-def test_relay_replaces_oversized_events():
-  class Redis:
-    def __init__(self):
-      self.values = []
-
-    def rpush(self, key, value):
-      self.values.append(value)
-
-    def expire(self, key, ttl):
-      pass
-
-  redis = Redis()
-  _relay(redis, 4, {"type": "chunk", "content": "x" * settings.DEEP_RESEARCH_MAX_EVENT_BYTES * 2})
-  assert len(redis.values) == 1
-  assert len(redis.values[0].encode()) <= settings.DEEP_RESEARCH_MAX_EVENT_BYTES
-  assert json.loads(redis.values[0])["type"] == "chunk"
-  assert json.loads(redis.values[0])["truncated"] is True
+def test_event_projection_replaces_oversized_payloads():
+  bounded = _bounded_event(
+    {"type": "chunk", "content": "x" * settings.DEEP_RESEARCH_MAX_EVENT_BYTES * 2},
+    settings.DEEP_RESEARCH_MAX_EVENT_BYTES,
+  )
+  assert len(json.dumps(bounded, ensure_ascii=False).encode()) <= settings.DEEP_RESEARCH_MAX_EVENT_BYTES
+  assert bounded["type"] == "chunk"
+  assert bounded["truncated"] is True
 
 
 class _Result:

@@ -11,6 +11,8 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { aiFeaturesApi } from '@/lib/api/aiFeatures';
 import { toastInfo } from '@/lib/utils/toast';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SetupIllustration } from '@/components/illustrations';
 
 interface ReadingGuideProps {
   paperId: number;
@@ -180,21 +182,23 @@ export function ReadingGuide({ paperId }: ReadingGuideProps) {
           </div>
         </>
       ) : (
-        <div className="flex flex-col items-center justify-center py-12 px-6 text-center bg-(--muted)/20 rounded-2xl border border-dashed border-(--border)">
-          <BookOpenIcon size={40} className="mb-4 text-(--muted-foreground) opacity-40" />
-          <h3 className="text-btn font-semibold text-(--foreground) mb-2">No Reading Guide</h3>
-          <p className="text-code text-(--muted-foreground) mb-6 max-w-60">
-            Generate questions to help you stay focused and extract the most value from this paper.
-          </p>
-          <Button
-            onClick={() => generateMutation.mutate()}
-            loading={generateMutation.isPending}
-            className="px-6"
-          >
-            <BookOpenIcon size="md" className="mr-2" />
-            Generate Guide
-          </Button>
-        </div>
+        <EmptyState
+          size="panel"
+          illustration={SetupIllustration}
+          title="No reading guide"
+          description="Generate questions to help you stay focused and extract the most value from this paper."
+          actions={
+            <Button
+              onClick={() => generateMutation.mutate()}
+              loading={generateMutation.isPending}
+              className="px-6"
+            >
+              <BookOpenIcon size="md" className="mr-2" />
+              Generate Guide
+            </Button>
+          }
+          className="bg-(--muted)/20 rounded-2xl border border-dashed border-(--border)"
+        />
       )}
 
       {(generateMutation.isError || error) && (

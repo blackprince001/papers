@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { multiChatApi } from '@/lib/api/multi-chat';
 import { chatStreamClient, normalizedStream } from '@/lib/ai/chatStream';
-import { CloseIcon, FileTextIcon, GlobeIcon, InsightIcon, SendIcon, SparklesIcon } from '@/components/icons';
+import { CloseIcon, FileTextIcon, GlobeIcon, InsightIcon, SendIcon } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { MarkdownMessage } from '@/components/MarkdownMessage';
@@ -10,6 +10,8 @@ import { StreamingMessage } from '@/components/ai/StreamingMessage';
 import { MessageAuthor } from '@/components/ai/MessageAuthor';
 import { ExpandedInput } from '@/components/ExpandedInput';
 import { ProviderPicker } from '@/components/ai/ProviderPicker';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SetupIllustration } from '@/components/illustrations';
 import { logger } from '@/lib/logger';
 import { useTypewriter } from '@/hooks/use-typewriter';
 import {
@@ -224,10 +226,12 @@ export function GroupChatPanel({ groupId, groupName, onClose }: GroupChatPanelPr
             <Skeleton className="size-12 rounded-full" />
           </div>
         ) : messages.length === 0 && !showStream && !pendingUserMessage ? (
-          <div className="flex h-full flex-col items-center justify-center text-center text-(--muted-foreground) opacity-50">
-            <SparklesIcon size={40} className="mb-3" />
-            <p className="text-code">Ask about papers in this group</p>
-          </div>
+          <EmptyState
+            size="panel"
+            illustration={SetupIllustration}
+            title="Ask about papers in this group"
+            className="h-full justify-center"
+          />
         ) : (
           <>
             {messages.map((msg) => (

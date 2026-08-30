@@ -13,6 +13,7 @@ import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { getPaperTheme } from '@/lib/paper-themes';
 import { cn } from '@/lib/utils';
+import { SearchIllustration } from '@/components/illustrations';
 
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -250,7 +251,7 @@ export default function Search() {
           {results.length === 0 ? (
             <EmptyState
               size="page"
-              icon={SearchIcon}
+              illustration={SearchIllustration}
               title="No results found"
               description="Try a different query or adjust your filters."
             />
@@ -296,7 +297,7 @@ export default function Search() {
       {!query.trim() && (
         <EmptyState
           size="page"
-          icon={SearchIcon}
+          illustration={SearchIllustration}
           title="Enter a search query to find papers"
         />
       )}

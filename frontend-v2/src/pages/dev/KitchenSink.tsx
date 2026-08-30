@@ -23,7 +23,8 @@ import { Skeleton, SkeletonText } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/Tabs';
-import { ArchiveIcon, PlusIcon, SearchIcon, TrashIcon } from '../../components/icons';
+import { PlusIcon, SearchIcon, TrashIcon } from '../../components/icons';
+import { LibraryIllustration } from '../../components/illustrations';
 import { MarkdownMessage } from '../../components/MarkdownMessage';
 import { StreamingMessage } from '../../components/ai/StreamingMessage';
 import { AgentStatus } from '../../components/ai/AgentStatus';
@@ -212,7 +213,7 @@ export default function KitchenSink() {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div className="rounded-2xl border border-(--border) bg-(--card)">
             <EmptyState
-              icon={ArchiveIcon}
+              illustration={LibraryIllustration}
               size="panel"
               title="No saved discoveries yet"
               description="Runs you save from Discovery will appear here."

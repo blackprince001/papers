@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
 import hmac
 from dataclasses import dataclass
@@ -54,8 +55,17 @@ def encode_cursor(generation_number: int, sequence: int) -> str:
 
 def decode_cursor(cursor: str) -> tuple[int, int]:
   try:
+    if (
+      not cursor
+      or len(cursor) % 4 == 1
+      or any(character not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_" for character in cursor)
+    ):
+      raise InvalidCursor("Invalid event cursor")
     padded = cursor + "=" * (-len(cursor) % 4)
     raw = base64.urlsafe_b64decode(padded.encode())
+    canonical = base64.urlsafe_b64encode(raw).decode().rstrip("=")
+    if canonical != cursor:
+      raise InvalidCursor("Invalid event cursor")
     version, generation, sequence, signature = raw.split(b":", 3)
     expected = hmac.new(
       settings.JWT_SECRET_KEY.encode(),
@@ -69,7 +79,7 @@ def decode_cursor(cursor: str) -> tuple[int, int]:
     if generation_number < 1 or sequence_number < 0:
       raise InvalidCursor("Invalid event cursor")
     return generation_number, sequence_number
-  except (ValueError, TypeError, UnicodeDecodeError) as exc:
+  except (ValueError, TypeError, UnicodeDecodeError, binascii.Error) as exc:
     if isinstance(exc, InvalidCursor):
       raise
     raise InvalidCursor("Invalid event cursor") from exc

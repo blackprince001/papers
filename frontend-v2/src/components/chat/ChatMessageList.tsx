@@ -6,7 +6,6 @@ import {
   ChatIcon,
   CheckCircleIcon,
   CopyIcon,
-  SparklesIcon,
 } from "@/components/icons";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/Button";
@@ -14,6 +13,8 @@ import { MarkdownMessage } from "@/components/MarkdownMessage";
 import { MessageThread } from "@/components/MessageThread";
 import { StreamingMessage } from "@/components/ai/StreamingMessage";
 import { MessageAuthor } from "@/components/ai/MessageAuthor";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SetupIllustration } from "@/components/illustrations";
 import { cn } from "@/lib/utils";
 import type { ChatController } from "@/hooks/use-chat-controller";
 import type { ChatMessage } from "@/lib/api/chat";
@@ -198,10 +199,12 @@ export function ChatMessageList({
       >
         <div ref={messagesTopRef} />
         {messages.length === 0 && !isActive && !pendingUserMessage && (
-          <div className="flex flex-col items-center justify-center h-full text-center text-(--muted-foreground) opacity-50">
-            <SparklesIcon size={40} className="mb-3" />
-            <p className="text-code">Start a conversation about this paper</p>
-          </div>
+          <EmptyState
+            size="panel"
+            illustration={SetupIllustration}
+            title="Start a conversation about this paper"
+            className="h-full justify-center"
+          />
         )}
 
         <div className={cn("space-y-0.5", inner)}>

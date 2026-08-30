@@ -63,22 +63,48 @@ class BaseDiscoveryProvider(ABC):
   def __init__(self, api_key: Optional[str] = None) -> None:
     self.api_key = api_key
     self._client: Optional[httpx.AsyncClient] = None
+    self._client_loop: Optional[asyncio.AbstractEventLoop] = None
 
   async def _get_client(self) -> httpx.AsyncClient:
     """Get or create HTTP client."""
-    if self._client is None or self._client.is_closed:
-      headers = self._get_headers()
-      self._client = httpx.AsyncClient(
-        headers=headers,
-        timeout=30.0,
-        follow_redirects=True,
-      )
+    current_loop = asyncio.get_running_loop()
+    if (
+      self._client is not None
+      and not self._client.is_closed
+      and self._client_loop is current_loop
+    ):
+      return self._client
+
+    previous_client = self._client
+    headers = self._get_headers()
+    self._client = httpx.AsyncClient(
+      headers=headers,
+      timeout=30.0,
+      follow_redirects=True,
+    )
+    self._client_loop = current_loop
+
+    # Celery runs each task in a fresh asyncio loop. Do not carry an
+    # AsyncClient bound to a completed loop into the next task. Closing the
+    # old client is best effort because its loop may already be gone.
+    if previous_client is not None and not previous_client.is_closed:
+      try:
+        await previous_client.aclose()
+      except Exception:  # noqa: BLE001 — cleanup must not block a new client
+        logger.debug("Could not close discovery client from a previous event loop")
+
     return self._client
 
   async def close(self) -> None:
     """Close HTTP client."""
-    if self._client and not self._client.is_closed:
-      await self._client.aclose()
+    client = self._client
+    self._client = None
+    self._client_loop = None
+    if client and not client.is_closed:
+      try:
+        await client.aclose()
+      except Exception:  # noqa: BLE001 — cleanup is best effort
+        logger.debug("Could not close discovery client")
 
   def _get_headers(self) -> Dict[str, str]:
     """Get headers for API requests. Override in subclasses."""

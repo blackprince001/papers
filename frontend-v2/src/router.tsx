@@ -18,6 +18,7 @@ const GroupsFinder = lazy(() => import('./pages/GroupsFinder'));
 // production builds entirely.
 const IconSheet = import.meta.env.DEV ? lazy(() => import('./pages/dev/IconSheet')) : null;
 const KitchenSink = import.meta.env.DEV ? lazy(() => import('./pages/dev/KitchenSink')) : null;
+const EmptyStateSheet = import.meta.env.DEV ? lazy(() => import('./pages/dev/EmptyStateSheet')) : null;
 import Search from './pages/Search';
 import Dashboard from './pages/Dashboard';
 import Annotations from './pages/Annotations';
@@ -58,6 +59,18 @@ export const router = createBrowserRouter([
           element: (
             <Suspense fallback={null}>
               <KitchenSink />
+            </Suspense>
+          ),
+        },
+      ]
+    : []),
+  ...(EmptyStateSheet
+    ? [
+        {
+          path: '/dev/empties',
+          element: (
+            <Suspense fallback={null}>
+              <EmptyStateSheet />
             </Suspense>
           ),
         },

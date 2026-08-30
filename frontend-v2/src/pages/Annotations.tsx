@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { annotationsApi, type Annotation } from '@/lib/api/annotations';
 import { papersApi, type Paper } from '@/lib/api/papers';
 import {
-  FileTextIcon,
   ChatIcon,
   HighlighterIcon,
   TrashIcon,
@@ -14,6 +13,7 @@ import {
   ChevronRightIcon,
   ExternalLinkIcon,
 } from '@/components/icons';
+import { AnnotationIllustration } from '@/components/illustrations';
 import { Button } from '@/components/ui/Button';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Select } from '@/components/ui/Select';
@@ -308,7 +308,7 @@ export default function Annotations() {
         {/* Grouped annotations table */}
         {groups.length === 0 ? (
           <div className="border border-dashed border-(--border) rounded-xl">
-            <EmptyState size="page" icon={FileTextIcon} title="No annotations found" />
+            <EmptyState size="page" illustration={AnnotationIllustration} title="No annotations found" />
           </div>
         ) : (
           <div className="border border-(--border) rounded-xl overflow-hidden bg-(--card)">

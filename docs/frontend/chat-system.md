@@ -44,7 +44,7 @@ REST client** in `src/lib/api/` — see [api-layer.md](api-layer.md).
 
 | Hook | File | Purpose |
 |---|---|---|
-| `useDeepResearchStream` | `hooks/use-deep-research-stream.ts` | Drives a long-running deep-research run: fetches the authoritative detail snapshot, streams live via `chatStreamClient.streamDeepResearch(sessionId)` and **reconnects on drop** while the run is non-terminal, then reconciles from the persisted detail. Reduces `chunk`/`thought`/`tool_call`/`tool_result`/`provider_switched`/`paused`/`error`/`done`/`end` events. Because the server relays the whole run to Redis, a reconnect replays everything so far. See [/features/deep-research.md](/features/deep-research.md) and [/backend/api/deep-research.md](/backend/api/deep-research.md). |
+| `useDeepResearchStream` | `hooks/use-deep-research-stream.ts` | Drives a long-running deep-research run: fetches the authoritative detail snapshot, streams live via `chatStreamClient.streamDeepResearch(sessionId)`, reconnects from the signed cursor, reconciles from persisted detail, and exposes progress, cancellation, offline state, and follow-up state. See [/features/deep-research.md](/features/deep-research.md) and [/backend/api/deep-research.md](/backend/api/deep-research.md). |
 
 # Server side
 

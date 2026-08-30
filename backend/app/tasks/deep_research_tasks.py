@@ -4,8 +4,8 @@ Runs on the dedicated ``research`` queue (isolated from the ``ai`` queue so a
 multi-minute run never starves fast AI features). The run is **resumable**:
 ``DeepResearchRetryable`` — raised by the service on a recoverable error, a
 soft-time-limit, or the segment-budget cap — triggers a Celery retry that
-re-runs the task; the service then loads ``run_state`` and continues from the
-last checkpoint. There is deliberately no per-user rate limit.
+re-runs the task; the service then loads the generation checkpoint and continues
+from the last checkpoint. There is deliberately no per-user rate limit.
 """
 
 from typing import Any
@@ -20,13 +20,14 @@ from app.services.deep_research.orchestrator import (
   recover_expired_generation_leases_sync,
   release_outbox_sync,
 )
+from app.services.deep_research.telemetry import record_metric
 from app.services.deep_research_service import DeepResearchRetryable, run_deep_research
 from app.tasks.base import BaseTask
 
 logger = get_logger(__name__)
 
 
-def _mark_failed_sync(session_id: int, error: str) -> None:
+def _mark_failed_sync(session_id: int) -> None:
   """Atomically mark the current generation failed and append its terminal event."""
   import json
   from datetime import datetime, timezone
@@ -63,6 +64,8 @@ def _mark_failed_sync(session_id: int, error: str) -> None:
     row.lifecycle_version = (row.lifecycle_version or 0) + 1
     if generation is not None:
       generation.status = "failed"
+      generation.checkpoint = None
+      generation.checkpoint_bytes = 0
       generation.lease_until = None
       generation.finished_at = datetime.now(timezone.utc)
       generation.state_version = (generation.state_version or 0) + 1
@@ -97,12 +100,12 @@ def _mark_failed_sync(session_id: int, error: str) -> None:
           )
         )
     session.commit()
-  except Exception as exc:  # noqa: BLE001
+  except Exception:  # noqa: BLE001
     session.rollback()
     logger.warning(
       "Failed to persist deep-research terminal failure",
       session_id=session_id,
-      error=str(exc),
+      failure="database_write",
     )
   finally:
     session.close()
@@ -140,6 +143,8 @@ def _finalize_cancelled_sync(session_id: int, generation_id: int) -> bool:
     research.status = "cancelled"
     research.lifecycle_version = (research.lifecycle_version or 0) + 1
     generation.status = "cancelled"
+    generation.checkpoint = None
+    generation.checkpoint_bytes = 0
     generation.lease_until = None
     generation.finished_at = datetime.now(timezone.utc)
     generation.state_version = (generation.state_version or 0) + 1
@@ -168,9 +173,13 @@ def _finalize_cancelled_sync(session_id: int, generation_id: int) -> bool:
       )
     session.commit()
     return True
-  except Exception as exc:  # noqa: BLE001
+  except Exception:  # noqa: BLE001
     session.rollback()
-    logger.warning("Failed to finalize requested cancellation", session_id=session_id, error=str(exc))
+    logger.warning(
+      "Failed to finalize requested cancellation",
+      session_id=session_id,
+      failure="database_write",
+    )
     return False
   finally:
     session.close()
@@ -191,7 +200,7 @@ class DeepResearchTask(BaseTask):
   def on_failure(self, exc, task_id, args, kwargs, einfo):
     session_id = args[0] if args else kwargs.get("session_id")
     if isinstance(session_id, int):
-      _mark_failed_sync(session_id, str(exc))
+      _mark_failed_sync(session_id)
     super().on_failure(exc, task_id, args, kwargs, einfo)
 
 
@@ -216,6 +225,7 @@ def run_deep_research_task(self, session_id: int, generation_id: int) -> dict[st
         generation_id=generation_id,
         reason=str(exc),
       )
+      record_metric("delivery_ignored", status="ignored")
       return {"status": "ignored", "session_id": session_id, "generation_id": generation_id}
   finally:
     sync_session.close()
@@ -253,6 +263,20 @@ def dispatch_research_outbox(limit: int = 20) -> dict[str, int]:
         "Research outbox dispatched",
         outbox_id=row.id,
         attempts=row.attempts,
+      )
+      from datetime import datetime, timezone
+
+      queue_age_ms = None
+      if row.created_at is not None:
+        queue_age_ms = max(
+          0,
+          int((datetime.now(timezone.utc) - row.created_at).total_seconds() * 1000),
+        )
+      record_metric(
+        "queue_dispatched",
+        status="queued",
+        phase="queued",
+        queue_age_ms=queue_age_ms,
       )
       published += 1
     except Exception as exc:  # noqa: BLE001 -- outbox records broker failure for retry

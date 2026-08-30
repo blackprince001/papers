@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { SparklesIcon, RefreshIcon } from '@/components/icons';
+import { RefreshIcon } from '@/components/icons';
 import { Link } from 'react-router-dom';
 import { discoveryApi } from '@/lib/api/discovery';
 import { DiscoveredPaperCard } from '@/components/discovery/DiscoveredPaperCard';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { ActivityIllustration } from '@/components/illustrations';
 
 export default function Recommendations() {
   const { data, isLoading, error, refetch, isFetching } = useQuery({
@@ -94,7 +95,7 @@ export default function Recommendations() {
       {!isLoading && !error && recommendations.length === 0 && (
         <EmptyState
           size="page"
-          icon={SparklesIcon}
+          illustration={ActivityIllustration}
           titleAs="h2"
           title="No recommendations yet"
           description="Add more papers with DOIs to your library to get personalized recommendations based on your research interests."

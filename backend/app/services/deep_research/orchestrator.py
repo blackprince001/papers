@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.deep_research import (
@@ -17,9 +17,11 @@ from app.models.deep_research import (
 )
 from app.services.deep_research.state import (
   ResearchStatus,
+  check_follow_up_transition,
   check_transition,
   payload_bytes,
 )
+from app.services.deep_research.telemetry import record_metric
 
 OUTBOX_EVENT_DISPATCH = "dispatch_research"
 OUTBOX_LEASE_SECONDS = 60
@@ -28,6 +30,10 @@ WORKER_LEASE_SECONDS = 20 * 60
 
 class GenerationNotRunnable(RuntimeError):
   """The task is duplicate, stale, cancelled, or belongs to another generation."""
+
+
+class FollowUpNotAllowed(ValueError):
+  """The session cannot accept an explicit Research further turn."""
 
 
 def now() -> datetime:
@@ -59,6 +65,122 @@ async def enqueue_generation(
   return item
 
 
+@dataclass(frozen=True)
+class ResearchFollowUp:
+  """The durable records created for one Research further request."""
+
+  session: DeepResearchSession
+  generation: DeepResearchGeneration
+  message: object
+
+
+async def create_research_follow_up(
+  db: AsyncSession,
+  *,
+  session: DeepResearchSession,
+  question: str,
+  idempotency_key: str,
+) -> ResearchFollowUp:
+  """Create exactly one queued research generation for a follow-up request."""
+  # Import lazily: the conversation service uses ``verify_report`` from this
+  # module for the no-search Ask path.
+  from app.services.deep_research.conversation import (
+    append_message,
+    ensure_initial_messages,
+    find_idempotent_message,
+  )
+
+  locked_session = (
+    await db.execute(
+      select(DeepResearchSession)
+      .where(
+        DeepResearchSession.id == session.id,
+        DeepResearchSession.user_id == session.user_id,
+      )
+      .with_for_update()
+    )
+  ).scalar_one_or_none()
+  if locked_session is None:
+    raise FollowUpNotAllowed("Deep-research session not found")
+
+  existing = await find_idempotent_message(
+    db,
+    session_id=int(locked_session.id),
+    idempotency_key=idempotency_key,
+  )
+  if existing is not None:
+    if existing.mode != "research" or existing.content != question:
+      raise FollowUpNotAllowed("Idempotency-Key was already used for another follow-up")
+    existing_generation = await db.get(DeepResearchGeneration, existing.generation_id)
+    if existing_generation is None:
+      raise FollowUpNotAllowed("Research generation not found")
+    return ResearchFollowUp(
+      session=locked_session,
+      generation=existing_generation,
+      message=existing,
+    )
+
+  if locked_session.status != ResearchStatus.COMPLETED:
+    raise FollowUpNotAllowed(
+      f"Run is '{locked_session.status}', only completed research accepts follow-ups"
+    )
+  current = (
+    await db.execute(
+      select(DeepResearchGeneration).where(
+        DeepResearchGeneration.session_id == locked_session.id,
+        DeepResearchGeneration.generation_number == locked_session.current_generation,
+      )
+    )
+  ).scalar_one_or_none()
+  if current is None:
+    raise FollowUpNotAllowed("Research generation not found")
+
+  await ensure_initial_messages(db, session=locked_session, generation=current)
+  next_generation_number = (
+    await db.execute(
+      select(func.coalesce(func.max(DeepResearchGeneration.generation_number), 0) + 1).where(
+        DeepResearchGeneration.session_id == locked_session.id
+      )
+    )
+  ).scalar_one()
+  check_follow_up_transition(str(locked_session.status), ResearchStatus.QUEUED)
+  locked_session.status = ResearchStatus.QUEUED
+  locked_session.cancel_requested = False
+  locked_session.last_error_code = None
+  locked_session.current_generation = int(next_generation_number)
+  locked_session.lifecycle_version = (locked_session.lifecycle_version or 0) + 1
+
+  generation = DeepResearchGeneration(
+    session_id=locked_session.id,
+    generation_number=int(next_generation_number),
+    mode="research",
+    status=ResearchStatus.QUEUED,
+    provider_id=current.provider_id,
+    provider_type=current.provider_type,
+    model=current.model,
+    correlation_id=locked_session.correlation_id,
+  )
+  db.add(generation)
+  await db.flush()
+  message = await append_message(
+    db,
+    session_id=int(locked_session.id),
+    generation_id=int(generation.id),
+    role="user",
+    mode="research",
+    content=question,
+    payload={"mode": "research", "kind": "follow_up"},
+    idempotency_key=idempotency_key,
+  )
+  await enqueue_generation(db, session=locked_session, generation=generation)
+  await db.commit()
+  return ResearchFollowUp(
+    session=locked_session,
+    generation=generation,
+    message=message,
+  )
+
+
 async def request_cancellation(
   db: AsyncSession, session: DeepResearchSession
 ) -> bool:
@@ -85,6 +207,11 @@ async def request_cancellation(
     session.lifecycle_version = (session.lifecycle_version or 0) + 1
   session.cancel_requested = True
   await db.commit()
+  record_metric(
+    "cancellation_requested",
+    status=str(session.status),
+    cancel_requested=True,
+  )
   return True
 
 
@@ -117,11 +244,25 @@ def claim_generation_sync(session, session_id: int, generation_id: int) -> tuple
   generation.state_version = (generation.state_version or 0) + 1
   generation.lease_until = now() + timedelta(seconds=WORKER_LEASE_SECONDS)
   generation.lease_token = str(uuid4())
+  generation.started_at = generation.started_at or now()
   if research.status != ResearchStatus.RUNNING:
     check_transition(str(research.status), ResearchStatus.RUNNING)
     research.status = ResearchStatus.RUNNING
     research.lifecycle_version = (research.lifecycle_version or 0) + 1
   session.commit()
+  queue_age_ms = None
+  if generation.created_at is not None:
+    queue_age_ms = max(
+      0,
+      int((generation.started_at - generation.created_at).total_seconds() * 1000),
+    )
+  record_metric(
+    "queue_claimed",
+    mode=generation.mode,
+    status="running",
+    phase="running",
+    queue_age_ms=queue_age_ms,
+  )
   return int(research.user_id), research.user.role == "admin", generation.lease_token
 
 

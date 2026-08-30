@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import {
-  ChipIcon,
   PlusIcon,
   EditIcon,
   TrashIcon,
@@ -11,6 +10,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Skeleton, SkeletonText } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { SetupIllustration } from '@/components/illustrations';
 import {
   userAiSettingsApi,
   userAiProvidersApi,
@@ -380,7 +380,7 @@ export function AiProvidersSection() {
             <div className="rounded-xl border border-dashed border-(--border)">
               <EmptyState
                 size="panel"
-                icon={ChipIcon}
+                illustration={SetupIllustration}
                 title="No providers yet"
                 description="Add one to use your own API key, or the server default applies."
               />

@@ -6,7 +6,7 @@ import { toastError } from '@/lib/utils/toast';
 import { SkeletonText } from '@/components/ui/Skeleton';
 import { Spinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SparklesIcon } from '@/components/icons';
+import { SetupIllustration } from '@/components/illustrations';
 import type { Paper } from '@/lib/api/papers';
 
 /**
@@ -75,7 +75,7 @@ export function PaperInfoPanel({ paper }: { paper: Paper }) {
       ) : (
         <EmptyState
           size="panel"
-          icon={SparklesIcon}
+          illustration={SetupIllustration}
           title="No summary yet"
           actions={
             <button

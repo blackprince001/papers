@@ -74,6 +74,22 @@ class PayloadLimitExceeded(ValueError):
   """Raised before a durable payload exceeds its configured byte budget."""
 
 
+def check_follow_up_transition(current: str, target: str) -> None:
+  """Validate the explicit transition used by ``Research further``.
+
+  A completed or failed run is terminal for ordinary lifecycle mutations. A
+  follow-up is the one deliberate exception: it creates a new generation and
+  makes that generation the active queued run. Keeping this check separate
+  prevents a generic caller from accidentally requeueing terminal history.
+  """
+  if target == ResearchStatus.QUEUED and current in {
+    ResearchStatus.COMPLETED,
+    ResearchStatus.FAILED,
+  }:
+    return
+  check_transition(current, target)
+
+
 def check_transition(current: str, target: str) -> None:
   try:
     source = ResearchStatus(current)

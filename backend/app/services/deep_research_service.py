@@ -1,15 +1,9 @@
 """Deep research: a long-running, resumable research agent run.
 
-Runs ``create_deep_research_agent`` inside a Celery worker. Two persistence
-layers keep the run durable:
-
-* **UI relay** — every stream event is ``RPUSH``ed to the Redis list
-  ``deepresearch:{id}:events`` so the SSE endpoint can replay progress to a
-  reconnecting browser (mirrors the paper-progress pattern in ``tasks/base.py``).
-* **Agent checkpoint** — after each bounded segment the agent's accumulated
-  input-item list (``to_input_list()``) is written to
-  ``DeepResearchSession.run_state`` so an interrupted run resumes without
-  repeating the searches it already did.
+Runs ``create_deep_research_agent`` inside a Celery worker. Generation-scoped
+checkpoints and the Postgres event store are the durable source of truth: a
+retry resumes from ``DeepResearchGeneration.checkpoint`` and a reconnecting
+browser replays ordered events from Postgres.
 
 Failures are routed by the shared error taxonomy (``agent/error.py``):
 recoverable errors raise :class:`DeepResearchRetryable` so the Celery task
@@ -22,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -36,14 +31,19 @@ from app.core.logger import get_logger
 from app.models.deep_research import (
   DeepResearchEvent,
   DeepResearchGeneration,
+  DeepResearchMessage,
   DeepResearchSession,
 )
 from app.services.ai.agent import (
   ERROR_CODE_AUTH,
   ERROR_CODE_INTERNAL,
   ERROR_CODE_MAX_TURNS,
+  ERROR_CODE_NETWORK,
   ERROR_CODE_NO_PROVIDER,
+  ERROR_CODE_PROVIDER_UNAVAILABLE,
+  ERROR_CODE_RATE_LIMIT,
   ERROR_CODE_TIMEOUT,
+  ERROR_CODE_TOOL_ERROR,
   adapt_stream,
   build_run_config,
   classify_exception,
@@ -53,17 +53,22 @@ from app.services.ai.agent import (
 )
 from app.services.ai.agent.agents import create_deep_research_agent
 from app.services.ai.agent.context import BYOContext
-from app.services.ai.agent.provider_resolver import resolve_providers
+from app.services.deep_research.conversation import (
+  append_message,
+  build_research_input,
+  evidence_ids_for_generation,
+)
 from app.services.deep_research.event_store import DuplicateTerminalEvent, EventStore
 from app.services.deep_research.evidence import persist_evidence
 from app.services.deep_research.orchestrator import verify_report
+from app.services.deep_research.provider import resolve_generation_provider
 from app.services.deep_research.state import check_transition, payload_bytes
+from app.services.deep_research.telemetry import record_metric
 
 logger = get_logger(__name__)
 
 # Runner requires a finite turn budget. A bound keeps one generation from
 # consuming unbounded provider capacity; exhausted work pauses for review.
-EVENTS_TTL_SECONDS = 1800
 
 # Provider types that support the agent (function-calling) framework.
 AGENT_PROVIDER_TYPES = {
@@ -79,6 +84,23 @@ AGENT_PROVIDER_TYPES = {
 # that resume automatically).
 USER_ACTIONABLE = {ERROR_CODE_AUTH, ERROR_CODE_NO_PROVIDER}
 _LEASE_TOKEN: ContextVar[str | None] = ContextVar("deep_research_lease_token", default=None)
+
+_SAFE_ERROR_MESSAGES = {
+  ERROR_CODE_AUTH: "The AI provider rejected this run. Check your provider settings, then resume.",
+  ERROR_CODE_INTERNAL: "The research run could not be completed. Start a new run to try again.",
+  ERROR_CODE_MAX_TURNS: "This is taking a while. Resume to let the research keep going.",
+  ERROR_CODE_NETWORK: "The connection to the AI provider was interrupted. The run will retry.",
+  ERROR_CODE_NO_PROVIDER: "No AI provider is configured. Add one in Settings, then resume.",
+  ERROR_CODE_PROVIDER_UNAVAILABLE: "The AI provider is temporarily unavailable. The run will retry.",
+  ERROR_CODE_RATE_LIMIT: "The AI provider is rate-limiting this run. The run will retry.",
+  ERROR_CODE_TIMEOUT: "The research run timed out. The run will retry.",
+  ERROR_CODE_TOOL_ERROR: "A research source could not be read. The run will retry.",
+}
+
+
+def _safe_error_message(error_code: str) -> str:
+  """Return a bounded, provider-agnostic message for durable/UI surfaces."""
+  return _SAFE_ERROR_MESSAGES.get(error_code, _SAFE_ERROR_MESSAGES[ERROR_CODE_INTERNAL])
 
 
 class StaleLease(Exception):
@@ -107,22 +129,6 @@ def _get_runner():
     return R
   except ImportError:
     return None
-
-
-def _events_key(session_id: int) -> str:
-  return f"deepresearch:{session_id}:events"
-
-
-def _get_redis():
-  import redis
-
-  return redis.Redis(
-    host=settings.REDIS_HOST,
-    port=settings.REDIS_PORT,
-    db=settings.REDIS_DB,
-    password=settings.REDIS_PASSWORD or None,
-    decode_responses=True,
-  )
 
 
 def _bounded_json_value(value: Any, max_bytes: int, fallback: Any = None) -> Any:
@@ -161,16 +167,6 @@ def _bounded_event(event: dict[str, Any], max_bytes: int) -> dict[str, Any]:
   return {"type": event_type or "chunk", "content": "[event truncated]", "truncated": True}
 
 
-def _relay(r, session_id: int, event: dict[str, Any]) -> None:
-  """Mirror a bounded event to Redis for legacy observability consumers."""
-  if event.get("type") == "keepalive":
-    return
-  bounded = _bounded_event(event, settings.DEEP_RESEARCH_MAX_EVENT_BYTES)
-  key = _events_key(session_id)
-  r.rpush(key, json.dumps(bounded, ensure_ascii=False))
-  r.expire(key, EVENTS_TTL_SECONDS)
-
-
 async def _ensure_generation(db, session: DeepResearchSession) -> DeepResearchGeneration:
   generation = (
     await db.execute(
@@ -194,7 +190,6 @@ async def _ensure_generation(db, session: DeepResearchSession) -> DeepResearchGe
 
 async def _emit_event(
   db,
-  r,
   session: DeepResearchSession,
   event: dict[str, Any],
   generation: DeepResearchGeneration | None = None,
@@ -223,7 +218,6 @@ async def _emit_event(
     )
   except DuplicateTerminalEvent:
     return
-  _relay(r, int(session.id), bounded)
 
 
 _LINK_RE = re.compile(r"\[([^\]]+)\]\((https?://[^)\s]+)\)")
@@ -284,10 +278,8 @@ def _safe_to_input_list(result: Any, fallback: Any) -> Any:
     items = result.to_input_list()
     if items:
       return items
-  except Exception as e:  # noqa: BLE001 — SDK internals vary; degrade gracefully
-    logger.warning(
-      "to_input_list unavailable; resuming from prior input", error=str(e)[:160]
-    )
+  except Exception:  # noqa: BLE001 — SDK internals vary; degrade gracefully
+    logger.warning("to_input_list unavailable; resuming from prior input")
   return fallback
 
 
@@ -332,7 +324,8 @@ async def _persist(db, session_id: int, **values: Any) -> None:
     check_transition(str(row.status), str(target_status))
     row.lifecycle_version = (row.lifecycle_version or 0) + 1
   for k, v in values.items():
-    setattr(row, k, v)
+    if k != "checkpoint":
+      setattr(row, k, v)
   generation = (
     await db.execute(
       select(DeepResearchGeneration).where(
@@ -351,16 +344,26 @@ async def _persist(db, session_id: int, **values: Any) -> None:
     db.add(generation)
   _assert_lease(generation)
   generation.status = str(row.status)
-  if "run_state" in values:
-    generation.checkpoint = values["run_state"]
+  if "checkpoint" in values:
+    generation.checkpoint = values["checkpoint"]
     generation.checkpoint_bytes = (
-      payload_bytes(values["run_state"]) if values["run_state"] is not None else 0
+      payload_bytes(values["checkpoint"]) if values["checkpoint"] is not None else 0
     )
   if str(row.status) in {"completed", "failed", "cancelled", "paused"}:
     generation.lease_until = None
     generation.finished_at = datetime.now(timezone.utc)
   generation.state_version = (generation.state_version or 0) + 1
   await db.commit()
+  if target_status is not None:
+    record_metric(
+      "phase_transition",
+      mode=generation.mode,
+      status=str(row.status),
+      phase=str(row.status),
+      provider_type=generation.provider_type,
+      model=generation.model,
+      retry_count=row.attempt_count,
+    )
 
 
 async def run_research(
@@ -388,16 +391,45 @@ async def run_research(
   token = _LEASE_TOKEN.set(lease_token)
   try:
     async with session_maker() as db:
-      return await _run_research(db, session_id, user_id, is_admin, generation_id)
+      return await _run_research(
+        db,
+        session_id,
+        user_id,
+        is_admin,
+        generation_id,
+        session_maker=session_maker,
+      )
   finally:
     _LEASE_TOKEN.reset(token)
     await engine.dispose()
 
 
+@asynccontextmanager
+async def _agent_session(session_maker, fallback_db):
+  """Yield the DB session reserved for tool calls during a streamed run.
+
+  The lifecycle session is used for checkpoints, cancellation, and events.
+  Keeping tool queries on a second session prevents the SDK's stream task and
+  the lifecycle loop from concurrently using one asyncpg connection.
+  """
+  if session_maker is None:
+    # Preserve direct/private callers while ensuring the production entry point
+    # always supplies a fresh session maker.
+    yield fallback_db
+    return
+
+  async with session_maker() as tool_db:
+    yield tool_db
+
+
 async def _run_research(
-  db, session_id: int, user_id: int | None, is_admin: bool = False, generation_id: int | None = None
+  db,
+  session_id: int,
+  user_id: int | None,
+  is_admin: bool = False,
+  generation_id: int | None = None,
+  session_maker=None,
 ) -> str:
-  r = _get_redis()
   Runner = _get_runner()
 
   session = await db.get(DeepResearchSession, session_id)
@@ -411,20 +443,19 @@ async def _run_research(
   except StaleLease:
     return "ignored"
   if session.cancel_requested:
-    await _cancel(db, r, session_id)
+    await _cancel(db, session_id)
     return "cancelled"
 
   question = (session.question or "").strip()
   if not question or len(question) > settings.DEEP_RESEARCH_MAX_QUESTION_LENGTH:
     await _mark_failed(
       db,
-      r,
       session_id,
       "input_too_large",
       "Research question exceeds the configured size limit",
     )
     return "failed"
-  resume_state = session.run_state
+  resume_state = generation.checkpoint
   try:
     await _persist(
       db,
@@ -437,104 +468,124 @@ async def _run_research(
     logger.info("Stopping stale deep-research worker", session_id=session_id)
     return "ignored"
   except CancellationRequested:
-    await _cancel(db, r, session_id)
+    await _cancel(db, session_id)
     return "cancelled"
 
   if Runner is None:
     await _pause(
-      db, r, session_id, ERROR_CODE_NO_PROVIDER, "OpenAI Agents SDK not installed."
+      db, session_id, ERROR_CODE_NO_PROVIDER, "OpenAI Agents SDK not installed."
     )
     return "paused"
 
-  resolved = await resolve_providers(db, user_id)
-  if not resolved:
+  provider = await resolve_generation_provider(
+    db,
+    user_id=user_id,
+    generation=generation,
+  )
+  if provider is None:
     await _pause(
       db,
-      r,
       session_id,
       ERROR_CODE_NO_PROVIDER,
       "No AI provider configured. Add one in your settings to run deep research.",
     )
     return "paused"
-  if resolved[0].route.provider_type.lower() not in AGENT_PROVIDER_TYPES:
+  if provider.route.provider_type.lower() not in AGENT_PROVIDER_TYPES:
     await _pause(
       db,
-      r,
       session_id,
       ERROR_CODE_NO_PROVIDER,
-      f"Provider '{resolved[0].route.provider_type}' is not supported. "
+      f"Provider '{provider.route.provider_type}' is not supported. "
       "Configure an OpenAI-compatible provider.",
     )
     return "paused"
 
-  provider = resolved[0]
+  record_metric(
+    "provider_selected",
+    mode=generation.mode,
+    status="running",
+    provider_type=provider.route.provider_type,
+    model=provider.route.default_model,
+  )
+
+  # Persist the provider/model pin before any streamed work begins. Retries and
+  # later Research further generations then resolve this same provider instead
+  # of silently following a changed account default.
+  await db.commit()
   run_config = build_run_config(
     provider_configs=[provider.route],
     model_hint=provider.route.default_model or None,
   )
   agent = create_deep_research_agent()
-  agent_input: Any = resume_state or [{"role": "user", "content": question}]
+  agent_input: Any = resume_state or await build_research_input(
+    db,
+    session=session,
+    generation=generation,
+  )
   try:
     await _persist(db, session_id, status="searching")
   except CancellationRequested:
-    await _cancel(db, r, session_id)
+    await _cancel(db, session_id)
     return "cancelled"
   session = await db.get(DeepResearchSession, session_id)
   if session is None:
     return "failed"
 
-  set_byo_context(
-    BYOContext(
-      user_id=user_id,
-      provider_configs=[provider.route],
-      is_admin=is_admin,
-      extra={"db_session": db, "session_id": session_id, "dr_sources": []},
-    )
-  )
   try:
-    result = Runner.run_streamed(
-      agent, input=agent_input, run_config=run_config, max_turns=settings.DEEP_RESEARCH_MAX_TURNS
-    )
-    content: list[str] = []
-    content_bytes = 0
-    run_error: dict[str, Any] | None = None
-    try:
-      async for adapted in adapt_stream(result, session_id=session_id):
-        if await _cancellation_requested(db, session_id):
-          await _cancel(db, r, session_id)
-          return "cancelled"
-        await _emit_event(db, r, session, adapted, generation)
-        t = adapted.get("type")
-        if t == "chunk":
-          chunk = adapted.get("content", "")
-          if isinstance(chunk, str) and content_bytes < settings.DEEP_RESEARCH_MAX_REPORT_BYTES:
-            bounded_chunk = _bounded_text(
-              chunk, settings.DEEP_RESEARCH_MAX_REPORT_BYTES - content_bytes
-            )
-            content.append(bounded_chunk)
-            content_bytes += len(bounded_chunk.encode("utf-8"))
-        elif t == "error":
-          run_error = adapted
-    except SoftTimeLimitExceeded as e:
-      # Time budget hit mid-run — checkpoint what the agent has and resume.
-      await _persist(
-        db,
-        session_id,
-        run_state=_bounded_json_value(
-          _safe_to_input_list(result, fallback=agent_input),
-          settings.DEEP_RESEARCH_MAX_EVENT_BYTES,
-          fallback=agent_input,
-        ),
-        status="queued",
-        last_error_code=ERROR_CODE_TIMEOUT,
+    async with _agent_session(session_maker, db) as tool_db:
+      set_byo_context(
+        BYOContext(
+          user_id=user_id,
+          provider_configs=[provider.route],
+          is_admin=is_admin,
+          extra={"db_session": tool_db, "session_id": session_id, "dr_sources": []},
+        )
       )
-      raise DeepResearchRetryable(ERROR_CODE_TIMEOUT) from e
+      result = Runner.run_streamed(
+        agent, input=agent_input, run_config=run_config, max_turns=settings.DEEP_RESEARCH_MAX_TURNS
+      )
+      content: list[str] = []
+      content_bytes = 0
+      run_error: dict[str, Any] | None = None
+      try:
+        async for adapted in adapt_stream(result, session_id=session_id):
+          if await _cancellation_requested(db, session_id):
+            await _cancel(db, session_id)
+            return "cancelled"
+          await _emit_event(db, session, adapted, generation)
+          t = adapted.get("type")
+          if t == "chunk":
+            chunk = adapted.get("content", "")
+            if isinstance(chunk, str) and content_bytes < settings.DEEP_RESEARCH_MAX_REPORT_BYTES:
+              bounded_chunk = _bounded_text(
+                chunk, settings.DEEP_RESEARCH_MAX_REPORT_BYTES - content_bytes
+              )
+              content.append(bounded_chunk)
+              content_bytes += len(bounded_chunk.encode("utf-8"))
+          elif t == "error":
+            run_error = adapted
+      except SoftTimeLimitExceeded as e:
+        # Time budget hit mid-run — checkpoint what the agent has and resume.
+        await _persist(
+          db,
+          session_id,
+          checkpoint=_bounded_json_value(
+            _safe_to_input_list(result, fallback=agent_input),
+            settings.DEEP_RESEARCH_MAX_EVENT_BYTES,
+            fallback=agent_input,
+          ),
+          status="queued",
+          last_error_code=ERROR_CODE_TIMEOUT,
+        )
+        raise DeepResearchRetryable(ERROR_CODE_TIMEOUT) from e
+
+      collected_sources = list(get_byo_context().extra.get("dr_sources") or [])
 
     checkpoint = _bounded_json_value(
-          _safe_to_input_list(result, fallback=agent_input),
-          settings.DEEP_RESEARCH_MAX_EVENT_BYTES,
-          fallback=agent_input,
-        )
+      _safe_to_input_list(result, fallback=agent_input),
+      settings.DEEP_RESEARCH_MAX_EVENT_BYTES,
+      fallback=agent_input,
+    )
 
     if run_error is None:
       # The model work is complete; advance through the checked synthesis and
@@ -544,7 +595,7 @@ async def _run_research(
       )
       await _persist(db, session_id, status="reading")
       await _persist(db, session_id, status="synthesizing")
-      sources = _run_sources(report)
+      sources = _run_sources(report, collected_sources)
       session = await db.get(DeepResearchSession, session_id)
       if session is None:
         return "failed"
@@ -560,24 +611,47 @@ async def _run_research(
       if verification.unsupported_urls:
         await _pause(
           db,
-          r,
           session_id,
           "unsupported_citation",
           "Research report contains citations that are not present in its evidence ledger.",
         )
         return "paused"
-      await _complete(db, r, session_id, report, sources=sources)
+      existing_assistant = (
+        await db.execute(
+          select(DeepResearchMessage.id).where(
+            DeepResearchMessage.generation_id == generation.id,
+            DeepResearchMessage.role == "assistant",
+          ).limit(1)
+        )
+      ).scalar_one_or_none()
+      if existing_assistant is None:
+        await append_message(
+          db,
+          session_id=session_id,
+          generation_id=int(generation.id),
+          role="assistant",
+          mode="research",
+          content=report,
+          payload={
+            "mode": "research",
+            "verification": "evidence_scoped" if evidence else "insufficient_evidence",
+            "source_ids": await evidence_ids_for_generation(
+              db, generation_id=int(generation.id)
+            ),
+          },
+        )
+        await db.commit()
+      await _complete(db, session_id, report, sources=sources)
       return "completed"
 
     code = run_error.get("error_code") or ERROR_CODE_INTERNAL
-    await _persist(db, session_id, run_state=checkpoint)
+    await _persist(db, session_id, checkpoint=checkpoint)
 
     if code == ERROR_CODE_MAX_TURNS:
       # Investigation didn't converge within the budget — pause with the
       # checkpoint saved so a resume continues rather than restarting.
       await _pause(
         db,
-        r,
         session_id,
         code,
         "This is taking a while. Resume to let the research keep going.",
@@ -588,18 +662,18 @@ async def _run_research(
       session = await db.get(DeepResearchSession, session_id)
       if session is not None:
         await _emit_event(
-          db, r, session,
-          {"type": "retrying", "error": run_error.get("error", "Retrying research"), "error_code": code, "recoverable": True},
+          db, session,
+          {"type": "retrying", "error": _safe_error_message(code), "error_code": code, "recoverable": True},
         )
       raise DeepResearchRetryable(code)
     if code in USER_ACTIONABLE:
-      await _pause(db, r, session_id, code, run_error.get("error", "Run paused"))
+      await _pause(db, session_id, code, _safe_error_message(code))
       return "paused"
-    await _mark_failed(db, r, session_id, code, run_error.get("error", "Run failed"))
+    await _mark_failed(db, session_id, code, _safe_error_message(code))
     return "failed"
 
   except CancellationRequested:
-    await _cancel(db, r, session_id)
+    await _cancel(db, session_id)
     return "cancelled"
   except DeepResearchRetryable:
     raise
@@ -617,33 +691,38 @@ async def _run_research(
     raise
   except Exception as e:  # noqa: BLE001 — surface via the error taxonomy
     code, recoverable = classify_exception(e)
-    logger.error("Deep research run error", error=str(e)[:200], error_code=code)
+    logger.error("Deep research run error", error_code=code, recoverable=recoverable)
     if recoverable:
       await _persist(db, session_id, status="queued", last_error_code=code)
       session = await db.get(DeepResearchSession, session_id)
       if session is not None:
         await _emit_event(
-          db, r, session,
-          {"type": "retrying", "error": str(e)[:300], "error_code": code, "recoverable": True},
+          db, session,
+          {"type": "retrying", "error": _safe_error_message(code), "error_code": code, "recoverable": True},
         )
       raise DeepResearchRetryable(code) from e
     if code in USER_ACTIONABLE:
-      await _pause(db, r, session_id, code, str(e)[:300])
+      await _pause(db, session_id, code, _safe_error_message(code))
       return "paused"
-    await _mark_failed(db, r, session_id, code, str(e)[:300])
+    await _mark_failed(db, session_id, code, _safe_error_message(code))
     return "failed"
   finally:
     reset_byo_context()
 
 
-def _run_sources(report: str) -> list[dict[str, Any]]:
+def _run_sources(
+  report: str, collected_sources: list[dict[str, Any]] | None = None
+) -> list[dict[str, Any]]:
   """The run's cited sources: the structured papers the tools collected this run
   (rich metadata for the Citations panel), deduped; falls back to links parsed
   from the report when nothing was collected."""
-  try:
-    collected = get_byo_context().extra.get("dr_sources") or []
-  except Exception:  # noqa: BLE001
-    collected = []
+  if collected_sources is None:
+    try:
+      collected = get_byo_context().extra.get("dr_sources") or []
+    except Exception:  # noqa: BLE001
+      collected = []
+  else:
+    collected = collected_sources
   # A report is never evidence. Only structured results emitted by authorized
   # tools enter the ledger; otherwise a model could validate its own invented URL.
   if not collected:
@@ -672,7 +751,6 @@ async def _cancellation_requested(db, session_id: int) -> bool:
 
 async def _terminal_transition(
   db,
-  r,
   session_id: int,
   *,
   status: str,
@@ -717,9 +795,11 @@ async def _terminal_transition(
     session.cited_sources = _bounded_json_value(
       cited_sources, settings.DEEP_RESEARCH_MAX_REPORT_BYTES, fallback=[]
     )
-  session.run_state = None
   session.last_error_code = last_error_code
   generation.status = status
+  if status != "paused":
+    generation.checkpoint = None
+    generation.checkpoint_bytes = 0
   generation.lease_until = None
   generation.finished_at = datetime.now(timezone.utc)
   generation.state_version = (generation.state_version or 0) + 1
@@ -733,13 +813,34 @@ async def _terminal_transition(
     commit=False,
   )
   await db.commit()
-  _relay(r, int(session.id), bounded)
+  duration_ms = None
+  if generation.started_at is not None:
+    duration_ms = max(
+      0, int((datetime.now(timezone.utc) - generation.started_at).total_seconds() * 1000)
+    )
+  record_metric(
+    "run_terminal",
+    mode=generation.mode,
+    status=status,
+    phase=status,
+    provider_type=generation.provider_type,
+    model=generation.model,
+    duration_ms=duration_ms,
+    source_count=len(cited_sources or []),
+    verification_status=(
+      "verified" if status == "completed" and cited_sources
+      else "insufficient_evidence" if status == "completed"
+      else "needs_attention"
+    ),
+    error_code=last_error_code,
+    stop_reason=last_error_code,
+    cancel_requested=status in {"cancelled", "cancel_requested"},
+  )
 
 
-async def _cancel(db, r, session_id: int) -> None:
+async def _cancel(db, session_id: int) -> None:
   await _terminal_transition(
     db,
-    r,
     session_id,
     status="cancelled",
     event={"type": "cancelled", "error": "Research cancelled", "recoverable": False},
@@ -748,13 +849,12 @@ async def _cancel(db, r, session_id: int) -> None:
 
 
 async def _complete(
-  db, r, session_id: int, report: str, *, sources: list[dict[str, Any]] | None = None
+  db, session_id: int, report: str, *, sources: list[dict[str, Any]] | None = None
 ) -> None:
   report = _bounded_text(report, settings.DEEP_RESEARCH_MAX_REPORT_BYTES)
   sources = sources if sources is not None else _run_sources(report)
   await _terminal_transition(
     db,
-    r,
     session_id,
     status="completed",
     event={"type": "done", "content": report, "session_id": session_id},
@@ -763,10 +863,9 @@ async def _complete(
   )
 
 
-async def _pause(db, r, session_id: int, code: str, message: str) -> None:
+async def _pause(db, session_id: int, code: str, message: str) -> None:
   await _terminal_transition(
     db,
-    r,
     session_id,
     status="paused",
     event={"type": "paused", "error": message, "error_code": code, "recoverable": True},
@@ -774,10 +873,9 @@ async def _pause(db, r, session_id: int, code: str, message: str) -> None:
   )
 
 
-async def _mark_failed(db, r, session_id: int, code: str, message: str) -> None:
+async def _mark_failed(db, session_id: int, code: str, message: str) -> None:
   await _terminal_transition(
     db,
-    r,
     session_id,
     status="failed",
     event={"type": "error", "error": message, "error_code": code, "recoverable": False},

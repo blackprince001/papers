@@ -11,6 +11,7 @@ import { annotationsApi, type Annotation } from '@/lib/api/annotations';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { AnnotationIllustration } from '@/components/illustrations';
 import { Textarea } from '@/components/ui/Textarea';
 import { ConfirmDialog, useConfirmDialog } from '@/components/ConfirmDialog';
 import { cn } from '@/lib/utils';
@@ -382,7 +383,7 @@ export function NotesPanel({ paperId, currentPage, annotations, isLoading }: Not
         <div className="bg-(--muted)/10 rounded-2xl border border-dashed border-(--border)">
           <EmptyState
             size="panel"
-            icon={NoteIcon}
+            illustration={AnnotationIllustration}
             title={scope === 'all' ? 'No notes yet' : scope === 'page' ? `No notes for page ${currentPage}` : 'No document notes yet'}
           />
         </div>

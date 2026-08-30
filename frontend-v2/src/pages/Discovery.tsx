@@ -22,6 +22,8 @@ import { toastSuccess, toastError } from '@/lib/utils/toast';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SearchIllustration } from '@/components/illustrations';
 
 const DISCOVERY_PROMPTS = [
   {
@@ -361,12 +363,12 @@ export default function Discovery() {
 
       {/* Empty State */}
       {!hasSearched && (
-        <div className="text-center py-16">
-          <SparklesIcon size={56} className="text-(--muted-foreground) mx-auto mb-4 opacity-50" />
-          <p className="text-body text-(--muted-foreground) max-w-md mx-auto">
-            Enter a search query above to discover research papers with AI-powered insights
-          </p>
-        </div>
+        <EmptyState
+          size="page"
+          illustration={SearchIllustration}
+          title="Discover your next paper"
+          description="Enter a search query above to find research papers with AI-powered insights."
+        />
       )}
 
       {/* Citation Explorer Modal */}

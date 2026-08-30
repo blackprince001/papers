@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { AnnotationCard } from './AnnotationCard';
 import { annotationAnchorY, annotationPage } from './annotation-geometry';
 import type { Annotation } from '@/lib/api/annotations';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { AnnotationIllustration } from '@/components/illustrations';
 
 /**
  * Side-panel list of annotations sorted by document position. Click jumps
@@ -46,10 +48,13 @@ export function AnnotationsPanel({
 
   if (entries.length === 0) {
     return (
-      <p className="px-3 py-6 text-center text-caption text-(--muted-foreground)">
-        No annotations yet. Select text in the document to highlight, comment,
-        or ask the AI.
-      </p>
+      <EmptyState
+        size="panel"
+        illustration={AnnotationIllustration}
+        title="No annotations yet"
+        description="Select text in the document to highlight, comment, or ask the AI."
+        className="px-3 py-6"
+      />
     );
   }
 

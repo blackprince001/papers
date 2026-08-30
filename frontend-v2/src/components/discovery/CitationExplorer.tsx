@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRightIcon, CloseIcon, ExternalLinkIcon } from '@/components/icons';
 import { Spinner } from '@/components/ui/Spinner';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { CitationIllustration } from '@/components/illustrations';
 import { discoveryApi, type DiscoveredPaperPreview } from '@/lib/api/discovery';
 
 interface CitationExplorerProps {
@@ -98,7 +100,7 @@ export function CitationExplorer({ paper, isOpen, onClose, onSelectPaper }: Cita
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
                 {data?.references.length === 0 && (
-                  <p className="text-caption text-(--muted-foreground) text-center py-8">No references found</p>
+                  <EmptyState size="panel" illustration={CitationIllustration} title="No references found" />
                 )}
                 {data?.references.map((ref, i) => (
                   <PaperItem key={i} paper={ref} onClick={() => onSelectPaper(ref)} />
@@ -115,7 +117,7 @@ export function CitationExplorer({ paper, isOpen, onClose, onSelectPaper }: Cita
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
                 {data?.citations.length === 0 && (
-                  <p className="text-caption text-(--muted-foreground) text-center py-8">No citations found</p>
+                  <EmptyState size="panel" illustration={CitationIllustration} title="No citations found" />
                 )}
                 {data?.citations.map((cit, i) => (
                   <PaperItem key={i} paper={cit} onClick={() => onSelectPaper(cit)} />

@@ -38,7 +38,7 @@ Or set `DATABASE_URL` directly (`postgresql+asyncpg://…`).
 | `STORAGE_PATH` | Paper file storage path (default `/app/storage/papers`) |
 | `EMBEDDING_MODEL` | Embedding model name (default `gemini-embedding-001`) |
 | `EMBEDDING_DIMENSION` | Embedding vector dim (default `768`) |
-| `DEEP_RESEARCH_MUTATIONS_ENABLED` | Temporary safety gate for new deep-research starts/resumes; default `false` during the rewrite |
+| `DEEP_RESEARCH_MUTATIONS_ENABLED` | Emergency stop for new deep-research starts/resumes; default `true` |
 
 # Auth
 
@@ -66,12 +66,11 @@ backend run from `backend/` does not see the repo-root `.env`; see
 
 # Deep research
 
-Deep-research mutation endpoints are temporarily frozen by
-`DEEP_RESEARCH_MUTATIONS_ENABLED=false` in every deployment while the unsafe legacy
-lifecycle is replaced. Do not enable it except for a deliberately reviewed local/test
-override. Completed reports remain readable. The old product flag and earlier
-`DEEP_RESEARCH_*` settings were removed; this is a safety gate, not a product flag.
-The research worker still uses the `research` queue (see [/infra/docker.md](/infra/docker.md)).
+Deep-research mutation endpoints are enabled by default. Set
+`DEEP_RESEARCH_MUTATIONS_ENABLED=false` during an incident or maintenance window
+to stop new starts and resumes; completed reports remain readable. The setting
+does not change the dedicated `research` queue (see
+[/infra/docker.md](/infra/docker.md)).
 
 # Prod-only domain vars
 
@@ -83,7 +82,7 @@ The research worker still uses the `research` queue (see [/infra/docker.md](/inf
 |---|---|
 | `VITE_API_URL` | API base (default `http://localhost:8000/api/v1`) — baked at build; passed as Docker build arg |
 | `VITE_GOOGLE_CLIENT_ID` | Google client ID — baked at build; passed as Docker build arg |
-| `VITE_DEEP_RESEARCH_MUTATIONS_ENABLED` | Temporary UI gate; keep `false` while the deep-research rewrite is in progress |
+| `VITE_DEEP_RESEARCH_MUTATIONS_ENABLED` | Frontend emergency UI gate; default `true` |
 
 # Landing build-time vars (`landing/.env.example`)
 

@@ -102,7 +102,7 @@ in `backend/app/schemas/` — one Pydantic v2 file per domain.
 | `reference.py` | `ReferenceManifestEntry`, `ReferenceManifest`, `BatchResolveRequest/Response` |
 | `related.py` | `RelatedPaperExternal`, `RelatedPapersResponse` |
 | `discovery.py` | `DiscoverySearchFilters/Request/Response`, `DiscoveredPaper/Preview`, `SourceSearchResult`, `AddToLibrary*`, `BatchAddToLibrary*`, `DiscoverySession*/Detail`, `Recommendation*`, `CitationExplorer*`, `DiscoverySourceInfo/SourcesResponse` |
-| `deep_research.py` | `DeepResearchSessionCreate` (`question`), `CitedSource`, `DeepResearchSession` (list view), `DeepResearchSessionDetail` (+ `report`, `cited_sources`). `run_state` is intentionally NOT in any schema |
+| `deep_research.py` | `DeepResearchSessionCreate`, `CitedSource`, `DeepResearchSession`, `DeepResearchGenerationSummary`, `DeepResearchArchiveResponse`, `DeepResearchSessionDetail`, and safe conversation/follow-up projections. Execution checkpoints are intentionally absent from schemas. |
 | `duplicate.py` | `DuplicateMatch`, `MergeRequest`, `MergePreview` |
 | `export.py` | `ExportRequest`, `CitationExportRequest` |
 | `huggingface.py` | `HF*` types for HuggingFace Daily Papers |

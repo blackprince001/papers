@@ -7,6 +7,8 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { PaperCard } from '@/components/PaperCard';
 import { ExpandedInput } from '@/components/ExpandedInput';
 import { papersApi } from '@/lib/api/papers';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { LibraryIllustration } from '@/components/illustrations';
 
 export default function Home() {
   const [query, setQuery] = useState('');
@@ -90,12 +92,18 @@ export default function Home() {
               ))}
             </div>
           ) : (
-            <div className="py-20 text-center">
-              <p className="text-(--muted-foreground) mb-4">Your groups are empty</p>
-              <Link to="/ingest">
-                <Button variant="outlined">Add your first paper</Button>
-              </Link>
-            </div>
+            <EmptyState
+              size="page"
+              illustration={LibraryIllustration}
+              title="Your library is empty"
+              description="Add your first paper to start building your research collection."
+              actions={
+                <Link to="/ingest">
+                  <Button variant="outlined">Add your first paper</Button>
+                </Link>
+              }
+              className="py-20"
+            />
           )}
 
           {/* See all link */}

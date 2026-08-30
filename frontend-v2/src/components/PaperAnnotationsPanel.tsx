@@ -5,6 +5,7 @@ import { type Annotation } from '@/lib/api/annotations';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { AnnotationIllustration } from '@/components/illustrations';
 import { cn } from '@/lib/utils';
 
 interface PaperAnnotationsPanelProps {
@@ -165,7 +166,7 @@ export function PaperAnnotationsPanel({
         <div className="bg-(--muted)/10 rounded-2xl border border-dashed border-(--border)">
           <EmptyState
             size="panel"
-            icon={HighlighterIcon}
+            illustration={AnnotationIllustration}
             title={filterByPage ? `No annotations on page ${currentPage}` : 'No annotations yet'}
           />
         </div>

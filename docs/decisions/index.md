@@ -15,8 +15,8 @@ most feature changes are not ADRs.
 * [Consolidated CRUD](consolidated-crud.md) - merged top-level `crud/` into `api/crud/` to eliminate the dual-location split.
 * [Per-stream DB sessions](stream-db-session.md) - a fresh `stream_db_session()` exists for SSE generators to avoid asyncpg `MissingGreenlet`.
 * [Structured AI error codes over SSE](structured-ai-errors.md) - a fixed error-code taxonomy surfaced over SSE for typed client handling.
-* [Resumable long-running agent runs](resumable-agent-runs.md) - deep-research runs checkpoint the agent's `to_input_list()` to `run_state` and RPUSH every event to a replayable Redis relay; resume is routed by the error-taxonomy recoverable flag; no throttling.
-* [Dedicated `research` queue; deep research always-on](deep-research-queue.md) - isolate deep research on its own Celery queue instead of rate-limiting; `ENABLE_DEEP_RESEARCH` and all deep-research env vars removed.
+* [Durable deep-research generations and event replay](resumable-agent-runs.md) - generation checkpoints and ordered SSE events live in Postgres; Redis is used for Celery transport.
+* [Dedicated `research` queue; deep research always-on](deep-research-queue.md) - isolate deep research on its own Celery queue; the mutation setting is an emergency stop, not a product flag.
 * [Tailwind v4 CSS-based config](tailwind-v4-css-config.md) - no `tailwind.config.js`; tokens declared in `@theme`.
 
 See the [architecture overview](/architecture.md) for how these fit together.

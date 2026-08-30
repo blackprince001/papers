@@ -11,6 +11,7 @@ import {
 } from '@/components/icons';
 import { Spinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { LibraryIllustration } from '@/components/illustrations';
 import {
   discoveryApi,
   type DiscoverySession,
@@ -170,7 +171,7 @@ export function SavedDiscoveriesPanel({ onLoadSession }: SavedDiscoveriesPanelPr
           ) : (
             <EmptyState
               size="panel"
-              icon={BookmarkIcon}
+              illustration={LibraryIllustration}
               title="No saved discoveries yet"
               description={'Search and click "Save Session" to store results.'}
             />

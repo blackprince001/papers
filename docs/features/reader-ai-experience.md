@@ -4,14 +4,14 @@ title: Reader and AI Experience Reformation
 description: A gated, file-level implementation blueprint for the PDF reader, AI chat presentation, thinking states, duotone iconography, illustrated empty states, and a secure conversational deep-research rewrite.
 tags: [feature-plan, reader, pdf, chat, deep-research, icons, empty-states, ai, accessibility]
 timestamp: 2026-08-29T00:00:00Z
-status: in-progress
+status: complete
 ---
 
 # Status
 
-**In progress.** Deep-research safety work is underway; Phase 5 shared AI
-presentation and Phase 6 icon implementation are complete. Phase 7 illustrated
-empty states is now open at EMPTY-01.
+**Complete.** Phases 0–8 and the Deep Research replacement are implemented. The
+automated release gates are green; the remaining human-owned step is the local
+visual review of the final Deep Research states.
 
 This is the working contract for the next Lumen experience pass. It turns the
 requested direction into staged changes that can remain buildable and reviewable
@@ -537,8 +537,9 @@ reader/chat fixtures render in both themes.
 This phase begins immediately after the QA baseline and blocks visual phases. Every
 boundary built in DR-10 through DR-14 must emit redacted correlation, generation,
 task/lease, version, phase-latency, budget/usage, retry, and safe stop-reason telemetry.
-DR-17 later turns those signals into dashboards, alerts, and a verified runbook; it is
-not permission to bolt observability on after the workflow exists.
+Phase 8 now turns those signals into the redacted release metrics, deterministic eval,
+CI gate, and verified operations runbook. Observability is part of the workflow
+contract rather than a post-release add-on.
 
 ### DR-10: Model checked state, generations, events, evidence, messages, and outbox — L
 
@@ -1371,9 +1372,22 @@ Keep control-local no-option messages local in `ui/Select`, `shadcn/command`,
 **Checkpoint G:** every product-level empty state has useful next-step copy, a static
 reduced-motion rendering, correct heading structure, and responsive screenshots.
 
+#### Phase 7 implementation checkpoint — 2026-08-29
+
+EMPTY-01 through EMPTY-03 are implemented for the current frontend surface. The
+new project-owned illustration layer contains six static, theme-aware concepts;
+`EmptyState` accepts the semantic illustration component while retaining its icon
+fallback, and row states remain compact. Page, panel, archive, AI, chat, citation,
+reader, discovery, and home consumers now use the shared concepts. The dedicated
+`/dev/empties` route covers light/dark concept review and the page/panel/row scale
+contract. Frontend tests, the production build, and the standards audit pass.
+
+Checkpoint G is closed. The human light/dark, reduced-motion, heading, and
+responsive visual review was accepted on 2026-08-29.
+
 ## Phase 8 — conversational deep research, UI, release, and contraction
 
-### DR-15: Add conversational follow-up modes — L
+### DR-15: Add conversational follow-up modes — complete
 
 **Depends on:** DR-10–DR-14.
 
@@ -1388,7 +1402,22 @@ Acceptance: **Ask this research** stays within existing evidence and does not si
 search; **Research further** creates one guarded generation; the pinned-provider
 contract is preserved; conversation/evidence/verification survive reload/reconnect.
 
-### DR-16: Replace the current deep-research UI — L
+#### DR-15 implementation checkpoint — 2026-08-29
+
+The follow-up contract now has two explicit modes. Ask this research stores a
+durable user/assistant turn and uses an agent with no retrieval tools against the
+session's verified evidence ledger. Unsupported citations become a safe
+insufficient-evidence response. Research further stores the new user turn, copies
+the generation's provider pin, and creates one idempotent queued generation through
+the existing outbox. Both paths expose owned, bounded message history, and the
+frontend no longer sends suggested follow-ups to the standalone start endpoint.
+
+Migration `deep_research_003` adds generation mode/provider pin fields and message
+mode/idempotency fields. Backend/frontend tests, lifecycle integration, the
+standards audit, and the production build pass. The later DR-16–DR-18 checkpoints
+close the remaining UI, release, and legacy-cutover work.
+
+### DR-16: Replace the current deep-research UI — complete
 
 **Depends on:** DR-15 and AIUI-02/AIUI-05.
 
@@ -1405,7 +1434,19 @@ Add pending guards, provider/scope/effort disclosure, phase/progress/elapsed tim
 source and verifier state, reconnect/offline state, cancel, settings recovery,
 pagination/search for archive, awaited clipboard, and ingest outcome feedback.
 
-### DR-17: Establish observability and eval release operations — L
+#### DR-16 implementation checkpoint — 2026-08-29
+
+The Deep Research page now exposes the run contract directly: queued and active
+states, phase progress, elapsed time, source verification, provider/scope/effort
+disclosure, reconnect/offline recovery, cooperative cancel, paused settings
+recovery, bounded archive search/pagination, awaited clipboard feedback, and
+ingest success/failure feedback. Follow-up controls stay disabled while a run or
+follow-up is pending, and the browser sends an idempotency key for new starts.
+
+Automated frontend tests and the production build pass. Local visual verification
+of the final states remains a human checkpoint.
+
+### DR-17: Establish observability and eval release operations — complete
 
 **Depends on:** DR-14–DR-16.
 
@@ -1422,7 +1463,16 @@ budget/usage, source/citation support, retry/stop reason, SSE lag, cancellation,
 abandonment. Never log raw questions, reports, evidence payloads, checkpoints, keys, or
 direct user identifiers by default.
 
-### DR-18: Migrate and contract legacy implementation — M
+#### DR-17 implementation checkpoint — 2026-08-29
+
+Redacted lifecycle metrics now cover admission, queueing, provider selection,
+phase transitions, terminal outcomes, retries, cancellation, source support, and
+queue age. Unknown metric fields are dropped. The versioned deterministic eval
+passes its permission, unsupported-claim, citation-recall, latency, and baseline
+gates, and CI runs the same release check. The operations runbook documents alert
+signals, recovery, rollback, and the privacy boundary.
+
+### DR-18: Migrate and contract legacy implementation — complete
 
 **Depends on:** DR-14 and staged production verification; DR-16/17 before full release.
 
@@ -1434,9 +1484,20 @@ direct user identifiers by default.
 - remove obsolete event/reasoning presentation and stale docs;
 - supersede the resumability and queue ADRs with decisions matching proven behavior.
 
-**Checkpoint H:** permission safety hard-zero; lifecycle chaos tests pass; cursor SSE
-survives reconnect and worker death; eval gate beats baseline; UI completes start →
-research → reconnect → verify → follow-up → cancel/archive flows.
+#### DR-18 implementation checkpoint — 2026-08-29
+
+Migration `deep_research_004` copies any legacy checkpoint into the current
+generation, pauses active legacy runs with an explicit migration message, fences
+their workers, and removes the session `run_state` column. The worker and API now
+use generation checkpoints plus the Postgres event store; Redis remains only the
+broker/result backend. The resumability and queue decisions, API/feature docs,
+and operations runbook describe the shipped contract.
+
+**Checkpoint H:** permission safety is hard-zero; lifecycle chaos tests pass; cursor
+SSE survives reconnect and worker death; the eval gate beats baseline; and the
+automated UI/API contract checks cover start, reconnect, verify, follow-up, cancel,
+and archive behavior. Human visual verification of the final browser states is the
+remaining local review step.
 
 # Complete expected file-change ledger
 
@@ -1868,14 +1929,13 @@ Release gates:
 - using ReUI assets without confirmed license rights;
 - animating frequent controls or making motion necessary for comprehension.
 
-# Known documentation drift to correct during delivery
+# Documentation drift closed in Phase 8
 
-Current documents still describe segmented deep-research runs that the source no
-longer implements, safe replay that is currently broken, queue isolation that shared
-workers do not provide, optional agent SDK behavior partly reversed by a later ADR,
-a removed `ReasoningTree`, and a test command that currently fails collection. These
-claims must not be copied into new implementation work. Superseding ADRs should be
-written only when tests prove the replacement behavior.
+The deep-research feature, API, model, queue, resumability, environment, frontend,
+and operations documents now describe the generation-scoped Postgres lifecycle,
+dedicated worker, cursor SSE replay, evidence ledger, follow-up modes, and emergency
+mutation switch. Historical entries in the update log remain historical and are not
+current implementation guidance.
 
 # Research notes and citations
 

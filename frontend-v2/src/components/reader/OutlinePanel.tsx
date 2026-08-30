@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { cn } from '@/lib/utils';
 import { SkeletonText } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { LibraryIllustration } from '@/components/illustrations';
 import { extractTOC, type TOCItem } from './toc';
 
 function OutlineList({
@@ -84,9 +86,13 @@ export function OutlinePanel({
   }
   if (!items || items.length === 0) {
     return (
-      <p className="px-3 py-6 text-center text-caption text-(--muted-foreground)">
-        This document has no outline.
-      </p>
+      <EmptyState
+        size="panel"
+        illustration={LibraryIllustration}
+        title="This document has no outline"
+        description="The paper does not include a navigable table of contents."
+        className="px-3 py-6"
+      />
     );
   }
   return (

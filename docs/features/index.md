@@ -11,8 +11,8 @@ list it below as it is added.
 
 # Plans
 
-* [Reader and AI Experience Reformation](reader-ai-experience.md) - **In progress.** Gated plan for reader improvements and the deep-research lifecycle rewrite. The mutation freeze remains until its safety and evaluation gates pass.
-* [Deep Research](deep-research.md) - **Implemented, replacement planned.** The current agent/Celery/Redis implementation; known security, resumability, evidence, worker-isolation, and test gaps are addressed by the [reformation plan](reader-ai-experience.md).
+* [Reader and AI Experience Reformation](reader-ai-experience.md) - **Complete.** The reader and deep-research lifecycle work is shipped; visual verification remains a product review checkpoint.
+* [Deep Research](deep-research.md) - **Implemented.** The agent/Celery/Postgres implementation with evidence verification, follow-ups, cancellation, archive search, and release operations.
 
 # Related
 

@@ -26,20 +26,29 @@ export function usePaperFile(paper: Paper): {
 
     let cancelled = false;
     let objectUrl: string | null = null;
+    const controller = new AbortController();
 
-    fetchApi<Blob>(paper.file_url, { method: 'GET', responseType: 'blob' })
+    fetchApi<Blob>(paper.file_url, {
+      method: 'GET',
+      responseType: 'blob',
+      signal: controller.signal,
+    })
       .then((blob) => {
-        if (cancelled) return;
+        if (cancelled || controller.signal.aborted) return;
         objectUrl = URL.createObjectURL(blob);
         setLoaded({ key, url: objectUrl, error: null });
       })
       .catch((err) => {
-        if (cancelled) return;
+        // Cancellation is expected when navigating between papers or when
+        // React remounts the reader in development. It must not become a PDF
+        // load error in the reader shell.
+        if (cancelled || controller.signal.aborted) return;
         setLoaded({ key, url: null, error: err?.toString() ?? 'Failed to load PDF' });
       });
 
     return () => {
       cancelled = true;
+      controller.abort();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [key, paper.file_url]);

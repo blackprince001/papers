@@ -11,6 +11,8 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { aiFeaturesApi } from '@/lib/api/aiFeatures';
 import { toastInfo } from '@/lib/utils/toast';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SetupIllustration } from '@/components/illustrations';
 
 interface AISummaryProps {
   paperId: number;
@@ -165,21 +167,23 @@ export function AISummary({ paperId }: AISummaryProps) {
           </div>
         </>
       ) : (
-        <div className="flex flex-col items-center justify-center py-12 px-6 text-center bg-(--muted)/20 rounded-2xl border border-dashed border-(--border)">
-          <SparklesIcon size={40} className="mb-4 text-(--muted-foreground) opacity-40" />
-          <h3 className="text-btn font-semibold text-(--foreground) mb-2">No Summary Available</h3>
-          <p className="text-code text-(--muted-foreground) mb-6 max-w-60">
-            Generate an AI-powered summary to quickly understand the core message of this paper.
-          </p>
-          <Button
-            onClick={() => generateMutation.mutate()}
-            loading={generateMutation.isPending}
-            className="px-6"
-          >
-            <SparklesIcon size="md" className="mr-2" />
-            Generate Summary
-          </Button>
-        </div>
+        <EmptyState
+          size="panel"
+          illustration={SetupIllustration}
+          title="No summary available"
+          description="Generate an AI-powered summary to quickly understand the core message of this paper."
+          actions={
+            <Button
+              onClick={() => generateMutation.mutate()}
+              loading={generateMutation.isPending}
+              className="px-6"
+            >
+              <SparklesIcon size="md" className="mr-2" />
+              Generate Summary
+            </Button>
+          }
+          className="bg-(--muted)/20 rounded-2xl border border-dashed border-(--border)"
+        />
       )}
 
       {(generateMutation.isError || error) && (

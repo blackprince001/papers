@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { SearchIllustration } from '@/components/illustrations';
 
 type ViewMode = 'daily' | 'monthly';
 
@@ -312,7 +313,7 @@ export default function HuggingFacePapers() {
           ) : (
             <EmptyState
               size="page"
-              icon={CalendarIcon}
+              illustration={SearchIllustration}
               title={`No papers for this ${viewMode === 'daily' ? 'date' : 'month'}`}
               description={`Try selecting a different ${viewMode === 'daily' ? 'date' : 'month'}.`}
             />

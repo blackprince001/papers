@@ -5,7 +5,8 @@ workers, async (asyncpg) and sync (psycopg2) SQLAlchemy engines sharing one
 set of models, Pydantic v2 schemas, and per-user BYO AI providers.
 
 Python 3.13, dependency management via `uv` (`backend/pyproject.toml`). Lint =
-`ruff`, typecheck = `pyright`. Migrations: Alembic (head `deep_research_001`).
+`ruff`, typecheck = `pyright`. Migrations: Alembic (heads include
+`deep_research_004` and the independent annotation head).
 
 # Concepts
 

@@ -231,6 +231,17 @@ html {
     --light-blue: #4f9be8;
     --coral-red: #e45b3c;
 
+    /* ===== EMPTY-STATE ILLUSTRATIONS =====
+     * The artwork remains theme-native without coupling SVG geometry to a
+     * specific light/dark palette. Consumers can override these locally when
+     * an illustration needs a more specific semantic emphasis. */
+    --illustration-line: var(--foreground);
+    --illustration-muted: var(--muted-foreground);
+    --illustration-accent: var(--mint-green);
+    --illustration-secondary: var(--sky-blue);
+    --illustration-warm: var(--coral-red);
+    --illustration-surface: var(--muted);
+
     /* ===== NEUTRAL SCALE ===== */
     --black: #000000;
     --near-black: #101111;

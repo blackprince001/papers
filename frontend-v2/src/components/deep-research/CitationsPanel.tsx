@@ -84,11 +84,15 @@ export function CitationsPanel({
   references = [],
   onAdd,
   addingUrl,
+  addedUrls = [],
+  failedUrl = null,
 }: {
   sources: CitedSource[];
   references?: ReferenceManifestEntry[];
   onAdd: (url: string) => void;
   addingUrl: string | null;
+  addedUrls?: string[];
+  failedUrl?: string | null;
 }) {
   const reduce = useReducedMotion();
   const navigate = useNavigate();
@@ -193,10 +197,21 @@ export function CitationsPanel({
                       e.stopPropagation();
                       onAdd(it.addUrl as string);
                     }}
-                    disabled={addingUrl === it.addUrl}
+                    disabled={addingUrl === it.addUrl || addedUrls.includes(it.addUrl)}
+                    aria-label={
+                      addedUrls.includes(it.addUrl)
+                        ? `Added ${it.title} to library`
+                        : `Add ${it.title} to library`
+                    }
                     className="shrink-0 text-caption font-medium text-(--muted-foreground) hover:text-(--foreground) opacity-0 group-hover:opacity-100 focus:opacity-100 transition disabled:opacity-50"
                   >
-                    {addingUrl === it.addUrl ? 'Adding…' : 'Add'}
+                    {addingUrl === it.addUrl
+                      ? 'Adding…'
+                      : addedUrls.includes(it.addUrl)
+                        ? 'Added'
+                        : failedUrl === it.addUrl
+                          ? 'Try again'
+                          : 'Add'}
                   </button>
                 )}
                 {it.target && (

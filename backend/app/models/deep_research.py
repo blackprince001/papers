@@ -24,8 +24,7 @@ class DeepResearchSession(Base):
 
   Holds ownership and the user-visible report summary. Durable execution
   checkpoints, ordered events, evidence, messages, and broker dispatch records
-  live in generation-scoped tables below. ``run_state`` remains a compatibility
-  projection while the new lifecycle is rolled out.
+  live in generation-scoped tables below.
   """
 
   __tablename__ = "deep_research_sessions"
@@ -41,8 +40,6 @@ class DeepResearchSession(Base):
   report = Column(Text, nullable=True)
   # Ordered list of [{title, url, source, external_id}] surfaced during the run.
   cited_sources = Column(JSON, nullable=True)
-  # Internal resume checkpoint (agent to_input_list()); not exposed to clients.
-  run_state = Column(JSON, nullable=True)
   last_error_code = Column(String, nullable=True)
   attempt_count = Column(Integer, nullable=False, default=0)
   created_at = Column(
@@ -91,7 +88,21 @@ class DeepResearchGeneration(Base):
     index=True,
   )
   generation_number = Column(Integer, nullable=False)
+  # ``research`` runs the bounded search workflow; ``ask`` is a short,
+  # evidence-only conversational answer and never receives search tools.
+  mode = Column(String(16), nullable=False, default="research", server_default="research")
   status = Column(String(32), nullable=False, default="queued", index=True)
+  # Provider selection is captured when a generation first runs. Follow-ups
+  # copy these fields so changing a user's default cannot silently switch the
+  # model halfway through one research conversation.
+  provider_id = Column(
+    Integer,
+    ForeignKey("user_ai_providers.id", ondelete="SET NULL"),
+    nullable=True,
+    index=True,
+  )
+  provider_type = Column(String(64), nullable=True)
+  model = Column(String(128), nullable=True)
   state_version = Column(Integer, nullable=False, default=0, server_default="0")
   last_event_sequence = Column(BigInteger, nullable=False, default=0, server_default="0")
   checkpoint = Column(JSON, nullable=True)
@@ -114,6 +125,7 @@ class DeepResearchGeneration(Base):
 
   __table_args__ = (
     UniqueConstraint("session_id", "generation_number", name="uq_dr_generation_number"),
+    CheckConstraint("mode IN ('research','ask')", name="ck_dr_generation_mode"),
     CheckConstraint("generation_number >= 1", name="ck_dr_generation_positive"),
     CheckConstraint("state_version >= 0", name="ck_dr_generation_version_nonnegative"),
     CheckConstraint("last_event_sequence >= 0", name="ck_dr_generation_sequence_nonnegative"),
@@ -208,9 +220,11 @@ class DeepResearchMessage(Base):
     index=True,
   )
   sequence = Column(BigInteger, nullable=False)
+  mode = Column(String(16), nullable=False, default="research", server_default="research")
   role = Column(String(32), nullable=False)
   content = Column(Text, nullable=False)
   content_bytes = Column(Integer, nullable=False)
+  idempotency_key = Column(String(255), nullable=True)
   payload = Column(JSON, nullable=True)
   correlation_id = Column(String(128), nullable=False, index=True)
   created_at = Column(
@@ -219,6 +233,8 @@ class DeepResearchMessage(Base):
 
   __table_args__ = (
     UniqueConstraint("generation_id", "sequence", name="uq_dr_message_sequence"),
+    UniqueConstraint("session_id", "idempotency_key", name="uq_dr_message_idempotency"),
+    CheckConstraint("mode IN ('research','ask')", name="ck_dr_message_mode"),
     CheckConstraint("sequence >= 1", name="ck_dr_message_sequence_positive"),
     CheckConstraint("content_bytes >= 0", name="ck_dr_message_content_bytes_nonnegative"),
   )

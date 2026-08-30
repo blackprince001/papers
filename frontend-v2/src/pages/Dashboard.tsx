@@ -9,9 +9,9 @@ import {
   TrendingUpIcon,
   TagIcon,
   ChevronRightIcon,
-  ChartBarsIcon,
   PlusIcon,
 } from '@/components/icons';
+import { ActivityIllustration } from '@/components/illustrations';
 import { statisticsApi } from '@/lib/api/statistics';
 import { papersApi } from '@/lib/api/papers';
 import { tagsApi } from '@/lib/api/tags';
@@ -290,7 +290,7 @@ export default function Dashboard() {
         {pageHeader}
         <EmptyState
           size="page"
-          icon={ChartBarsIcon}
+          illustration={ActivityIllustration}
           title="Nothing to chart yet"
           description="Add papers to your library and your reading activity, streaks, and stats will show up here."
           actions={

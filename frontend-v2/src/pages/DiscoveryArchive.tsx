@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { ArchiveIcon, SearchIcon, TrashIcon, ClockIcon, FileTextIcon, EditIcon, CheckIcon, CloseIcon } from '@/components/icons';
+import { SearchIcon, TrashIcon, ClockIcon, FileTextIcon, EditIcon, CheckIcon, CloseIcon } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { discoveryApi, type DiscoverySession } from '@/lib/api/discovery';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { LibraryIllustration } from '@/components/illustrations';
 
 function formatDate(dateStr: string) {
   const date = new Date(dateStr);
@@ -78,11 +80,12 @@ export default function DiscoveryArchive() {
           ))}
         </div>
       ) : !sessions || sessions.length === 0 ? (
-        <div className="text-center py-16">
-          <ArchiveIcon size={48} className="text-(--muted-foreground) mx-auto mb-3 opacity-40" />
-          <p className="text-body text-(--muted-foreground)">No saved discoveries yet.</p>
-          <p className="text-code text-(--muted-foreground) mt-1">Search for papers and save your sessions from the Discovery page.</p>
-        </div>
+        <EmptyState
+          size="page"
+          illustration={LibraryIllustration}
+          title="No saved discoveries yet"
+          description="Search for papers and save your sessions from the Discovery page."
+        />
       ) : (
         <div className="space-y-4">
           {sessions.map((session: DiscoverySession) => (

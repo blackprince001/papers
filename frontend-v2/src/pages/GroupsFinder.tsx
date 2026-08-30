@@ -26,6 +26,11 @@ import {
 const QuickLookViewer = lazy(() =>
   import('@/components/shadcn/pdf-viewer').then((m) => ({ default: m.PDFViewer }))
 );
+const PDF_DOCUMENT_OPTIONS = {
+  cMapPacked: true,
+  cMapUrl: '/pdfjs/cmaps/',
+  standardFontDataUrl: '/pdfjs/standard_fonts/',
+};
 import {
   buildManifest,
   groupIdFromPath,
@@ -660,11 +665,7 @@ export default function GroupsFinder() {
               <QuickLookViewer
                 file={quickLook.url}
                 showUpload={false}
-                documentOptions={{
-                  cMapPacked: true,
-                  cMapUrl: '/pdfjs/cmaps/',
-                  standardFontDataUrl: '/pdfjs/standard_fonts/',
-                }}
+                documentOptions={PDF_DOCUMENT_OPTIONS}
               />
             </Suspense>
           </div>

@@ -13,6 +13,8 @@ import {
   SparklesIcon,
 } from '@/components/icons';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { LibraryIllustration } from '@/components/illustrations';
 import { PaperDetails } from '@/components/PaperDetails';
 import { AISummary } from '@/components/AISummary';
 import { KeyFindings } from '@/components/KeyFindings';
@@ -128,10 +130,12 @@ export default function ChatPanel({ isOpen, onToggle, activeTab, setActiveTab }:
   return (
     <div className="w-full h-full rounded-(--panel-radius) border border-(--panel-border) bg-(--panel-surface) shadow-(--shadow-panel) backdrop-blur-sm flex flex-col overflow-hidden">
       {!paperId || !paper ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-(--muted-foreground) opacity-50">
-          <FileTextIcon size={40} className="mb-3" />
-          <p className="text-code">Open a paper to see details</p>
-        </div>
+        <EmptyState
+          size="panel"
+          illustration={LibraryIllustration}
+          title="Open a paper to see details"
+          className="flex-1 justify-center p-6"
+        />
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} variant="plain" className="flex flex-col h-full">
           {/* Expanding pill bar — active tab reveals its label */}

@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog, useConfirmDialog } from '@/components/ConfirmDialog';
 import { BookmarkIcon, NoteIcon, TrashIcon } from '@/components/icons';
+import { LibraryIllustration } from '@/components/illustrations';
 import { format } from 'date-fns';
 
 interface BookmarksTabProps {
@@ -80,7 +81,7 @@ export function BookmarksTab({ paperId, onJumpToPage }: BookmarksTabProps) {
       <div className="flex h-full items-center justify-center p-6">
         <EmptyState
           size="panel"
-          icon={BookmarkIcon}
+          illustration={LibraryIllustration}
           title="No bookmarks yet"
           description="Click the bookmark button in the PDF toolbar to save pages."
         />

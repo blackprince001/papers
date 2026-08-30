@@ -1,7 +1,49 @@
 # Bundle Update Log
 
+## 2026-08-30
+
+* **Closeout**: The final reader and Deep Research gates are green. PDF file
+  loading now aborts cleanly on reader cleanup, PDF.js document options remain
+  stable across renders, and thumbnail teardown absorbs expected worker
+  cancellation. Deep Research now isolates lifecycle and tool database sessions
+  and does not reuse discovery HTTP clients across worker event loops. The 13-case
+  browser suite, frontend/backend tests, production build, standards audit,
+  focused regression lint, and release evaluation all pass. Existing
+  repository-wide ESLint, Ruff, and Pyright findings remain outside this
+  closeout change set. The local stack remains running; its health endpoint
+  reports a duplicate Celery nodename while the research worker is actively
+  processing a task, so direct worker inspection is the source of truth until
+  that task finishes.
+
 ## 2026-08-29
 
+* **Complete**: Phase 8 is implemented. Deep Research now has explicit progress,
+  provider/scope/effort disclosure, source verification, reconnect/offline and
+  cancellation states, settings recovery, archive search/pagination, idempotent
+  starts, awaited clipboard feedback, and ingest outcomes. Redacted lifecycle
+  metrics, the versioned release eval, CI gate, and operations runbook are in
+  place. Migration `deep_research_004` moved legacy checkpoints to generations,
+  paused and fenced active legacy runs, removed the session `run_state` column,
+  and completed the Redis event-relay cutover. Backend/frontend tests, the
+  production build, integration lifecycle checks, and the deterministic release
+  gate pass. Local visual verification remains a human-owned checkpoint.
+
+* **Update**: Phase 7 visual review was accepted and Phase 8 DR-15 is complete.
+  Deep Research follow-ups now have explicit **Ask this research** and **Research
+  further** modes. Messages persist by owned session/generation; Ask uses a
+  no-tool, evidence-only agent and rejects unsupported citations, while Research
+  further creates one idempotent queued generation that keeps the provider pin.
+  Added migration `deep_research_003`, message history API, and frontend mode
+  controls. Backend/frontend tests, lifecycle integration, the standards audit,
+  and the production build pass. At that checkpoint, live-provider and release
+  evaluation were still open; DR-16 followed and is now complete.
+* **Update**: Phase 7 empty-state implementation and Checkpoint G visual review
+  are complete.
+  Six project-owned static illustrations now flow through the shared `EmptyState`
+  contract, with page/panel consumers migrated across library, search, annotations,
+  citations, activity, setup, AI, chat, reader, archive, and discovery surfaces.
+  The `/dev/empties` review route is available; frontend tests, the production build,
+  and the standards audit pass. Checkpoint G was accepted in the local review.
 * **Update**: Phase 6 icon implementation is complete. The shared icon scale is now
   `14 / 16 / 20 / 24 / 28px`, compact text tokens grew with it, and the remaining
   hard-coded reader, file-viewer, menu, select, empty-state, and error-state sizes

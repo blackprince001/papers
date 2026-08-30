@@ -27,7 +27,7 @@ instantiated at import (`config.py:135`).
 | `SEMANTIC_SCHOLAR_API_KEY` | str | `""` | `:25` | Semantic Scholar discovery provider |
 | `OPENALEX_API_KEY` | str | `""` | `:26` | OpenAlex discovery provider |
 | `AGENT_MAX_TURNS` | int | `25` | `:29` | Max agent turns |
-| `DEEP_RESEARCH_MUTATIONS_ENABLED` | bool | `False` | `:32` | Temporary safety freeze; must remain false until the deep-research rewrite passes its release gates |
+| `DEEP_RESEARCH_MUTATIONS_ENABLED` | bool | `True` | `:32` | Emergency stop for new deep-research starts and resumes; normal operation is enabled |
 | `DEBUG` | bool | `False` | `:30` | Debug flag |
 | `PORT` | int | `8000` | `:31` | Backend listen port |
 | `DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASSWORD`/`DB_NAME` | str | `""` | `:35-39` | Postgres components (dev fallbacks localhost:5433, user/pass `postgres`, db `nexus`) |
@@ -60,14 +60,12 @@ In `DEBUG` mode, the API also allows `http://127.0.0.1:5173` (and the correspond
 `Settings` does NOT declare `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or
 `DEEPSEEK_API_KEY` — chat providers are per-user BYO (see
 [ai-agent.md](/backend/services/ai-agent.md)), and the comment at
-`config.py:21-23` confirms this. Deep research has one temporary mutation gate:
-`DEEP_RESEARCH_MUTATIONS_ENABLED=false` freezes new starts and resumes in every
-deployment while the unsafe legacy lifecycle is replaced. It must not be enabled
-outside a deliberately reviewed local/test override. The old
-`ENABLE_DEEP_RESEARCH` feature flag and earlier `DEEP_RESEARCH_*` settings were
-removed; this gate controls safety during the rewrite, not product availability.
-See [deep-research](/features/deep-research.md) and the
-[reformation plan](/features/reader-ai-experience.md).
+`config.py:21-23` confirms this. Deep research has one emergency mutation gate:
+`DEEP_RESEARCH_MUTATIONS_ENABLED=false` stops new starts and resumes during an
+incident or maintenance window. It is enabled by default. The old
+`ENABLE_DEEP_RESEARCH` feature flag was removed. See
+[deep-research](/features/deep-research.md) and the [reformation
+plan](/features/reader-ai-experience.md).
 
 # Citations
 

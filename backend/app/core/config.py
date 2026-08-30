@@ -24,8 +24,8 @@ class Settings(BaseSettings):
   SEMANTIC_SCHOLAR_API_KEY: str = ""
   OPENALEX_API_KEY: str = ""
   AGENT_MAX_TURNS: int = 25
-  # Temporary safety freeze while the deep-research lifecycle is being replaced.
-  # Keep false in every environment until the replacement passes its release gates.
+  # Emergency kill switch for new starts and resumes. The durable lifecycle is
+  # enabled by default; set false during an incident or planned maintenance.
   DEEP_RESEARCH_MUTATIONS_ENABLED: bool = True
   DEEP_RESEARCH_MAX_QUESTION_LENGTH: int = 4000
   DEEP_RESEARCH_MAX_ACTIVE_RUNS: int = 3

@@ -1,0 +1,26 @@
+name: Deep Research release gate
+
+on:
+  pull_request:
+    paths:
+      - "backend/evals/deep_research/**"
+      - "backend/app/services/deep_research/**"
+      - "backend/app/services/deep_research_service.py"
+  push:
+    branches: [main]
+    paths:
+      - "backend/evals/deep_research/**"
+      - "backend/app/services/deep_research/**"
+      - "backend/app/services/deep_research_service.py"
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Run the deterministic release gate
+        working-directory: backend
+        run: python evals/deep_research/v1/run_eval.py --check-release

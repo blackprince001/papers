@@ -80,6 +80,11 @@ const LazyPDFViewer = React.lazy(() =>
     default: mod.PDFViewer,
   }))
 )
+const PDF_DOCUMENT_OPTIONS = {
+  cMapPacked: true,
+  cMapUrl: "/pdfjs/cmaps/",
+  standardFontDataUrl: "/pdfjs/standard_fonts/",
+}
 const LazyDocxViewerPreview = React.lazy(() =>
   import("@/components/shadcn/docx-viewer").then((mod) => ({
     default: mod.DocxViewerPreview,
@@ -4863,11 +4868,7 @@ function FileSystemGalleryStage({
               isDialog && "min-h-0 overflow-hidden rounded-2xl"
             )}
             // PAPERS-FORK: self-hosted pdfjs assets instead of unpkg.
-            documentOptions={{
-              cMapPacked: true,
-              cMapUrl: "/pdfjs/cmaps/",
-              standardFontDataUrl: "/pdfjs/standard_fonts/",
-            }}
+            documentOptions={PDF_DOCUMENT_OPTIONS}
             downloadFileName={file.name}
             showToolbar={isDialog}
             showUpload={false}

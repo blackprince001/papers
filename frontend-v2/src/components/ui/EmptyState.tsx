@@ -1,12 +1,15 @@
 import type { ComponentType, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import type { IconProps } from '../icons';
+import type { IllustrationComponent } from '../illustrations';
 
 type EmptyStateSize = 'page' | 'panel' | 'row';
 
 interface EmptyStateProps {
   /** Icon component from components/icons; sized by the density tier. */
   icon?: ComponentType<IconProps>;
+  /** Project-owned decorative artwork; falls back to icon for legacy callers. */
+  illustration?: IllustrationComponent;
   title: string;
   description?: ReactNode;
   /** Compose Buttons/Links; rendered in a centered gap-3 row. */
@@ -21,6 +24,7 @@ const iconPx: Record<EmptyStateSize, number> = { page: 56, panel: 40, row: 0 };
 
 export function EmptyState({
   icon: Icon,
+  illustration: Illustration,
   title,
   description,
   actions,
@@ -43,13 +47,15 @@ export function EmptyState({
         className,
       )}
     >
-      {Icon && (
+      {Illustration ? (
+        <Illustration size={size === 'page' ? 'lg' : 'md'} />
+      ) : Icon ? (
         <Icon
           size={iconPx[size]}
           strokeWidth={1.5}
           className="text-(--muted-foreground) opacity-80"
         />
-      )}
+      ) : null}
       <TitleTag className={cn('font-semibold text-(--foreground)', size === 'page' ? 'mt-4 text-body-lg' : 'mt-3 text-body')}>
         {title}
       </TitleTag>

@@ -11,6 +11,7 @@ import { papersApi, type Paper } from '@/lib/api/papers';
 import { citationMapApi, type CitedByPaper } from '@/lib/api/citationMap';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { CitationIllustration } from '@/components/illustrations';
 import { Spinner } from '@/components/ui/Spinner';
 import { cn } from '@/lib/utils';
 
@@ -156,7 +157,7 @@ export function CitedByTab() {
         </div>
       ) : citations.length === 0 ? (
         <div className="rounded-xl border border-(--border) bg-(--card)">
-          <EmptyState size="panel" icon={QuoteIcon} title="No citing works found yet" />
+          <EmptyState size="panel" illustration={CitationIllustration} title="No citing works found yet" />
         </div>
       ) : (
         <>
